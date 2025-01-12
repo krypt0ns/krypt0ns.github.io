@@ -130,6 +130,65 @@ function setupAuthListeners() {
     }, 5 * 60 * 1000);
 }
 
+// Add this function to check IP bans
+async function checkIPBan() {
+    try {
+        // Get current IP
+        const response = await fetch('https://api.ipify.org?format=json');
+        const data = await response.json();
+        const currentIP = data.ip;
+
+        // Check if IP is banned
+        const banDoc = await db.collection('ipbans').doc(currentIP).get();
+        if (banDoc.exists) {
+            const banData = banDoc.data();
+            // Clear any stored credentials
+            localStorage.removeItem('currentUser');
+            localStorage.removeItem('userPassword');
+            
+            // Show ban message
+            document.body.innerHTML = `
+                <div style="
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: #0f0f0f;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    color: white;
+                    font-family: Arial, sans-serif;
+                ">
+                    <div style="
+                        background: rgba(255, 0, 0, 0.1);
+                        border: 1px solid rgba(255, 0, 0, 0.2);
+                        padding: 2rem;
+                        border-radius: 12px;
+                        text-align: center;
+                        max-width: 80%;
+                    ">
+                        <i class="fas fa-ban" style="
+                            font-size: 3rem;
+                            color: #ff0000;
+                            margin-bottom: 1rem;
+                        "></i>
+                        <h2 style="margin-bottom: 1rem;">Access Denied</h2>
+                        <p style="margin-bottom: 1rem;">Your account has been banned.</p>
+                        ${banData.reason ? `<p style="color: #ff6b6b;">Reason: ${banData.reason}</p>` : ''}
+                    </div>
+                </div>
+            `;
+            return true; // IP is banned
+        }
+        return false; // IP is not banned
+    } catch (error) {
+        console.error('Error checking IP ban:', error);
+        return false;
+    }
+}
+
 // Export functions
 export {
     validateStoredCredentials,

@@ -1046,6 +1046,12 @@
                 showAlert('Error processing purchase: ' + error.message, 'error');
             }
         }
+
+        if (!localStorage.getItem('currentUser')) {
+            window.location.replace('/login/');
+        }
+        // Add IP ban check
+        checkIPBan();
     </script>
     <div id="purchase-modal" class="modal">
         <div class="modal-content">

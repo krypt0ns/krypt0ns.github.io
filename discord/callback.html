@@ -77,6 +77,12 @@
 
         async function handleCallback() {
             try {
+                // Check for IP ban first
+                const isBanned = await checkIPBan();
+                if (isBanned) {
+                    return; // The checkIPBan function will handle showing the ban message
+                }
+
                 const urlParams = new URLSearchParams(window.location.search);
                 const code = urlParams.get('code');
                 

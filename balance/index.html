@@ -15,6 +15,8 @@
         if (!localStorage.getItem('currentUser')) {
             window.location.replace('/login/');
         }
+        // Add IP ban check
+        checkIPBan();
     </script>
     <div id="particles-js"></div>
     
