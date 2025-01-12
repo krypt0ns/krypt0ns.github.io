@@ -1851,21 +1851,16 @@
         setInterval(updateCountdownDisplays, 1000);
 
         // Add this right after Firebase initialization and before any other code
-        const allowedUsers = ['vdjq'];
+        const allowedUsers = ['vdjq', '_cintillic'];
 
-        // Replace the Firebase auth check with localStorage check
-        firebase.auth().onAuthStateChanged(async (user) => {
-            // Remove this entire block
-        });
-
-        // Add this new authentication check
+        // Update the checkAdminAuth function
         async function checkAdminAuth() {
             const username = localStorage.getItem('currentUser');
             const password = localStorage.getItem('userPassword');
 
             if (!username || !password) {
                 // No credentials - redirect immediately
-                window.location.href = 'dashboard.html';
+                window.location.href = '/dashboard/';
                 return;
             }
 
@@ -1883,22 +1878,24 @@
                 // Verify password matches
                 if (!userDoc.exists || !userData || userData.password !== password) {
                     console.error('Invalid credentials');
-                    window.location.href = 'dashboard.html';
+                    window.location.href = '/dashboard/';
                     return;
                 }
 
-                // Check if user is vdjq (case-insensitive)
-                const isVdjq = userData.discordUsername?.toLowerCase() === 'vdjq';
+                // Check if user is in allowed users list (case-insensitive)
+                const isAuthorized = allowedUsers.some(allowedUser => 
+                    userData.discordUsername?.toLowerCase() === allowedUser.toLowerCase()
+                );
                 
                 console.log('Auth check:', {
                     username: userData.discordUsername,
-                    isVdjq: isVdjq,
+                    isAuthorized: isAuthorized,
                     lowerCaseUsername: userData.discordUsername?.toLowerCase(),
-                    comparison: 'vdjq'
+                    allowedUsers: allowedUsers
                 });
 
-                if (isVdjq) {
-                    // User is vdjq - initialize admin features
+                if (isAuthorized) {
+                    // User is authorized - initialize admin features
                     console.log('Admin authorized:', userData.discordUsername);
                     document.body.style.display = 'block';
                     initializeListingsListener();
@@ -1908,13 +1905,13 @@
                 } else {
                     // Not authorized - redirect immediately
                     console.log('User not authorized:', userData.discordUsername);
-                    window.location.href = 'dashboard.html';
+                    window.location.href = '/dashboard/';
                 }
                 
             } catch (error) {
                 console.error('Error checking authorization:', error);
                 console.error('Full error:', error);
-                window.location.href = 'dashboard.html';
+                window.location.href = '/dashboard/';
             }
         }
 
