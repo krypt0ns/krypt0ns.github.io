@@ -9,6 +9,15 @@
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
     <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
     <link rel="stylesheet" href="balance.css">
+    <script type="module">
+        import { checkIPBan } from '../auth.js';
+        
+        // Initialize Firebase first (you already have this)
+        // Then check for IP ban
+        document.addEventListener('DOMContentLoaded', async () => {
+            await checkIPBan();
+        });
+    </script>
 </head>
 <body>
     <script>

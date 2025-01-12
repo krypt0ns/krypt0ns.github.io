@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Register</title>
     <link rel="stylesheet" href="register.css">
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 </head>
 <body>
     <div id="particles-js"></div>
@@ -46,11 +48,10 @@
         </form>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-app.js";
-        import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore.js";
-
+        import { checkIPBan } from '../auth.js';
+        
+        // Initialize Firebase first
         const firebaseConfig = {
             apiKey: "AIzaSyDvG4059xSr2jToP9xDz-8dlxbumuRzdUE",
             authDomain: "sdfkj238j98sdlkmzlknslaksdjfkl.firebaseapp.com",
@@ -60,10 +61,10 @@
             appId: "1:778178162130:web:a9513f09e404813aa2ec0b",
             measurementId: "G-WP6QR49WZ3"
         };
-
-        // Initialize Firebase
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
+        firebase.initializeApp(firebaseConfig);
+        
+        // Then check for IP ban
+        checkIPBan();
 
         // Handle form submission
         const form = document.getElementById('registerForm');
@@ -148,9 +149,6 @@
             },
             retina_detect: true
         });
-
-        // Check IP ban before allowing registration
-        checkIPBan();
     </script>
 </body>
 </html>

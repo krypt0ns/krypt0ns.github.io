@@ -1,8 +1,8 @@
-// Firebase imports (if using modules)
+// Firebase imports
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
-import { getFirestore, doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+import { getFirestore, doc, getDoc, collection, query, where, getDocs } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
 
-// Firebase config (replace with your config)
+// Firebase config
 const firebaseConfig = {
     apiKey: "AIzaSyDvG4059xSr2jToP9xDz-8dlxbumuRzdUE",
     authDomain: "sdfkj238j98sdlkmzlknslaksdjfkl.firebaseapp.com",
@@ -21,7 +21,7 @@ const db = getFirestore(app);
  * Validates stored credentials against Firestore
  * @returns {Promise<boolean>} True if credentials are valid
  */
-async function validateStoredCredentials() {
+export async function validateStoredCredentials() {
     const username = localStorage.getItem('currentUser');
     const password = localStorage.getItem('userPassword');
 
@@ -51,7 +51,7 @@ async function validateStoredCredentials() {
 /**
  * Redirects to login page and handles cleanup
  */
-function redirectToLogin() {
+export function redirectToLogin() {
     // Clear credentials
     localStorage.removeItem('currentUser');
     localStorage.removeItem('userPassword');
@@ -66,7 +66,7 @@ function redirectToLogin() {
 /**
  * Logs out the current user
  */
-function logout() {
+export function logout() {
     localStorage.removeItem('currentUser');
     localStorage.removeItem('userPassword');
     redirectToLogin();
@@ -76,7 +76,7 @@ function logout() {
  * Checks if user has admin privileges
  * @returns {Promise<boolean>} True if user is admin
  */
-async function isAdmin() {
+export async function isAdmin() {
     const username = localStorage.getItem('currentUser');
     if (!username) return false;
 
@@ -94,7 +94,7 @@ async function isAdmin() {
  * Gets current user data
  * @returns {Promise<Object|null>} User data or null if not logged in
  */
-async function getCurrentUser() {
+export async function getCurrentUser() {
     const username = localStorage.getItem('currentUser');
     if (!username) return null;
 
@@ -110,7 +110,7 @@ async function getCurrentUser() {
 /**
  * Sets up authentication listeners
  */
-function setupAuthListeners() {
+export function setupAuthListeners() {
     // Listen for storage changes (logout from other tabs)
     window.addEventListener('storage', async (e) => {
         if (e.key === 'currentUser' || e.key === 'userPassword') {
@@ -121,7 +121,7 @@ function setupAuthListeners() {
         }
     });
 
-    // Periodic validation (optional, every 5 minutes)
+    // Periodic validation
     setInterval(async () => {
         const isValid = await validateStoredCredentials();
         if (!isValid) {
@@ -130,8 +130,11 @@ function setupAuthListeners() {
     }, 5 * 60 * 1000);
 }
 
-// Add this function to check IP bans
-async function checkIPBan() {
+/**
+ * Checks if IP is banned
+ * @returns {Promise<boolean>} True if IP is banned
+ */
+export async function checkIPBan() {
     try {
         // Get current IP
         const response = await fetch('https://api.ipify.org?format=json');
@@ -139,8 +142,8 @@ async function checkIPBan() {
         const currentIP = data.ip;
 
         // Check if IP is banned
-        const banDoc = await db.collection('ipbans').doc(currentIP).get();
-        if (banDoc.exists) {
+        const banDoc = await getDoc(doc(db, 'ipbans', currentIP));
+        if (banDoc.exists()) {
             const banData = banDoc.data();
             // Clear any stored credentials
             localStorage.removeItem('currentUser');
@@ -189,12 +192,24 @@ async function checkIPBan() {
     }
 }
 
-// Export functions
-export {
-    validateStoredCredentials,
-    redirectToLogin,
-    logout,
-    isAdmin,
-    getCurrentUser,
-    setupAuthListeners
-};
+/**
+ * Checks if a username is banned
+ * @param {string} username Username to check
+ * @returns {Promise<boolean>} True if username is banned
+ */
+export async function isUsernameBanned(username) {
+    try {
+        const userDoc = await getDoc(doc(db, 'users', username));
+        if (userDoc.exists()) {
+            const userData = userDoc.data();
+            return userData.banned === true;
+        }
+        return false;
+    } catch (error) {
+        console.error('Error checking username ban:', error);
+        return false;
+    }
+}
+
+// Export the db instance for use in other files
+export { db };

@@ -8,6 +8,13 @@
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <script type="module">
+        import { checkIPBan } from '../auth.js';
+        
+        // Initialize Firebase first (you already have this)
+        // Then check for IP ban
+        checkIPBan();
+    </script>
 </head>
 <body>
     <script>
