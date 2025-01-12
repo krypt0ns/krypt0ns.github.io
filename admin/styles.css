@@ -1,0 +1,358 @@
+/* Keep the basic modal styles */
+.modal {
+	position: fixed;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	background: rgba(0, 0, 0, 0.5);
+	z-index: 1000;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	opacity: 0;
+	visibility: hidden;
+	transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.modal.show {
+	opacity: 1;
+	visibility: visible;
+}
+
+.modal-content {
+	background: linear-gradient(165deg, rgba(25, 25, 35, 0.98), rgba(15, 15, 25, 0.98));
+	border-radius: 16px;
+	border: 1px solid rgba(128, 90, 213, 0.2);
+	box-shadow:
+		0 25px 50px -12px rgba(0, 0, 0, 0.25),
+		0 0 0 1px rgba(128, 90, 213, 0.1);
+	width: 95%;
+	max-width: 1000px;
+	max-height: 90vh;
+	overflow-y: auto;
+	margin: 2rem;
+}
+
+.modal-header {
+	background: linear-gradient(to right,
+			rgba(128, 90, 213, 0.1),
+			rgba(107, 70, 193, 0.15));
+	padding: 1.5rem 2rem;
+	border-bottom: 2px solid rgba(128, 90, 213, 0.2);
+}
+
+.modal-header h3 {
+	font-size: 1.5rem;
+	color: #fff;
+	margin: 0;
+	background: linear-gradient(135deg, #fff, #9f7aea);
+	-webkit-background-clip: text;
+	-webkit-text-fill-color: transparent;
+}
+
+/* Keep the payment details styles */
+.payment-details-content {
+	background: linear-gradient(to bottom, rgba(26, 26, 26, 0.95), rgba(20, 20, 20, 0.95));
+	backdrop-filter: blur(20px);
+	border-radius: 16px;
+	border: 1px solid rgba(255, 255, 255, 0.1);
+	box-shadow:
+		0 10px 30px -5px rgba(0, 0, 0, 0.3),
+		0 0 0 1px rgba(255, 255, 255, 0.1);
+	max-width: 600px;
+	width: 90%;
+	margin: auto;
+	overflow: hidden;
+	color: #fff;
+}
+
+/* Keep the status badge styles */
+.status-badge {
+	padding: 0.25rem 0.75rem;
+	border-radius: 9999px;
+	font-size: 0.875rem;
+	font-weight: 500;
+}
+
+.status-badge.active {
+	background: #48bb78;
+	color: white;
+}
+
+.status-badge.banned {
+	background: #e53e3e;
+	color: white;
+}
+
+/* User Details Modal Specific Styling - This should be the main styling for user details */
+.user-details-content {
+	background: linear-gradient(165deg, rgba(30, 30, 40, 0.98), rgba(20, 20, 30, 0.98));
+	backdrop-filter: blur(30px);
+	border-radius: 24px;
+	border: 1px solid rgba(128, 90, 213, 0.3);
+	box-shadow:
+		0 25px 50px -12px rgba(0, 0, 0, 0.6),
+		0 0 0 1px rgba(128, 90, 213, 0.2),
+		inset 0 1px 1px rgba(255, 255, 255, 0.05);
+	max-width: 1000px;
+	width: 95%;
+	margin: auto;
+	overflow: hidden;
+	color: #fff;
+	position: relative;
+	transform: scale(0.95);
+	opacity: 0;
+	transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.modal.show .user-details-content {
+	transform: scale(1);
+	opacity: 1;
+}
+
+.user-details-content .details-header {
+	background: linear-gradient(to right,
+			rgba(128, 90, 213, 0.15),
+			rgba(107, 70, 193, 0.25));
+	padding: 2.5rem;
+	border-bottom: 2px solid rgba(128, 90, 213, 0.3);
+	position: relative;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+}
+
+.user-details-content .details-header h3 {
+	font-size: 2rem;
+	background: linear-gradient(135deg, #fff, #9f7aea, #805ad5);
+	-webkit-background-clip: text;
+	-webkit-text-fill-color: transparent;
+	display: flex;
+	align-items: center;
+	gap: 1rem;
+	text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+	letter-spacing: 0.5px;
+}
+
+.user-details-content .details-body {
+	padding: 2.5rem;
+	background: linear-gradient(135deg,
+			rgba(128, 90, 213, 0.05),
+			rgba(107, 70, 193, 0.08));
+}
+
+.user-details-content .detail-section {
+	background: rgba(255, 255, 255, 0.03);
+	border-radius: 20px;
+	padding: 2rem;
+	margin-bottom: 2rem;
+	border: 1px solid rgba(128, 90, 213, 0.2);
+	box-shadow:
+		0 10px 30px -5px rgba(0, 0, 0, 0.3),
+		inset 0 1px 2px rgba(255, 255, 255, 0.05);
+	transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+	position: relative;
+	overflow: hidden;
+}
+
+.user-details-content .section-title {
+	font-size: 1.4rem;
+	color: #9f7aea;
+	margin-bottom: 2rem;
+	padding-bottom: 1rem;
+	border-bottom: 2px solid rgba(128, 90, 213, 0.2);
+	display: flex;
+	align-items: center;
+	gap: 1rem;
+	text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.user-details-content .section-title i {
+	color: #805ad5;
+	font-size: 1.5rem;
+}
+
+.user-details-content .detail-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+	gap: 1.75rem;
+}
+
+.user-details-content .detail-item {
+	background: linear-gradient(135deg,
+			rgba(128, 90, 213, 0.08),
+			rgba(107, 70, 193, 0.12));
+	border-radius: 16px;
+	padding: 1.25rem 1.75rem;
+	transition: all 0.3s ease;
+	border: 1px solid rgba(128, 90, 213, 0.15);
+	position: relative;
+	overflow: hidden;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+}
+
+.user-details-content .detail-item:hover {
+	background: linear-gradient(135deg,
+			rgba(128, 90, 213, 0.12),
+			rgba(107, 70, 193, 0.16));
+	transform: translateX(5px) translateY(-2px);
+	border-color: rgba(128, 90, 213, 0.3);
+}
+
+.user-details-content .detail-label {
+	color: rgba(255, 255, 255, 0.7);
+	font-size: 0.95rem;
+	font-weight: 500;
+}
+
+.user-details-content .detail-value {
+	color: #fff;
+	font-weight: 500;
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+}
+
+.user-details-content .action-buttons {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+	gap: 1.5rem;
+	margin-top: 2.5rem;
+	padding: 2rem;
+	background: linear-gradient(135deg,
+			rgba(128, 90, 213, 0.08),
+			rgba(107, 70, 193, 0.12));
+	border-radius: 20px;
+	border: 1px solid rgba(128, 90, 213, 0.2);
+}
+
+/* Button styles */
+.action-btn {
+	padding: 0.75rem 1.25rem;
+	border-radius: 8px;
+	font-weight: 600;
+	font-size: 0.9rem;
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+	transition: all 0.3s ease;
+	cursor: pointer;
+	border: none;
+}
+
+.primary-btn {
+	background: linear-gradient(135deg, #6b46c1, #805ad5);
+	color: white;
+	box-shadow: 0 4px 15px rgba(107, 70, 193, 0.3);
+}
+
+.success-btn {
+	background: linear-gradient(135deg, #48bb78, #38a169);
+	color: white;
+	box-shadow: 0 4px 15px rgba(72, 187, 120, 0.3);
+}
+
+.danger-btn {
+	background: linear-gradient(135deg, #e53e3e, #c53030);
+	color: white;
+	box-shadow: 0 4px 15px rgba(229, 62, 62, 0.3);
+}
+
+.secondary-btn {
+	background: rgba(255, 255, 255, 0.1);
+	color: white;
+	border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Utility classes */
+.text-success {
+	color: #48bb78;
+}
+
+.text-danger {
+	color: #e53e3e;
+}
+
+/* Search container styles */
+.search-container {
+	margin-bottom: 2rem;
+}
+
+.search-input {
+	width: 100%;
+	max-width: 400px;
+	padding: 1rem 1.5rem;
+	background: rgba(255, 255, 255, 0.05);
+	border: 1px solid rgba(128, 90, 213, 0.2);
+	border-radius: 12px;
+	color: white;
+	font-size: 1rem;
+	transition: all 0.3s ease;
+}
+
+.search-input:focus {
+	outline: none;
+	border-color: #6b46c1;
+	box-shadow: 0 0 0 3px rgba(107, 70, 193, 0.2);
+	background: rgba(255, 255, 255, 0.08);
+}
+
+/* User Info Modal Styles */
+.user-info-modal {
+	background: linear-gradient(165deg, rgba(30, 30, 40, 0.98), rgba(20, 20, 30, 0.98));
+	border-radius: 24px;
+	border: 1px solid rgba(128, 90, 213, 0.3);
+	max-width: 800px;
+	width: 95%;
+	color: white;
+}
+
+.user-info-header {
+	padding: 2rem;
+	border-bottom: 1px solid rgba(128, 90, 213, 0.2);
+	display: flex;
+	align-items: center;
+	gap: 1.5rem;
+}
+
+.user-avatar {
+	width: 80px;
+	height: 80px;
+	border-radius: 50%;
+	border: 3px solid #6b46c1;
+}
+
+.user-info-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+	gap: 1.5rem;
+	padding: 2rem;
+}
+
+.info-item {
+	background: rgba(255, 255, 255, 0.05);
+	padding: 1.5rem;
+	border-radius: 12px;
+	border: 1px solid rgba(128, 90, 213, 0.2);
+}
+
+.info-label {
+	color: rgba(255, 255, 255, 0.6);
+	font-size: 0.9rem;
+	margin-bottom: 0.5rem;
+}
+
+.info-value {
+	color: white;
+	font-weight: 500;
+}
+
+.user-actions {
+	padding: 2rem;
+	border-top: 1px solid rgba(128, 90, 213, 0.2);
+	display: flex;
+	gap: 1rem;
+	justify-content: flex-end;
+}

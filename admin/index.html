@@ -99,7 +99,6 @@
                         <option value="all">All Status</option>
                         <option value="Active">Active</option>
                         <option value="Pending">Pending</option>
-                        <option value="Sold">Sold</option>
                         <option value="Disabled">Disabled</option>
                     </select>
                 </div>
@@ -123,6 +122,16 @@
             </div>
 
             <div id="users-section" class="content-section" style="display: none;">
+                <div class="filters-container" style="margin-bottom: 1rem; display: flex; gap: 1rem; align-items: center;">
+                    <div class="search-box" style="flex: 1;">
+                        <input 
+                            type="text" 
+                            id="user-search" 
+                            placeholder="Search users..." 
+                            style="width: 100%; padding: 0.75rem; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; color: #fff;"
+                        >
+                    </div>
+                </div>
                 <table class="admin-table">
                     <thead>
                         <tr>
@@ -130,6 +139,7 @@
                             <th>Balance</th>
                             <th>Status</th>
                             <th>Actions</th>
+                            <th>Info</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -342,7 +352,6 @@
                         <option value="all">All Status</option>
                         <option value="Active">Active</option>
                         <option value="Pending">Pending</option>
-                        <option value="Sold">Sold</option>
                         <option value="Disabled">Disabled</option>
                     </select>
                 </div>
@@ -605,41 +614,169 @@
             }
         }
 
-        // Display users in real-time
+        // Add these variables at the top with your other global variables
+        let allUsers = [];
+        let userSearchTerm = '';
+
+        // Update the initializeUsersListener function
         function initializeUsersListener() {
             const tableBody = document.querySelector('#users-section .admin-table tbody');
-            if (!tableBody) return;
+            const searchInput = document.getElementById('user-search');
+            
+            if (!tableBody || !searchInput) return;
 
-            db.collection('users').onSnapshot((snapshot) => {
-                tableBody.innerHTML = '';
-                
-                snapshot.forEach((doc) => {
-                    const user = doc.data();
-                    const row = `
-                        <tr>
-                            <td>
-                                <div style="display: flex; align-items: center; gap: 10px;">
-                                    <img src="${user.discordAvatarURL || 'https://cdn.discordapp.com/embed/avatars/0.png'}" 
-                                         alt="${user.username}" 
-                                         style="width: 32px; height: 32px; border-radius: 50%;">
-                                    ${user.username}
-                                </div>
-                            </td>
-                            <td>$${user.balance || 0}</td>
-                            <td>${user.status || 'Active'}</td>
-                            <td>
-                                <button class="action-btn edit-btn" onclick="modifyBalance('${doc.id}', ${user.balance || 0})">
-                                    <i class="fas fa-wallet"></i>
-                                </button>
-                                <button class="action-btn ban-btn" onclick="toggleUserStatus('${doc.id}', '${user.status || 'Active'}')">
-                                    <i class="fas fa-ban"></i>
-                                </button>
-                            </td>
-                        </tr>
-                    `;
-                    tableBody.innerHTML += row;
-                });
+            // Add search event listener
+            searchInput.addEventListener('input', (e) => {
+                userSearchTerm = e.target.value.toLowerCase();
+                renderUsers();
             });
+
+            // Listen for users changes
+            db.collection('users').onSnapshot((snapshot) => {
+                allUsers = [];
+                snapshot.forEach((doc) => {
+                    allUsers.push({
+                        id: doc.id,
+                        ...doc.data()
+                    });
+                });
+                renderUsers();
+            });
+        }
+
+        // Add the renderUsers function
+        function renderUsers() {
+            const tableBody = document.querySelector('#users-section .admin-table tbody');
+            if (!tableBody) return;
+            
+            tableBody.innerHTML = '';
+            
+            const filteredUsers = allUsers.filter(user => {
+                return (user.username || '').toLowerCase().includes(userSearchTerm) ||
+                       (user.discordUsername || '').toLowerCase().includes(userSearchTerm);
+            });
+
+            filteredUsers.forEach(user => {
+                const row = `
+                    <tr>
+                        <td>
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <img src="${user.discordAvatarURL || 'https://cdn.discordapp.com/embed/avatars/0.png'}" 
+                                     alt="${user.username}" 
+                                     style="width: 32px; height: 32px; border-radius: 50%;">
+                                ${user.username}
+                            </div>
+                        </td>
+                        <td>$${user.balance || 0}</td>
+                        <td>${user.status || 'Active'}</td>
+                        <td>
+                            <button class="action-btn edit-btn" onclick="modifyBalance('${user.id}', ${user.balance || 0})">
+                                <i class="fas fa-wallet"></i>
+                            </button>
+                            <button class="action-btn ban-btn" onclick="toggleUserStatus('${user.id}', '${user.status || 'Active'}')">
+                                <i class="fas fa-ban"></i>
+                            </button>
+                        </td>
+                        <td>
+                            <button class="action-btn info-btn" onclick="viewUserDetails('${user.id}')" title="View details">
+                                <i class="fas fa-info-circle"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+                tableBody.innerHTML += row;
+            });
+        }
+
+        // Add the viewUserDetails function
+        async function viewUserDetails(userId) {
+            try {
+                const userDoc = await db.collection('users').doc(userId).get();
+                const userData = userDoc.data();
+                
+                const modal = document.createElement('div');
+                modal.style.cssText = `
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    right: 0;
+                    bottom: 0;
+                    background: rgba(0, 0, 0, 0.7);
+                    backdrop-filter: blur(5px);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    z-index: 1000;
+                    opacity: 0;
+                    transition: opacity 0.3s ease;
+                `;
+                
+                const detailsHTML = `
+                    <div class="payment-details-content">
+                        <div class="details-header">
+                            <h3>User Details</h3>
+                            <div class="alert-close">
+                                <i class="fas fa-times"></i>
+                            </div>
+                        </div>
+                        <div class="details-body">
+                            <div class="detail-row">
+                                <span class="detail-label">Username:</span>
+                                <span class="detail-value">${userData.username}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Discord Username:</span>
+                                <span class="detail-value">${userData.discordUsername || 'Not linked'}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Discord ID:</span>
+                                <span class="detail-value">${userData.discordId || 'Not linked'}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Balance:</span>
+                                <span class="detail-value">$${userData.balance || 0}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Status:</span>
+                                <span class="status-badge ${(userData.status || 'Active').toLowerCase()}">${userData.status || 'Active'}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">IP Address:</span>
+                                <span class="detail-value">${userData.ip || 'Not available'}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Created At:</span>
+                                <span class="detail-value">${userData.createdAt ? new Date(userData.createdAt.toDate()).toLocaleString() : 'Not available'}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Last Login:</span>
+                                <span class="detail-value">${userData.lastLogin ? new Date(userData.lastLogin.toDate()).toLocaleString() : 'Not available'}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                modal.innerHTML = detailsHTML;
+                document.body.appendChild(modal);
+                
+                // Fade in
+                setTimeout(() => modal.style.opacity = '1', 10);
+
+                // Close handlers
+                const closeBtn = modal.querySelector('.alert-close');
+                const closeModal = () => {
+                    modal.style.opacity = '0';
+                    setTimeout(() => modal.remove(), 300);
+                };
+
+                closeBtn.onclick = closeModal;
+                modal.onclick = (e) => {
+                    if (e.target === modal) closeModal();
+                };
+            } catch (error) {
+                console.error('Error getting user details:', error);
+                showAlert('Error getting user details: ' + error.message, 'error');
+            }
         }
 
         // Add balance modification function
