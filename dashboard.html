@@ -1,0 +1,2619 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Listings</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            min-height: 100vh;
+            background: #0a0a0a;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        .slideshow-container {
+    /* ... existing styles ... */
+    cursor: grab;
+    user-select: none;
+}
+
+.slides {
+    /* ... existing styles ... */
+    transition: transform 0.3s ease-out;
+    will-change: transform;
+}
+
+.listing-image {
+    /* ... existing styles ... */
+    pointer-events: none; /* Prevents image drag */
+}
+
+        #particles-js {
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+
+        .background-shapes {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            z-index: 1;
+        }
+
+        .shape {
+            position: absolute;
+            filter: blur(100px);
+            opacity: 0.15;
+            animation: floatAnimation 20s infinite ease-in-out;
+        }
+
+        .shape-1 {
+            background: #6b46c1;
+            width: 25vw;
+            height: 25vw;
+            top: -12.5vw;
+            left: -12.5vw;
+        }
+
+        .shape-2 {
+            background: #805ad5;
+            width: 31.25vw;
+            height: 31.25vw;
+            bottom: -15.625vw;
+            right: -15.625vw;
+            animation-delay: -7s;
+        }
+
+        .shape-3 {
+            background: #4a5568;
+            width: 18.75vw;
+            height: 18.75vw;
+            top: 50%;
+            left: 50%;
+            animation-delay: -3s;
+        }
+
+        /* Header Styles */
+        .header {
+            background: rgba(20, 20, 20, 0.8);
+            backdrop-filter: blur(20px);
+            padding: 1rem 2rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            position: fixed;
+            width: 100%;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-left: calc(-1225vw);
+            position: relative;
+        }
+
+        @media only screen and (min-width: 1400px) {
+            .brand {
+                margin-left: -19rem;
+            }
+        }
+
+        @media only screen and (max-width: 1200px) {
+            .brand {
+                margin-left: 1rem;
+            }
+        }
+
+        @media only screen and (max-width: 992px) {
+            .brand {
+                margin-left: 0;
+            }
+        }
+
+        @media only screen and (max-width: 768px) {
+            .brand {
+                margin-left: 0;
+            }
+        }
+
+        .discord-pfp {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #6b46c1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            cursor: pointer;
+            position: relative;
+            transition: transform 0.2s;
+        }
+
+        .discord-pfp img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .discord-pfp:hover {
+            transform: scale(1.05);
+        }
+
+        .menu-icon {
+            position: absolute;
+            bottom: -5px;
+            right: -5px;
+            background: #6b46c1;
+            color: white;
+            padding: 4px;
+            border-radius: 50%;
+            font-size: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        .balance {
+            background: rgba(107, 70, 193, 0.1);
+            padding: 0.5rem 1rem;
+            border-radius: 12px;
+            border: 1px solid rgba(107, 70, 193, 0.2);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .balance-amount {
+            color: #6b46c1;
+            font-weight: 600;
+        }
+
+        /* Hamburger Menu */
+        .hamburger-menu {
+            cursor: pointer;
+            color: #fff;
+            font-size: 1.5rem;
+        }
+
+        .menu-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 2rem;
+            background: rgba(20, 20, 20, 0.95);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 1rem 0;
+            min-width: 200px;
+            display: none;
+            z-index: 1000;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+        }
+
+        .menu-dropdown.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .menu-item {
+            padding: 0.75rem 1.5rem;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .menu-item:hover {
+            background: rgba(107, 70, 193, 0.1);
+        }
+
+        .menu-item i {
+            color: #6b46c1;
+            width: 20px;
+            text-align: center;
+        }
+
+        /* Main Content */
+        .main-content {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            z-index: 2;
+        }
+
+        @media only screen and (max-width: 768px) {
+            .main-content {
+                padding: 80px 1rem 0;
+            }
+        }
+
+        /* Listings Container */
+        .listings-container {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 100%;
+            max-width: 1200px;
+            padding: 0 2rem;
+            margin-top: 40px; /* Half of header height */
+        }
+
+        /* Listings Grid */
+        .listings-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(280px, 1fr));
+            gap: 1.5rem;
+            justify-content: center;
+            justify-items: center;
+        }
+
+        /* Large tablets and small desktops */
+        @media only screen and (max-width: 1200px) {
+            .listings-grid {
+                grid-template-columns: repeat(2, minmax(280px, 1fr));
+                max-width: 900px;
+            }
+        }
+
+        /* Tablets */
+        @media only screen and (max-width: 992px) {
+            .listings-grid {
+                grid-template-columns: repeat(2, minmax(250px, 1fr));
+                gap: 1rem;
+                padding: 0 1.5rem;
+            }
+        }
+
+        /* Large phones */
+        @media only screen and (max-width: 768px) {
+            .listings-grid {
+                grid-template-columns: minmax(250px, 1fr);
+                max-width: 500px;
+                padding: 0 1rem;
+            }
+
+            .main-content {
+                padding: 80px 1rem 0;
+            }
+
+            .listing-card {
+                max-width: 100%;
+            }
+        }
+
+        /* Small phones */
+        @media only screen and (max-width: 480px) {
+            .listings-grid {
+                padding: 0 0.5rem;
+            }
+
+            .listing-card {
+                padding: 0.75rem;
+            }
+
+            .listing-title {
+                font-size: 1rem;
+            }
+
+            .listing-description {
+                font-size: 0.8rem;
+            }
+
+            .listing-button {
+                padding: 0.6rem;
+                font-size: 0.85rem;
+            }
+        }
+
+        /* Single and double listing layouts */
+        .listings-grid.single-listing {
+            grid-template-columns: minmax(280px, 350px);
+            justify-content: center;
+        }
+
+        .listings-grid.two-listings {
+            grid-template-columns: repeat(2, minmax(280px, 350px));
+            justify-content: center;
+        }
+
+        @media only screen and (max-width: 768px) {
+            .listings-grid.two-listings {
+                grid-template-columns: minmax(250px, 1fr);
+            }
+        }
+
+        /* Update listing card styles for better mobile support */
+        .listing-card {
+            background: rgba(20, 20, 20, 0.8);
+            backdrop-filter: blur(20px);
+            border-radius: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 1rem;
+            transition: all 0.4s cubic-bezier(0.19, 1, 0.22, 1);
+            position: relative;
+            box-shadow: 
+                0 25px 50px -12px rgba(0, 0, 0, 0.25),
+                0 0 0 1px rgba(255, 255, 255, 0.1);
+            animation: fadeIn 0.5s ease forwards;
+            opacity: 0;
+            width: 100%;
+            max-width: 350px;
+        }
+
+        /* Update slideshow container for better mobile support */
+        .slideshow-container {
+            height: 200px;
+        }
+
+        @media only screen and (max-width: 768px) {
+            .slideshow-container {
+                height: 180px;
+            }
+        }
+
+        @media only screen and (max-width: 480px) {
+            .slideshow-container {
+                height: 160px;
+            }
+        }
+
+        .listing-image {
+            width: 100%;
+            height: 150px;
+            border-radius: 12px;
+            object-fit: cover;
+            margin-bottom: 0.75rem;
+        }
+
+        @media only screen and (max-width: 768px) {
+            .listing-image {
+                height: 150px;
+                border-radius: 8px;
+            }
+        }
+
+        .listing-title {
+            font-size: 1.1rem;
+            margin-bottom: 0.4rem;
+            color: #fff;
+            background: linear-gradient(135deg, #fff, #9f7aea);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        @media only screen and (max-width: 768px) {
+            .listing-title {
+                font-size: 1rem;
+            }
+        }
+
+        .listing-price {
+            color: #6b46c1;
+            font-weight: 600;
+            font-size: 1rem;
+            margin-bottom: 0.75rem;
+        }
+
+        @media only screen and (max-width: 768px) {
+            .listing-price {
+                font-size: 0.9rem;
+            }
+        }
+
+        .listing-description {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.85rem;
+            margin-bottom: 0.75rem;
+        }
+
+        @media only screen and (max-width: 768px) {
+            .listing-description {
+                font-size: 0.8rem;
+            }
+        }
+
+        .listing-button {
+            width: 100%;
+            padding: 0.75rem;
+            background: linear-gradient(135deg, #6b46c1, #805ad5);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.19, 1, 0.22, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        @media only screen and (max-width: 768px) {
+            .listing-button {
+                padding: 0.75rem;
+                border-radius: 8px;
+                font-size: 0.9rem;
+            }
+        }
+
+        .listing-button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(
+                90deg,
+                transparent,
+                rgba(255, 255, 255, 0.2),
+                transparent
+            );
+            transition: 0.5s;
+        }
+
+        .listing-button:hover::before {
+            left: 100%;
+        }
+
+        .listing-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 
+                0 10px 20px -10px rgba(107, 70, 193, 0.5),
+                0 0 30px rgba(107, 70, 193, 0.3);
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes borderGlow {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 0.2; }
+        }
+
+        @keyframes floatAnimation {
+            0%, 100% { transform: translate(0, 0) rotate(0deg); }
+            25% { transform: translate(10%, 10%) rotate(5deg); }
+            50% { transform: translate(-5%, 15%) rotate(-5deg); }
+            75% { transform: translate(-10%, -5%) rotate(2deg); }
+        }
+
+        @keyframes titleGlow {
+            0%, 100% {
+                filter: drop-shadow(0 0 2px rgba(159, 122, 234, 0.3));
+            }
+            50% {
+                filter: drop-shadow(0 0 10px rgba(159, 122, 234, 0.5));
+            }
+        }
+
+        @media (max-height: 800px) {
+            .main-content {
+                justify-content: flex-start;
+                padding-top: 2rem;
+            }
+        }
+
+        .slideshow-container {
+            position: relative;
+            width: 100%;
+            height: 150px;
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 0.75rem;
+            cursor: grab;
+            user-select: none;
+        }
+
+        .slides {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            transition: transform 0.3s ease-out;
+            will-change: transform;
+        }
+
+        .listing-image {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out;
+            pointer-events: none; /* Prevents image drag */
+        }
+
+        .listing-image.active {
+            opacity: 1;
+        }
+
+        .slide-nav {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(0, 0, 0, 0.5);
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.3s, background 0.3s;
+            z-index: 2;
+        }
+
+        .slideshow-container:hover .slide-nav {
+            opacity: 1;
+        }
+
+        .slide-nav:hover {
+            background: rgba(0, 0, 0, 0.8);
+        }
+
+        .prev {
+            left: 10px;
+        }
+
+        .next {
+            right: 10px;
+        }
+
+        .slide-dots {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 5px;
+            z-index: 2;
+        }
+
+        .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.5);
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .dot.active {
+            background: white;
+        }
+
+        @media only screen and (max-width: 768px) {
+            .slideshow-container {
+                height: 150px;
+            }
+
+            .slide-nav {
+                padding: 8px 12px;
+            }
+        }
+
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .modal.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal-content {
+            position: relative;
+            background: #0a0a0a;
+            margin: 5% auto;
+            padding: 2rem;
+            width: 90%;
+            max-width: 500px; /* Reduced from 800px */
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+        }
+
+        .modal.show .modal-content {
+            transform: scale(1);
+        }
+
+        .close-modal {
+            position: absolute;
+            right: 1.5rem;
+            top: 1.5rem;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: rgba(255, 255, 255, 0.8);
+            transition: color 0.3s ease;
+        }
+
+        .close-modal:hover {
+            color: white;
+        }
+
+        .modal-content h2 {
+            font-size: 1.8rem;
+            margin-bottom: 1.5rem;
+            color: white;
+        }
+
+        #purchase-details p {
+            padding: 0.75rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            margin-bottom: 0.75rem;
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        /* Update the payment-methods grid to be a single row */
+        .payment-methods {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr); /* Change to 4 columns */
+            gap: 1rem;
+            margin: 1.5rem 0;
+        }
+
+        /* Update responsive styles for smaller screens */
+        @media only screen and (max-width: 768px) {
+            .payment-methods {
+                grid-template-columns: 1fr; /* Stack vertically on mobile */
+                gap: 0.75rem;
+            }
+        }
+
+        /* Update payment option styles to fit better in a single row */
+        .payment-option {
+            background: rgba(107, 70, 193, 0.1);
+            border: 1px solid rgba(107, 70, 193, 0.2);
+            padding: 0.75rem; /* Slightly reduced padding */
+            border-radius: 12px;
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center; /* Center content */
+            gap: 0.5rem;
+            transition: all 0.3s ease;
+            white-space: nowrap; /* Prevent text wrapping */
+        }
+
+        .payment-option:hover {
+            background: rgba(107, 70, 193, 0.2);
+            transform: translateY(-2px);
+        }
+
+        #verification-container {
+            margin-top: 1.5rem;
+            padding: 1.5rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+        }
+
+        #verification-container p {
+            margin-bottom: 1rem;
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        #math-answer {
+            width: 100%;
+            padding: 0.75rem;
+            margin: 1rem 0;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            color: white;
+        }
+
+        #verification-container button {
+            width: 100%;
+            padding: 0.75rem;
+            background: linear-gradient(135deg, #6b46c1, #805ad5);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        #verification-container button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px -10px rgba(107, 70, 193, 0.5);
+        }
+
+        @media only screen and (max-width: 768px) {
+            .modal-content {
+                margin: 10% auto;
+                padding: 2rem;
+            }
+            
+            .payment-methods {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .payment-address-container {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 1rem;
+            border-radius: 12px;
+            margin: 1rem 0;
+        }
+
+        .payment-address {
+    font-family: monospace;
+    word-break: break-all;
+    margin: 0.5rem 0;
+    color: white; /* Add this line */
+}
+
+        .copy-btn {
+            background: rgba(107, 70, 193, 0.2);
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .copy-btn:hover {
+            background: rgba(107, 70, 193, 0.3);
+        }
+
+        #crypto-select {
+            width: 100%;
+            padding: 0.75rem;
+            background: rgba(20, 20, 20, 0.8);
+            border: 1px solid rgba(107, 70, 193, 0.3);
+            border-radius: 12px;
+            color: white;
+            margin-bottom: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 1rem center;
+            background-size: 1em;
+        }
+
+        #crypto-select:hover {
+            border-color: rgba(107, 70, 193, 0.5);
+            background-color: rgba(107, 70, 193, 0.1);
+        }
+
+        #crypto-select:focus {
+            outline: none;
+            border-color: #6b46c1;
+            box-shadow: 0 0 0 2px rgba(107, 70, 193, 0.2);
+        }
+
+        #crypto-select option {
+            background: rgba(20, 20, 20, 0.95);
+            color: white;
+            padding: 1rem;
+        }
+
+        #crypto-select option:hover {
+            background: rgba(107, 70, 193, 0.2);
+        }
+
+        .proof-upload {
+            margin: 1rem 0;
+            position: relative;
+        }
+
+        .proof-upload p {
+            margin-bottom: 0.75rem;
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        .proof-upload input[type="file"] {
+            width: 100%;
+            padding: 0.75rem;
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px dashed rgba(107, 70, 193, 0.3);
+            border-radius: 12px;
+            color: rgba(255, 255, 255, 0.7);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .proof-upload input[type="file"]:hover {
+            border-color: rgba(107, 70, 193, 0.5);
+            background: rgba(107, 70, 193, 0.1);
+        }
+
+        .proof-upload input[type="file"]:focus {
+            outline: none;
+            border-color: #6b46c1;
+            box-shadow: 0 0 0 3px rgba(107, 70, 193, 0.2);
+        }
+
+        /* Style the file input button */
+        .proof-upload input[type="file"]::-webkit-file-upload-button {
+            background: linear-gradient(135deg, #6b46c1, #805ad5);
+            color: white;
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 8px;
+            margin-right: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .proof-upload input[type="file"]::-webkit-file-upload-button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 5px 15px rgba(107, 70, 193, 0.3);
+        }
+
+        /* For Firefox */
+        .proof-upload input[type="file"]::file-selector-button {
+            background: linear-gradient(135deg, #6b46c1, #805ad5);
+            color: white;
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 8px;
+            margin-right: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .proof-upload input[type="file"]::file-selector-button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 5px 15px rgba(107, 70, 193, 0.3);
+        }
+
+        /* Add a preview container for the uploaded image */
+        .proof-preview {
+            display: none;
+            margin-top: 1rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 0.75rem;
+        }
+
+        .proof-preview.show {
+            display: block;
+        }
+
+        .proof-preview img {
+            width: 100%;
+            max-height: 200px;
+            object-fit: contain;
+            border-radius: 8px;
+        
+        }
+        /* Add responsive adjustments */
+        @media only screen and (max-width: 768px) {
+            .modal {
+                padding: 10px;
+            }
+            
+            .modal-content {
+                padding: 2rem;
+                width: 95%;
+            }
+        }
+
+        /* Add these styles for the submit payment button */
+        .submit-payment-btn {
+            width: 100%;
+            padding: 0.75rem;
+            background: linear-gradient(135deg, #6b46c1, #805ad5);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.19, 1, 0.22, 1);
+            position: relative;
+            overflow: hidden;
+            margin-top: 1rem;
+            box-shadow: 0 4px 15px rgba(107, 70, 193, 0.2);
+        }
+
+        .submit-payment-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(
+                90deg,
+                transparent,
+                rgba(255, 255, 255, 0.2),
+                transparent
+            );
+            transition: 0.5s;
+        }
+
+        .submit-payment-btn:hover::before {
+            left: 100%;
+        }
+
+        .submit-payment-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 
+                0 10px 20px -10px rgba(107, 70, 193, 0.5),
+                0 0 30px rgba(107, 70, 193, 0.3);
+        }
+
+        .submit-payment-btn:active {
+            transform: translateY(1px);
+            box-shadow: 0 2px 10px rgba(107, 70, 193, 0.2);
+        }
+
+        .submit-payment-btn:disabled {
+            background: linear-gradient(135deg, #4a5568, #2d3748);
+            cursor: not-allowed;
+            transform: none;
+            opacity: 0.7;
+        }
+
+        /* Add loading state */
+        .submit-payment-btn.loading {
+            position: relative;
+            color: transparent;
+        }
+
+        .submit-payment-btn.loading::after {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            top: 50%;
+            left: 50%;
+            margin: -10px 0 0 -10px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: button-loading-spinner 0.8s linear infinite;
+        }
+
+        @keyframes button-loading-spinner {
+            from {
+                transform: rotate(0turn);
+            }
+            to {
+                transform: rotate(1turn);
+            }
+        }
+
+        /* Add this to ensure proper centering when content is smaller than viewport */
+        @media (min-height: 800px) {
+            .main-content {
+            align-items: center;
+            }
+        }
+
+        /* Update countdown timer to be positioned at bottom of image */
+        .countdown-timer {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-weight: bold;
+            z-index: 10;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        /* Add styles for the locked button state */
+        .listing-button.locked {
+            background: rgba(107, 70, 193, 0.3);
+            cursor: not-allowed;
+            opacity: 0.7;
+            position: relative;
+            pointer-events: none;
+        }
+
+        .listing-button.locked:hover {
+            transform: none;
+            box-shadow: none;
+            cursor: not-allowed;
+        }
+
+        .custom-alert {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 1rem 1.5rem;
+            border-radius: 12px;
+            background: rgba(20, 20, 20, 0.95);
+            backdrop-filter: blur(10px);
+            color: white;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            z-index: 2000;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transform: translateX(150%);
+            transition: transform 0.3s cubic-bezier(0.19, 1, 0.22, 1);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .custom-alert.show {
+            transform: translateX(0);
+        }
+
+        .custom-alert.success {
+            border-left: 4px solid #48bb78;
+        }
+
+        .custom-alert.error {
+            border-left: 4px solid #e53e3e;
+        }
+
+        .custom-alert.info {
+            border-left: 4px solid #4299e1;
+        }
+
+        .alert-icon {
+            font-size: 1.25rem;
+        }
+
+        .custom-alert.success .alert-icon {
+            color: #48bb78;
+        }
+
+        .custom-alert.error .alert-icon {
+            color: #e53e3e;
+        }
+
+        .custom-alert.info .alert-icon {
+            color: #4299e1;
+        }
+
+        .alert-content {
+            flex: 1;
+        }
+
+        .alert-close {
+            cursor: pointer;
+            opacity: 0.7;
+            transition: opacity 0.2s;
+        }
+
+        .alert-close:hover {
+            opacity: 1;
+        }
+
+        .countdown-timer {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-weight: bold;
+            z-index: 10;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .listing-button.locked {
+            background: rgba(107, 70, 193, 0.3);
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+
+        .listing-button.locked:hover {
+            transform: none;
+            box-shadow: none;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-content {
+            position: relative;
+            background: #0a0a0a;
+            margin: 5% auto;
+            padding: 2rem;
+            width: 90%;
+            max-width: 500px; /* Reduced from 800px */
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .modal-header h2 {
+            color: white;
+            font-size: 1.5rem;
+        }
+
+        .close-modal {
+            color: white;
+            font-size: 1.5rem;
+            cursor: pointer;
+            opacity: 0.7;
+            transition: opacity 0.2s;
+        }
+
+        .close-modal:hover {
+            opacity: 1;
+        }
+
+        .orders-container {
+            max-height: 70vh;
+            overflow-y: auto;
+        }
+
+        .order-item {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .order-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .order-details {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .order-title {
+            color: white;
+            font-weight: 500;
+        }
+
+        .order-price {
+            color: #48bb78;
+            font-weight: 600;
+        }
+
+        .order-status {
+            padding: 0.25rem 0.75rem;
+            border-radius: 999px;
+            text-align: center;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .order-status.pending {
+            background: rgba(236, 201, 75, 0.2);
+            color: #ecc94b;
+        }
+
+        .order-status.completed {
+            background: rgba(72, 187, 120, 0.2);
+            color: #48bb78;
+        }
+
+        .order-status.cancelled {
+            background: rgba(229, 62, 62, 0.2);
+            color: #e53e3e;
+        }
+
+        .no-orders {
+            text-align: center;
+            color: rgba(255, 255, 255, 0.7);
+            padding: 2rem;
+        }
+
+        /* Add responsive styles */
+        @media (max-width: 768px) {
+            .modal-content {
+                width: 85%; /* Reduced from 95% */
+                margin: 10% auto;
+                padding: 1.5rem;
+            }
+
+            .order-details {
+                grid-template-columns: 1fr;
+                gap: 0.5rem;
+            }
+
+            .order-price, .order-status {
+                justify-self: start;
+            }
+        }
+
+        /* Add this CSS for the loading state */
+        .loading-text {
+            text-align: center;
+            color: rgba(255, 255, 255, 0.7);
+            padding: 2rem;
+            animation: pulse 1.5s infinite;
+        }
+
+        .no-orders.error {
+            color: #e53e3e;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
+        }
+
+        /* Add these additional styles */
+        const styleSheet = document.createElement('style');
+        styleSheet.textContent = `
+            .order-actions {
+                margin-top: 1rem;
+                display: flex;
+                justify-content: flex-end;
+            }
+
+            .view-details-btn {
+                background: rgba(107, 70, 193, 0.2);
+                color: #6b46c1;
+                border: 1px solid rgba(107, 70, 193, 0.3);
+                padding: 0.5rem 1rem;
+                border-radius: 8px;
+                cursor: pointer;
+                transition: all 0.3s ease;
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+            }
+
+            .view-details-btn:hover {
+                background: rgba(107, 70, 193, 0.3);
+                transform: translateY(-1px);
+            }
+
+            .details-grid {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 2rem;
+                padding: 1rem;
+            }
+
+            .details-section {
+                background: rgba(255, 255, 255, 0.05);
+                padding: 1.5rem;
+                border-radius: 12px;
+                border: 1px solid rgba(255, 255, 255, 0.1);
+            }
+
+            .details-section h3 {
+                color: white;
+                margin-bottom: 1rem;
+                font-size: 1.2rem;
+            }
+
+            .details-section p {
+                margin-bottom: 0.75rem;
+                color: rgba(255, 255, 255, 0.8);
+            }
+
+            .details-section strong {
+                color: white;
+            }
+
+            .status-badge {
+                padding: 0.25rem 0.75rem;
+                border-radius: 999px;
+                font-size: 0.9rem;
+                font-weight: 500;
+            }
+
+            .account-credentials {
+                margin-top: 1rem;
+                padding: 1rem;
+                background: rgba(0, 0, 0, 0.2);
+                border-radius: 8px;
+                border: 1px solid rgba(255, 255, 255, 0.05);
+            }
+
+            .account-credentials h4 {
+                color: white;
+                margin-bottom: 0.75rem;
+                font-size: 1rem;
+            }
+
+            @media (max-width: 768px) {
+                .details-grid {
+                    grid-template-columns: 1fr;
+                    gap: 1rem;
+                }
+
+                .details-section {
+                    padding: 1rem;
+                }
+            }
+        ;
+        document.head.appendChild(styleSheet);
+
+        /* Make Order Details Modal Bigger */
+        #order-details-modal .modal-content {
+            width: 90%;
+            max-width: 500px;
+            background: #1a1a1a;
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 1.5rem;
+        }
+
+        .order-info-section {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .info-group {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .info-group:last-child {
+            border-bottom: none;
+        }
+
+        .info-group label {
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .info-group span {
+            color: white;
+            font-weight: 500;
+        }
+
+        .credentials-box {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 12px;
+            padding: 1rem;
+            margin: 1rem 0;
+        }
+        .credentials-box h3,
+.credentials-box .credentials-group span,
+.credentials-box .credentials-group label,
+.security-box h3,
+.security-box p,
+.security-box .security-icon i {
+    color: white;
+}
+
+        .security-box {
+            background: rgba(107, 70, 193, 0.1);
+            border: 1px solid #6b46c1;
+            border-radius: 12px;
+            padding: 1rem;
+            text-align: center;
+        }
+
+        .security-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: linear-gradient(135deg, #6b46c1, #805ad5);
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+
+        @media (max-width: 768px) {
+            #order-details-modal .modal-content {
+                width: 95%;
+                margin: 1rem;
+            }
+
+            .security-btn {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+
+        /* ... rest of existing code ... */
+
+        .pagination-controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 1rem;
+            margin-top: 1.5rem;
+            padding-top: 1rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .pagination-btn {
+            background: rgba(107, 70, 193, 0.1);
+            border: 1px solid rgba(107, 70, 193, 0.2);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .pagination-btn:hover {
+            background: rgba(107, 70, 193, 0.2);
+            transform: translateY(-1px);
+        }
+
+        .page-indicator {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.9rem;
+        }
+
+        /* Add these order status styles after the existing .order-status styles */
+        .order-status.completed {
+            background: rgba(72, 187, 120, 0.2);
+            color: #48bb78;
+        }
+
+        .order-status.rejected {
+            background: rgba(229, 62, 62, 0.2);
+            color: #e53e3e;
+        }
+
+        /* Add these pagination styles after the existing styles */
+        .pagination-controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 1rem;
+            margin-top: 1.5rem;
+            padding-top: 1rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .pagination-btn {
+            background: rgba(107, 70, 193, 0.1);
+            border: 1px solid rgba(107, 70, 193, 0.2);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .pagination-btn:hover {
+            background: rgba(107, 70, 193, 0.2);
+            transform: translateY(-1px);
+        }
+
+        .page-indicator {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <div id="particles-js"></div>
+    
+    <div class="background-shapes">
+        <div class="shape shape-1"></div>
+        <div class="shape shape-2"></div>
+        <div class="shape shape-3"></div>
+    </div>
+
+    <header class="header">
+        <div class="header-content">
+            <div class="brand">
+                <i class="fas fa-bars hamburger-menu" onclick="toggleMenu()"></i>
+                <div class="discord-pfp">
+                    <img src="https://cdn.discordapp.com/embed/avatars/0.png" alt="Profile Picture">
+                </div>
+            </div>
+            <div class="balance">
+                <i class="fas fa-wallet"></i>
+                <span class="balance-amount">$1,234.56</span>
+            </div>
+        </div>
+        <div class="menu-dropdown">
+            <div class="menu-item" onclick="window.location.href='balance.html'">
+                <i class="fas fa-wallet"></i>
+                <span>Add balance</span>
+            </div>
+            
+            <div class="menu-item">
+                <i class="fas fa-shopping-cart"></i>
+                <span>My Orders</span>
+            </div>
+        </div>
+    </header>
+    <main class="main-content">
+        <div class="listings-container">
+            <div class="listings-grid" id="listings-grid">
+                <!-- Listings will be dynamically inserted here -->
+            </div>
+        </div>
+    </main>
+    </main>
+    <script type="module">
+        // Initialize particles
+        particlesJS('particles-js', {
+            particles: {
+                number: { value: 80, density: { enable: true, value_area: 800 } },
+                color: { value: '#ffffff' },
+                shape: { type: 'circle' },
+                opacity: {
+                    value: 0.2,
+                    random: true,
+                    animation: { enable: true, speed: 1, minimumValue: 0.1, sync: false }
+                },
+                size: {
+                    value: 3,
+                    random: true,
+                    animation: { enable: true, speed: 2, minimumValue: 0.1, sync: false }
+                },
+                line_linked: {
+                    enable: true,
+                    distance: 150,
+                    color: '#ffffff',
+                    opacity: 0.1,
+                    width: 1
+                },
+                move: {
+                    enable: true,
+                    speed: 1,
+                    direction: 'none',
+                    random: true,
+                    straight: false,
+                    outModes: { default: 'bounce' },
+                    attract: { enable: false, rotateX: 600, rotateY: 1200 }
+                }
+            },
+            interactivity: {
+                detectsOn: 'canvas',
+                events: {
+                    onHover: { enable: true, mode: 'repulse' },
+                    onClick: { enable: true, mode: 'push' },
+                    resize: true
+                },
+                modes: {
+                    repulse: { distance: 100, duration: 0.4 },
+                    push: { particles_nb: 4 }
+                }
+            },
+            retina_detect: true
+        });
+
+        // Add hover effect to listing cards
+        document.querySelectorAll('.listing-card').forEach((card, index) => {
+            card.style.animationDelay = `${index * 0.1}s`;
+            
+            card.addEventListener('mouseenter', function() {
+                this.style.transform = 'translateY(-5px)';
+            });
+            
+            card.addEventListener('mouseleave', function() {
+                this.style.transform = 'translateY(0)';
+            });
+        });
+
+        // Toggle menu dropdown
+        window.toggleMenu = function() {
+            const dropdown = document.querySelector('.menu-dropdown');
+            dropdown.classList.toggle('active');
+        }
+
+        // Close menu when clicking outside
+        document.addEventListener('click', function(event) {
+            const dropdown = document.querySelector('.menu-dropdown');
+            const hamburger = document.querySelector('.hamburger-menu');
+            if (!hamburger.contains(event.target) && !dropdown.contains(event.target)) {
+                dropdown.classList.remove('active');
+            }
+        });
+
+        // Initialize Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyDvG4059xSr2jToP9xDz-8dlxbumuRzdUE",
+            authDomain: "sdfkj238j98sdlkmzlknslaksdjfkl.firebaseapp.com", 
+            projectId: "sdfkj238j98sdlkmzlknslaksdjfkl",
+            storageBucket: "sdfkj238j98sdlkmzlknslaksdjfkl.firebasestorage.app",
+            messagingSenderId: "778178162130",
+            appId: "1:778178162130:web:a9513f09e404813aa2ec0b",
+            measurementId: "G-WP6QR49WZ3"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // Function to create a listing card with countdown
+        function createListingCard(listing, index) {
+            const now = Date.now();
+            const hasCountdown = listing.countdown?.active && listing.countdown.endTime > now;
+            const notReleased = listing.releaseTime > now;
+            
+            return `
+                <div class="listing-card" style="animation-delay: ${index * 0.1}s;">
+                    <div class="slideshow-container">
+                        <div class="slides">
+                            <img src="${listing.imageUrl}" alt="${listing.title}" class="listing-image active">
+                        </div>
+                    </div>
+                    <h2 class="listing-title">${listing.title}</h2>
+                    <p class="listing-price">$${listing.price}</p>
+                    <p class="listing-description">${listing.description}</p>
+                    <button class="listing-button ${notReleased || hasCountdown ? 'locked' : ''}" 
+                            onclick="showPurchaseModal('${listing.id}', '${listing.title}', ${listing.price})"
+                            ${notReleased ? `data-release-time="${listing.releaseTime}"` : 
+                              hasCountdown ? `data-end-time="${listing.countdown.endTime}"` : ''}>
+                        ${notReleased ? `Releases in ${formatTime(listing.releaseTime - now)}` :
+                          hasCountdown ? `Unlocks in ${formatTime(listing.countdown.endTime - now)}` : 
+                          'Purchase Now'}
+                    </button>
+                </div>
+            `;
+        }
+
+        // Function to format time
+        function formatTime(milliseconds) {
+            const totalSeconds = Math.ceil(milliseconds / 1000);
+            const hours = Math.floor(totalSeconds / 3600);
+            const minutes = Math.floor((totalSeconds % 3600) / 60);
+            const seconds = totalSeconds % 60;
+            
+            const parts = [];
+            if (hours > 0) parts.push(`${hours}h`);
+            if (minutes > 0) parts.push(`${minutes}m`);
+            parts.push(`${seconds}s`);
+            
+            return parts.join(' ');
+        }
+
+        // Function to load listings with countdown
+        function loadListings() {
+            const listingsGrid = document.getElementById('listings-grid');
+            
+            db.collection('listings').onSnapshot((snapshot) => {
+                listingsGrid.innerHTML = '';
+                let activeListingsCount = 0;
+                
+                snapshot.forEach((doc) => {
+                    const listing = { id: doc.id, ...doc.data() };
+                    
+                    // Skip disabled or sold listings
+                    if (listing.status === 'Disabled' || listing.status === 'Sold') {
+                        return;
+                    }
+                    
+                    activeListingsCount++;
+                    listingsGrid.innerHTML += createListingCard(listing, activeListingsCount);
+                });
+                
+                // Add classes based on number of active listings
+                listingsGrid.className = 'listings-grid';
+                if (activeListingsCount === 1) {
+                    listingsGrid.classList.add('single-listing');
+                } else if (activeListingsCount === 2) {
+                    listingsGrid.classList.add('two-listings');
+                }
+                
+                // Start countdown timers
+                startCountdownTimers();
+                
+                // Show message if no active listings
+                if (activeListingsCount === 0) {
+                    listingsGrid.innerHTML = `
+                        <div style="
+            text-align: center;
+            color: white;
+                            width: 100%;
+                            position: absolute;
+                            top: 50%;
+                            left: 50%;
+                            transform: translate(-50%, -50%);
+                            font-size: 1.5rem;
+            font-weight: 600;
+                            padding: 2rem;
+                            backdrop-filter: blur(10px);
+                            border-radius: 12px;
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+                        ">
+                            There are currently no active listings
+                        </div>
+                    `;
+                }
+            });
+        }
+
+        // Function to update countdown timers
+        function startCountdownTimers() {
+            if (window.countdownInterval) {
+                clearInterval(window.countdownInterval);
+            }
+            
+            window.countdownInterval = setInterval(() => {
+                const now = Date.now();
+                let needsRefresh = false;
+                
+                // Check release timers
+                document.querySelectorAll('[data-release-time]').forEach(element => {
+                    const releaseTime = parseInt(element.dataset.releaseTime);
+                    const timeLeft = releaseTime - now;
+                    
+                    if (timeLeft <= 0) {
+                        needsRefresh = true;
+                    } else {
+                        const timeString = formatTime(timeLeft);
+                        if (element.classList.contains('countdown-timer')) {
+                            element.textContent = `Releases in: ${timeString}`;
+                        }
+                        const button = element.closest('.listing-card').querySelector('.listing-button');
+                        if (button) {
+                            button.textContent = `Releases in ${timeString}`;
+                        }
+                    }
+                });
+
+                // Check countdown timers
+                document.querySelectorAll('[data-end-time]').forEach(element => {
+                    const endTime = parseInt(element.dataset.endTime);
+                    const timeLeft = endTime - now;
+                    
+                    if (timeLeft <= 0) {
+                        needsRefresh = true;
+                    } else {
+                        const timeString = formatTime(timeLeft);
+                        if (element.classList.contains('countdown-timer')) {
+                            element.textContent = timeString;
+                        }
+                        const button = element.closest('.listing-card').querySelector('.listing-button');
+                        if (button) {
+                            button.textContent = `Unlocks in ${timeString}`;
+                        }
+                    }
+                });
+                
+                if (needsRefresh) {
+                    loadListings(); // Refresh listings when any timer ends
+                }
+            }, 1000);
+        }
+
+        // Add this function to fetch user data
+        async function loadUserProfile() {
+            const username = localStorage.getItem('currentUser');
+            if (!username) return;
+
+            try {
+                const userDoc = await db.collection('users').doc(username).get();
+                if (userDoc.exists) {
+                    const userData = userDoc.data();
+                    if (userData.discordAvatarURL) {
+                        document.querySelector('.discord-pfp img').src = userData.discordAvatarURL;
+                    }
+                    // Update balance display
+                    document.querySelector('.balance-amount').textContent = 
+                        `$${userData.balance ? userData.balance.toFixed(2) : '0.00'}`;
+                }
+            } catch (error) {
+                console.error('Error loading user profile:', error);
+            }
+        }
+
+        // Initialize everything when the page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            loadListings();
+            loadUserProfile();
+            startCountdownTimers();
+        });
+
+        // New authentication checks
+        import { validateStoredCredentials } from './auth.js';
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            const isValid = await validateStoredCredentials();
+            if (!isValid) {
+                return;
+            }
+        });
+
+        window.addEventListener('storage', async (e) => {
+            if (e.key === 'currentUser' || e.key === 'userPassword') {
+                const isValid = await validateStoredCredentials();
+                if (!isValid) {
+                    return;
+                }
+            }
+        });
+
+        let currentPurchase = {
+            id: null,
+            price: 0,
+            title: '',
+            mathAnswer: null
+        };
+
+        // Add this function before showPurchaseModal
+        async function canPurchase(listingId) {
+            try {
+                const listingDoc = await db.collection('listings').doc(listingId).get();
+                const listingData = listingDoc.data();
+                const now = Date.now();
+                
+                // Check if listing is disabled, has pending order, not released, or has active countdown
+                if (listingData.status === 'Disabled' || 
+                    listingData.pendingOrder || 
+                    listingData.releaseTime > now ||
+                    (listingData.countdown?.active && listingData.countdown.endTime > now)) {
+                    return false;
+                }
+
+                return true;
+            } catch (error) {
+                console.error('Error checking purchase availability:', error);
+                showAlert('Error checking purchase availability', 'error');
+                return false;
+            }
+        }
+
+        // Add this function to show alerts
+        function showAlert(message, type = 'info') {
+            // Remove any existing alerts
+            const existingAlert = document.querySelector('.custom-alert');
+            if (existingAlert) {
+                existingAlert.remove();
+            }
+
+            // Create alert element
+            const alert = document.createElement('div');
+            alert.className = `custom-alert ${type}`;
+            
+            // Set icon based on type
+            let icon = 'info-circle';
+            if (type === 'success') icon = 'check-circle';
+            if (type === 'error') icon = 'exclamation-circle';
+
+            alert.innerHTML = `
+                <i class="fas fa-${icon} alert-icon"></i>
+                <div class="alert-content">${message}</div>
+                <div class="alert-close">
+                    <i class="fas fa-times"></i>
+                </div>
+            `;
+
+            // Add to document
+            document.body.appendChild(alert);
+
+            // Show alert
+            setTimeout(() => alert.classList.add('show'), 10);
+
+            // Add close handler
+            alert.querySelector('.alert-close').onclick = () => {
+                alert.classList.remove('show');
+                setTimeout(() => alert.remove(), 300);
+            };
+
+            // Auto remove after 5 seconds
+            setTimeout(() => {
+                if (alert.parentElement) {
+                    alert.classList.remove('show');
+                    setTimeout(() => alert.remove(), 300);
+                }
+            }, 5000);
+        }
+
+        // Then your existing showPurchaseModal function will work
+        window.showPurchaseModal = async function(listingId, title, price) {
+            // Get the button that was clicked
+            const button = document.querySelector(`button[onclick*="${listingId}"]`);
+            
+            // If button is locked, don't proceed
+            if (button.classList.contains('locked')) {
+                return;
+            }
+
+            const purchaseAllowed = await canPurchase(listingId);
+            
+            if (!purchaseAllowed) {
+                return; // Don't show modal if purchase not allowed
+            }
+            
+            const modal = document.getElementById('purchase-modal');
+            const details = document.getElementById('purchase-details');
+            
+            // Get current user's balance
+            const balanceElement = document.querySelector('.header .balance-amount');
+            const currentBalance = parseFloat(balanceElement.textContent.replace('$', ''));
+            
+            details.innerHTML = `
+                <p>Item: ${title}</p>
+                <p>Price: $${price}</p>
+                <p>Your Balance: $${currentBalance.toFixed(2)}</p>
+                <div class="payment-methods">
+                    <button class="payment-option" onclick="selectPaymentOption('balance')">
+                        <i class="fas fa-wallet"></i> Use Balance
+                    </button>
+                    <button class="payment-option" onclick="selectPaymentOption('cashapp')">
+                        <i class="fas fa-dollar-sign"></i> Cash App
+                    </button>
+                    <button class="payment-option" onclick="selectPaymentOption('paypal')">
+                        <i class="fab fa-paypal"></i> PayPal
+                    </button>
+                    <button class="payment-option" onclick="selectPaymentOption('crypto')">
+                        <i class="fab fa-bitcoin"></i> Crypto
+                    </button>
+                </div>
+                <div id="payment-info" style="display: none;">
+                    <div class="payment-address-container">
+                        <p>Send payment to:</p>
+                        <div class="payment-address"></div>
+                        <button class="copy-btn" onclick="copyPaymentAddress()">Copy Address</button>
+                    </div>
+                    <div class="proof-upload">
+                        <p>Upload Payment Proof:</p>
+                        <input type="file" id="payment-proof" accept="image/*" onchange="previewProof(this)">
+                        <div id="proof-preview" class="proof-preview"></div>
+                    </div>
+                    <button class="submit-payment-btn" onclick="handlePaymentSubmission()">Submit Payment</button>
+                </div>`;
+            
+            // Show modal with animation
+            modal.style.display = 'flex';
+            requestAnimationFrame(() => {
+                modal.classList.add('show');
+            });
+            
+            // Store purchase details
+            currentPurchase = {
+                id: listingId,
+                title: title,
+                price: price
+            };
+        }
+
+        // Add payment addresses
+        const paymentAddresses = {
+            cashapp: "$gu2u",
+            paypal: "PayPal.me/ledallaaa",
+            crypto: {
+                btc: "bc1qs3x0dj4pzhxtq0e26x7uhdehuhlqqsvvx4843f",
+                eth: "0x2C71Ee68A9Ec269377FCb49f04Ebf97c1241bBda",
+                ltc: "LbXhE3tmkyiPNHwnojfLh9jB7u3XBhGRJK"
+            }
+        };
+
+        window.selectPaymentOption = function(method) {
+            const paymentInfo = document.getElementById('payment-info');
+            const verificationContainer = document.getElementById('verification-container');
+            
+            // Store selected payment method
+            currentPurchase.paymentMethod = method;
+            
+            if (method === 'balance') {
+                // For balance, show only verification
+                paymentInfo.style.display = 'none';
+                showMathVerification();
+            } else {
+                // For other methods, show payment info
+                verificationContainer.style.display = 'none';
+                paymentInfo.innerHTML = `
+                    <div class="payment-address-container">
+                        <p>Send payment to:</p>
+                        <div class="payment-address">${method === 'crypto' ? 'Select a cryptocurrency to see the address' : paymentAddresses[method]}</div>
+                        ${method === 'crypto' ? `
+                            <div id="crypto-select-container">
+                                <select id="crypto-select">
+                                    <option value="">Select cryptocurrency...</option>
+                                    <option value="btc">Bitcoin (BTC)</option>
+                                    <option value="eth">Ethereum (ETH)</option>
+                                    <option value="ltc">Litecoin (LTC)</option>
+                                </select>
+                            </div>
+                        ` : ''}
+                        <button class="copy-btn">
+                            <i class="fas fa-copy"></i> Copy Address
+                        </button>
+                    </div>
+                    <div class="proof-upload">
+                        <p>Upload Payment Proof:</p>
+                        <input type="file" id="payment-proof" accept="image/*" required>
+                        <div id="proof-preview" class="proof-preview"></div>
+                    </div>
+                    <button class="submit-payment-btn" onclick="handlePaymentSubmission()">Submit Payment</button>
+                `;
+                paymentInfo.style.display = 'block';
+                
+                // Set up crypto select handler if needed
+                if (method === 'crypto') {
+                    document.getElementById('crypto-select').onchange = function() {
+                        const selectedCrypto = this.value;
+                        if (selectedCrypto) {
+                            document.querySelector('.payment-address').innerHTML = paymentAddresses.crypto[selectedCrypto];
+                        }
+                    };
+                }
+                
+                // Set up copy button handler
+                const copyBtn = document.querySelector('.copy-btn');
+                copyBtn.onclick = function() {
+                    if (method === 'crypto') {
+                        const select = document.getElementById('crypto-select');
+                        const selectedCrypto = select.value;
+                        
+                        if (!selectedCrypto) {
+                            showAlert('Please select a cryptocurrency first', 'error');
+                            return;
+                        }
+                        
+                        copyToClipboard(paymentAddresses.crypto[selectedCrypto], this);
+                    } else {
+                        copyToClipboard(paymentAddresses[method], this);
+                    }
+                };
+            }
+        }
+
+        function copyToClipboard(text, button) {
+            navigator.clipboard.writeText(text).then(() => {
+                const originalText = button.innerHTML;
+                button.innerHTML = '<i class="fas fa-check"></i> Copied!';
+                setTimeout(() => {
+                    button.innerHTML = originalText;
+                }, 2000);
+            });
+        }
+
+        window.showMathVerification = function() {
+            const verificationContainer = document.getElementById('verification-container');
+            
+            // Generate random math problem
+            const num1 = Math.floor(Math.random() * 10);
+            const num2 = Math.floor(Math.random() * 10);
+            currentPurchase.mathAnswer = num1 + num2;
+            
+            verificationContainer.style.display = 'block';
+            verificationContainer.innerHTML = `
+                <p>Please solve this verification:</p>
+                <p id="math-question">What is ${num1} + ${num2}?</p>
+                <input type="number" id="math-answer" placeholder="Enter answer">
+                <button onclick="verifyAndCompletePurchase()">Verify & Complete Purchase</button>
+            `;
+        }
+
+        window.verifyAndCompletePurchase = async function() {
+            const userAnswer = parseInt(document.getElementById('math-answer').value);
+            
+            if (userAnswer !== currentPurchase.mathAnswer) {
+                showAlert('Incorrect answer. Please try again.', 'error');
+                return;
+            }
+            
+            try {
+                const username = localStorage.getItem('currentUser');
+                if (!username) throw new Error('Not logged in');
+                
+                // Get the payment proof file
+                const proofInput = document.getElementById('payment-proof');
+                const proofFile = proofInput && proofInput.files ? proofInput.files[0] : null;
+                
+                // Get user's avatar
+                const userDoc = await db.collection('users').doc(username).get();
+                const userData = userDoc.data();
+                const userAvatar = userData?.discordAvatarURL || null;
+
+                let proofUrl = null;
+                
+                // Upload proof if exists (for non-balance payments)
+                if (proofFile && currentPurchase.paymentMethod !== 'balance') {
+                    proofUrl = await uploadToLitterbox(proofFile);
+                }
+
+                // Create order with proper structure
+                const orderData = {
+                    accountDetails: {
+                        username: '',  // Will be filled by admin
+                        password: ''   // Will be filled by admin
+                    },
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    completedAt: null, // Will be set by admin upon completion
+                    listingId: currentPurchase.id,
+                    listingTitle: currentPurchase.title,
+                    paymentMethod: currentPurchase.paymentMethod,
+                    price: currentPurchase.price,
+                    status: 'Pending',
+                    userAvatar: userAvatar,
+                    userId: username,
+                    username: username
+                };
+
+                // Add proofUrl if it exists
+                if (proofUrl) {
+                    orderData.proofUrl = proofUrl;
+                }
+
+                // Create the order in Firebase
+                await db.collection('orders').add(orderData);
+
+                // Update listing status
+                await db.collection('listings').doc(currentPurchase.id).update({
+                    pendingOrder: true,
+                    status: 'Disabled',
+                    buyerId: username,
+                    buyerUsername: username
+                });
+                
+                // Close modal and show success message
+                const modal = document.getElementById('purchase-modal');
+                modal.style.display = 'none';
+                showAlert('Order submitted! Please wait for admin approval.', 'success');
+                
+            } catch (error) {
+                console.error('Purchase error:', error);
+                showAlert('Error processing purchase: ' + error.message, 'error');
+            }
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('purchase-modal');
+            if (event.target === modal) {
+                modal.classList.remove('show');
+                setTimeout(() => {
+                    modal.style.display = 'none';
+                }, 300);
+            }
+        }
+
+        // Close modal when clicking X
+        document.querySelector('.close-modal').onclick = function() {
+            const modal = document.getElementById('purchase-modal');
+            modal.classList.remove('show');
+            setTimeout(() => {
+                modal.style.display = 'none';
+            }, 300);
+        }
+
+        // Add this function to handle image preview
+        window.previewProof = function(input) {
+            const preview = document.getElementById('proof-preview');
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                
+                reader.onload = function(e) {
+                    preview.innerHTML = `<img src="${e.target.result}" alt="Payment Proof Preview">`;
+                    preview.classList.add('show');
+                }
+                
+                reader.readAsDataURL(input.files[0]);
+            } else {
+                preview.innerHTML = '';
+                preview.classList.remove('show');
+            }
+        }
+
+        // Add this function to monitor countdown settings
+        function initializeCountdownListener() {
+            db.collection('settings').doc('countdown').onSnapshot(async (doc) => {
+                const countdownSettings = doc.data();
+                if (!countdownSettings) return;
+
+                if (countdownSettings.active) {
+                    try {
+                        // Get all active listings
+                        const listingsSnapshot = await db.collection('listings')
+                            .where('status', '==', 'Active')
+                            .get();
+
+                        // Batch update all active listings with countdown
+                        const batch = db.batch();
+                        listingsSnapshot.forEach(doc => {
+                            batch.update(doc.ref, {
+                                countdown: {
+                                    active: true,
+                                    endTime: countdownSettings.endTime,
+                                    startTime: countdownSettings.startTime,
+                                    duration: countdownSettings.duration
+                                }
+                            });
+                        });
+
+                        await batch.commit();
+                        loadListings(); // Reload listings to show countdown
+                    } catch (error) {
+                        console.error('Error updating listings with countdown:', error);
+                    }
+                }
+            });
+        }
+
+        // Add this function to update individual listing countdowns
+        async function updateListingCountdown(listingId, countdownSettings) {
+            try {
+                await db.collection('listings').doc(listingId).update({
+                    countdown: {
+                        active: countdownSettings.active,
+                        endTime: countdownSettings.endTime,
+                        startTime: countdownSettings.startTime,
+                        duration: countdownSettings.duration
+                    }
+                });
+            } catch (error) {
+                console.error('Error updating listing countdown:', error);
+            }
+        }
+
+        // Add this change to make showMyOrders globally accessible
+        window.showMyOrders = async function(page = 1) {
+            const ordersPerPage = 4; // Set number of orders per page
+            const modal = document.getElementById('orders-modal');
+            modal.style.display = 'flex';
+            setTimeout(() => modal.classList.add('show'), 10);
+
+            const ordersList = document.getElementById('orders-list');
+            ordersList.innerHTML = '<p class="loading-text">Loading orders...</p>';
+
+            try {
+                const username = localStorage.getItem('currentUser'); // Get current user
+                const ordersSnapshot = await db.collection('orders')
+                    .where('userId', '==', username) // Filter orders for current user
+                    .get();
+
+                const sortedOrders = ordersSnapshot.docs
+                    .map(doc => ({...doc.data(), id: doc.id}))
+                    .sort((a, b) => b.createdAt?.toDate() - a.createdAt?.toDate());
+
+                // Calculate pagination
+                const totalPages = Math.ceil(sortedOrders.length / ordersPerPage);
+                const startIndex = (page - 1) * ordersPerPage;
+                const paginatedOrders = sortedOrders.slice(startIndex, startIndex + ordersPerPage);
+
+                ordersList.innerHTML = '';
+                
+                if (sortedOrders.length === 0) {
+                    ordersList.innerHTML = '<p class="no-orders">No orders found</p>';
+                    return;
+                }
+
+                // Display paginated orders
+                paginatedOrders.forEach(order => {
+                    const timestamp = order.createdAt?.toDate() || new Date();
+                    const orderElement = document.createElement('div');
+                    orderElement.className = 'order-item';
+                    orderElement.innerHTML = `
+                        <div class="order-header">
+                            <span class="order-id">#${order.id.slice(-6).toUpperCase()}</span>
+                            <span class="order-date">${timestamp.toLocaleDateString()} ${timestamp.toLocaleTimeString()}</span>
+                        </div>
+                        <div class="order-details">
+                            <div class="order-title">${order.listingTitle}</div>
+                            <div class="order-price">$${order.price.toFixed(2)}</div>
+                            <div class="order-status ${order.status.toLowerCase()}">${order.status}</div>
+                        </div>
+                        <div class="order-actions">
+                            <button class="view-details-btn" onclick="viewOrderDetails('${order.id}')">
+                                <i class="fas fa-eye"></i> View Details
+                            </button>
+                        </div>
+                    `;
+                    ordersList.appendChild(orderElement);
+                });
+
+                // Add pagination controls if there are multiple pages
+                if (totalPages > 1) {
+                    const paginationControls = document.createElement('div');
+                    paginationControls.className = 'pagination-controls';
+                    paginationControls.innerHTML = `
+                        ${page > 1 ? `<button class="pagination-btn" onclick="window.showMyOrders(${page - 1})"><i class="fas fa-chevron-left"></i> Previous</button>` : ''}
+                        <span class="page-indicator">Page ${page} of ${totalPages}</span>
+                        ${page < totalPages ? `<button class="pagination-btn" onclick="window.showMyOrders(${page + 1})">Next <i class="fas fa-chevron-right"></i></button>` : ''}
+                    `;
+                    ordersList.appendChild(paginationControls);
+                }
+
+            } catch (error) {
+                console.error('Error loading orders:', error);
+                ordersList.innerHTML = `
+                    <p class="no-orders error">
+                        Error loading orders.<br>
+                        Please try again later.
+                    </p>`;
+            }
+        };
+
+        // Update the click handler for the My Orders menu item
+        document.querySelector('.menu-item:nth-child(2)').onclick = function() {
+            window.showMyOrders(1); // Always start at page 1 when opening
+            document.querySelector('.menu-dropdown').classList.remove('active');
+        };
+
+        // Add the orders modal HTML structure
+        const ordersModalHTML = `
+            <div id="orders-modal" class="modal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h2>My Orders</h2>
+                        <span class="close-modal">&times;</span>
+                    </div>
+                    <div class="orders-container">
+                        <div id="orders-list">
+                            <p class="loading-text">Loading orders...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+        document.body.insertAdjacentHTML('beforeend', ordersModalHTML);
+
+        // Add event listener to close orders modal
+        document.querySelector('#orders-modal .close-modal').addEventListener('click', function() {
+            const modal = document.getElementById('orders-modal');
+            modal.classList.remove('show');
+            setTimeout(() => {
+                modal.style.display = 'none';
+            }, 300);
+        });
+
+        // Add the order details modal HTML structure
+        const orderDetailsModalHTML = `
+            <div id="order-details-modal" class="modal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h2>Order Details</h2>
+                        <span class="close-modal">&times;</span>
+                    </div>
+                    <div class="order-details-container">
+                        <div id="order-details-content">
+                            <p class="loading-text">Loading details...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+        document.body.insertAdjacentHTML('beforeend', orderDetailsModalHTML);
+
+        // Add function to view order details
+        window.viewOrderDetails = async function(orderId) {
+            const modal = document.getElementById('order-details-modal');
+            const content = document.getElementById('order-details-content');
+            modal.style.display = 'flex';
+            setTimeout(() => modal.classList.add('show'), 10);
+            
+            content.innerHTML = '<p class="loading-text">Loading details...</p>';
+            
+            try {
+                const orderDoc = await db.collection('orders').doc(orderId).get();
+                const orderData = orderDoc.data();
+                
+                if (!orderDoc.exists || !orderData) {
+                    content.innerHTML = '<p class="error-text">Order not found</p>';
+                    return;
+                }
+                
+                const timestamp = orderData.createdAt?.toDate() || new Date();
+                content.innerHTML = `
+                    <div class="order-details-wrapper">
+                        <div class="order-info-section">
+                            <div class="info-group">
+                                <label>Order ID:</label>
+                                <span>#${orderId.slice(-6).toUpperCase()}</span>
+                            </div>
+                            <div class="info-group">
+                                <label>Status:</label>
+                                <span class="status-badge ${orderData.status.toLowerCase()}">${orderData.status}</span>
+                            </div>
+                            <div class="info-group">
+                                <label>Date:</label>
+                                <span>${timestamp.toLocaleDateString()} ${timestamp.toLocaleTimeString()}</span>
+                            </div>
+                            <div class="info-group">
+                                <label>Price:</label>
+                                <span>$${orderData.price.toFixed(2)}</span>
+                            </div>
+                            <div class="info-group">
+                                <label>Payment Method:</label>
+                                <span>${orderData.paymentMethod || 'N/A'}</span>
+                            </div>
+                        </div>
+
+                        <div class="account-details-section">
+                            ${orderData.accountDetails ? `
+                                <div class="credentials-box">
+                                    <h3>Login Credentials</h3>
+                                    <div class="credentials-group">
+                                        <label>Username:</label>
+                                        <span>${orderData.accountDetails.username || 'N/A'}</span>
+                                    </div>
+                                    <div class="credentials-group">
+                                        <label>Password:</label>
+                                        <span>${orderData.accountDetails.password || 'N/A'}</span>
+                                    </div>
+                                </div>
+                            ` : ''}
+                            
+                            <div class="security-box">
+                                <div class="security-icon">
+                                    <i class="fas fa-shield-alt"></i>
+                                </div>
+                                <h3>SECURE YOUR ACCOUNT</h3>
+                                <p>Don't lose access to your purchase!</p>
+                                <a href="/security.html" class="security-btn">
+                                    <i class="fas fa-lock"></i>
+                                    How to Secure Your Account
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } catch (error) {
+                console.error('Error loading order details:', error);
+                content.innerHTML = `
+                    <p class="error-text">
+                        Error loading order details.<br>
+                        Please try again later.
+                    </p>`;
+            }
+        };
+
+        // Add event listener to close order details modal
+        document.querySelector('#order-details-modal .close-modal').addEventListener('click', function() {
+            const modal = document.getElementById('order-details-modal');
+            modal.classList.remove('show');
+            setTimeout(() => {
+                modal.style.display = 'none';
+            }, 300);
+        });
+
+        // Add these new JavaScript functions
+        window.handlePaymentSubmission = function() {
+            const proofInput = document.getElementById('payment-proof');
+            
+            if (!proofInput || !proofInput.files || !proofInput.files[0]) {
+                showAlert('Please upload payment proof', 'error');
+                return;
+            }
+
+            // Hide payment info and show verification
+            document.getElementById('payment-info').style.display = 'none';
+            showMathVerification();
+        }
+
+        // Update the submitPurchase function
+        window.submitPurchase = async function() {
+            const mathAnswer = document.getElementById('math-answer').value;
+            if (mathAnswer !== currentPurchase.mathAnswer.toString()) {
+                showAlert('Incorrect verification answer', 'error');
+                return;
+            }
+            
+            try {
+                const username = localStorage.getItem('currentUser');
+                if (!username) throw new Error('Not logged in');
+                
+                // Get the payment proof file
+                const proofInput = document.getElementById('payment-proof');
+                const proofFile = proofInput && proofInput.files ? proofInput.files[0] : null;
+                
+                let proofUrl = null;
+                
+                // Upload proof if exists (for non-balance payments)
+                if (proofFile && currentPurchase.paymentMethod !== 'balance') {
+                    proofUrl = await uploadToLitterbox(proofFile);
+                }
+
+                // Create pending order (for all payment methods)
+                await db.collection('orders').add({
+                    userId: username,
+                    username: username,
+                    listingId: currentPurchase.id,
+                    listingTitle: currentPurchase.title,
+                    price: currentPurchase.price,
+                    paymentMethod: currentPurchase.paymentMethod,
+                    proofUrl: proofUrl,
+                    status: 'Pending',
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+
+                // Update listing status
+                await db.collection('listings').doc(currentPurchase.id).update({
+                    pendingOrder: true,
+                    status: 'Disabled',
+                    buyerId: username,
+                    buyerUsername: username
+                });
+                
+                // Close modal and show success message
+                document.getElementById('purchase-modal').style.display = 'none';
+                showAlert('Order submitted! Please wait for admin approval.', 'success');
+                
+            } catch (error) {
+                console.error('Purchase error:', error);
+                showAlert('Error processing purchase: ' + error.message, 'error');
+            }
+        }
+    </script>
+    <div id="purchase-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            <h2>Purchase Item</h2>
+            <div id="purchase-details"></div>
+            <div id="verification-container" style="display: none;"></div>
+        </div>
+    </div>
+</body>
+</html>
