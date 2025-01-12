@@ -11,6 +11,11 @@
     <link rel="stylesheet" href="balance.css">
 </head>
 <body>
+    <script>
+        if (!localStorage.getItem('currentUser')) {
+            window.location.replace('/login/');
+        }
+    </script>
     <div id="particles-js"></div>
     
     <div class="background-shapes">
@@ -413,8 +418,30 @@
         }
 
         // Add this to initialize everything when the page loads
-        document.addEventListener('DOMContentLoaded', () => {
-            loadUserProfile();
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Check authentication first
+            const username = localStorage.getItem('currentUser');
+            if (!username) {
+                window.location.replace('/login/');
+                return;
+            }
+
+            try {
+                // Verify user exists in database
+                const userDoc = await db.collection('users').doc(username).get();
+                if (!userDoc.exists) {
+                    localStorage.removeItem('currentUser');
+                    localStorage.removeItem('userPassword');
+                    window.location.replace('/login/');
+                    return;
+                }
+
+                // Load user profile if authentication passed
+                loadUserProfile();
+            } catch (error) {
+                console.error('Authentication error:', error);
+                window.location.replace('/login/');
+            }
         });
 
         document.getElementById('amount').addEventListener('input', updateFeeAndTotal);
@@ -464,6 +491,13 @@
                 }
             }, 5000);
         }
+
+        // Add storage event listener to handle logout in other tabs
+        window.addEventListener('storage', (e) => {
+            if (e.key === 'currentUser' && !e.newValue) {
+                window.location.replace('/login/');
+            }
+        });
     </script>
 </body>
 </html>
