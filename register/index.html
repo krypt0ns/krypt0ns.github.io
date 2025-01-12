@@ -48,10 +48,11 @@
         </form>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
     <script type="module">
-        import { checkIPBan } from '../auth.js';
-        
-        // Initialize Firebase first
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-app.js";
+        import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore.js";
+
         const firebaseConfig = {
             apiKey: "AIzaSyDvG4059xSr2jToP9xDz-8dlxbumuRzdUE",
             authDomain: "sdfkj238j98sdlkmzlknslaksdjfkl.firebaseapp.com",
@@ -61,10 +62,10 @@
             appId: "1:778178162130:web:a9513f09e404813aa2ec0b",
             measurementId: "G-WP6QR49WZ3"
         };
-        firebase.initializeApp(firebaseConfig);
-        
-        // Then check for IP ban
-        checkIPBan();
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
 
         // Handle form submission
         const form = document.getElementById('registerForm');
