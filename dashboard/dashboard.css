@@ -1553,3 +1553,16 @@
             color: rgba(255, 255, 255, 0.7);
             font-size: 0.9rem;
         }
+        
+        .insufficient-funds {
+            font-size: 0.8em;
+            color: #ff4444;
+            display: block;
+            margin-top: 4px;
+        }
+
+        .payment-option.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            background: rgba(255, 255, 255, 0.1);
+        }

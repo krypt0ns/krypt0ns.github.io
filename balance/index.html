@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Add Balance</title>
+    <title>Krypton | Balance</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
@@ -274,13 +274,25 @@
             const singleCopyBtn = document.getElementById('single-copy-btn');
             
             if (method === 'crypto') {
-                addressElement.innerHTML = `
-                    BTC: ${paymentAddresses.crypto.btc}<br>
-                    ETH: ${paymentAddresses.crypto.eth}<br>
-                    LTC: ${paymentAddresses.crypto.ltc}
-                `;
+                // Initialize with empty address display
+                addressElement.innerHTML = 'Please select a cryptocurrency...';
                 cryptoCopyContainer.style.display = 'flex';
                 singleCopyBtn.style.display = 'none';
+                
+                // Add change event listener to crypto select
+                document.getElementById('crypto-select').addEventListener('change', function(e) {
+                    const selectedCrypto = e.target.value;
+                    if (selectedCrypto) {
+                        const cryptoLabels = {
+                            btc: 'Bitcoin (BTC)',
+                            eth: 'Ethereum (ETH)',
+                            ltc: 'Litecoin (LTC)'
+                        };
+                        addressElement.innerHTML = `${cryptoLabels[selectedCrypto]}: ${paymentAddresses.crypto[selectedCrypto]}`;
+                    } else {
+                        addressElement.innerHTML = 'Please select a cryptocurrency...';
+                    }
+                });
             } else {
                 addressElement.innerHTML = paymentAddresses[method];
                 cryptoCopyContainer.style.display = 'none';
@@ -295,7 +307,7 @@
             const selectedCrypto = select.value;
             
             if (!selectedCrypto) {
-                alert('Please select a cryptocurrency first');
+                showAlert('Please select a cryptocurrency first', 'error');
                 return;
             }
             
@@ -309,6 +321,10 @@
                     copyBtn.classList.remove('copied');
                     copyBtn.innerHTML = '<i class="fas fa-copy"></i> Copy Address';
                 }, 2000);
+                
+                showAlert('Address copied to clipboard!', 'success');
+            }).catch(() => {
+                showAlert('Failed to copy address', 'error');
             });
         }
 

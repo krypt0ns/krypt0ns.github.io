@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Listings</title>
+    <title>Krypton | Dashboard</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
@@ -367,7 +367,21 @@
                 const listingData = listingDoc.data();
                 const now = Date.now();
                 
-                // Check if listing is disabled, has pending order, not released, or has active countdown
+                // Add verification check
+                if (listingData.verifiedBuyer) {
+                    // If verification is older than 15 minutes, clear it
+                    const verificationTime = listingData.verificationTime?.toDate().getTime() || 0;
+                    if (now - verificationTime > 15 * 60 * 1000) {
+                        await db.collection('listings').doc(listingId).update({
+                            verifiedBuyer: null,
+                            verificationTime: null
+                        });
+                    } else if (listingData.verifiedBuyer !== localStorage.getItem('currentUser')) {
+                        return false;
+                    }
+                }
+                
+                // Existing checks
                 if (listingData.status === 'Disabled' || 
                     listingData.pendingOrder || 
                     listingData.releaseTime > now ||
@@ -452,12 +466,17 @@
             const balanceElement = document.querySelector('.header .balance-amount');
             const currentBalance = parseFloat(balanceElement.textContent.replace('$', ''));
             
+            // Check if user has enough balance
+            const hasEnoughBalance = currentBalance >= price;
+            
             details.innerHTML = `
                 <p>Item: ${title}</p>
                 <p>Price: $${price}</p>
                 <p>Your Balance: $${currentBalance.toFixed(2)}</p>
                 <div class="payment-methods">
-                    <button class="payment-option" onclick="selectPaymentOption('balance')">
+                    <button class="payment-option ${!hasEnoughBalance ? 'disabled' : ''}" 
+                            onclick="${hasEnoughBalance ? 'selectPaymentOption(\'balance\')' : 'alert(\'Insufficient balance\')'}"
+                            ${!hasEnoughBalance ? 'title="Insufficient balance"' : ''}>
                         <i class="fas fa-wallet"></i> Use Balance
                     </button>
                     <button class="payment-option" onclick="selectPaymentOption('cashapp')">
@@ -616,6 +635,25 @@
             }
             
             try {
+                // Check if listing is still available before proceeding
+                const listingDoc = await db.collection('listings').doc(currentPurchase.id).get();
+                const listingData = listingDoc.data();
+                
+                // If listing is already sold or has pending order, show error
+                if (listingData.status === 'Sold' || listingData.pendingOrder) {
+                    showAlert('This listing has already been sold.', 'error');
+                    const modal = document.getElementById('purchase-modal');
+                    modal.style.display = 'none';
+                    loadListings(); // Refresh listings to show updated status
+                    return;
+                }
+
+                // Immediately mark listing as pending to prevent other purchases
+                await db.collection('listings').doc(currentPurchase.id).update({
+                    pendingOrder: true,
+                    status: 'Disabled'
+                });
+
                 const username = localStorage.getItem('currentUser');
                 if (!username) throw new Error('Not logged in');
                 
@@ -642,7 +680,7 @@
                         password: ''   // Will be filled by admin
                     },
                     createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                    completedAt: null, // Will be set by admin upon completion
+                    completedAt: null,
                     listingId: currentPurchase.id,
                     listingTitle: currentPurchase.title,
                     paymentMethod: currentPurchase.paymentMethod,
@@ -653,7 +691,6 @@
                     username: username
                 };
 
-                // Add proofUrl if it exists
                 if (proofUrl) {
                     orderData.proofUrl = proofUrl;
                 }
@@ -661,10 +698,8 @@
                 // Create the order in Firebase
                 await db.collection('orders').add(orderData);
 
-                // Update listing status
+                // Update listing with buyer info
                 await db.collection('listings').doc(currentPurchase.id).update({
-                    pendingOrder: true,
-                    status: 'Disabled',
                     buyerId: username,
                     buyerUsername: username
                 });
@@ -677,7 +712,24 @@
             } catch (error) {
                 console.error('Purchase error:', error);
                 showAlert('Error processing purchase: ' + error.message, 'error');
+                
+                // If there was an error, revert the listing status
+                try {
+                    await db.collection('listings').doc(currentPurchase.id).update({
+                        pendingOrder: false,
+                        status: 'Active'
+                    });
+                } catch (revertError) {
+                    console.error('Error reverting listing status:', revertError);
+                }
             }
+        }
+
+        // Add new function to show payment options
+        function showPaymentOptions() {
+            const paymentInfo = document.getElementById('payment-info');
+            paymentInfo.style.display = 'block';
+            // Rest of payment UI code...
         }
 
         // Close modal when clicking outside
@@ -961,7 +1013,7 @@
                                 </div>
                                 <h3>SECURE YOUR ACCOUNT</h3>
                                 <p>Don't lose access to your purchase!</p>
-                                <a href="/secure/" class="security-btn">
+                                <a href="/security.html" class="security-btn">
                                     <i class="fas fa-lock"></i>
                                     How to Secure Your Account
                                 </a>
@@ -989,12 +1041,15 @@
         });
 
         // Add these new JavaScript functions
-        window.handlePaymentSubmission = function() {
-            const proofInput = document.getElementById('payment-proof');
-            
-            if (!proofInput || !proofInput.files || !proofInput.files[0]) {
-                showAlert('Please upload payment proof', 'error');
-                return;
+        window.handlePaymentSubmission = async function() {
+            // Only check for proof if NOT using balance
+            if (currentPurchase.paymentMethod !== 'balance') {
+                const proofInput = document.getElementById('payment-proof');
+                
+                if (!proofInput || !proofInput.files || !proofInput.files[0]) {
+                    showAlert('Please upload payment proof', 'error');
+                    return;
+                }
             }
 
             // Hide payment info and show verification
@@ -1004,39 +1059,37 @@
 
         // Update the submitPurchase function
         window.submitPurchase = async function() {
-            const mathAnswer = document.getElementById('math-answer').value;
-            if (mathAnswer !== currentPurchase.mathAnswer.toString()) {
-                showAlert('Incorrect verification answer', 'error');
-                return;
-            }
-            
             try {
                 const username = localStorage.getItem('currentUser');
                 if (!username) throw new Error('Not logged in');
                 
-                // Get the payment proof file
-                const proofInput = document.getElementById('payment-proof');
-                const proofFile = proofInput && proofInput.files ? proofInput.files[0] : null;
-                
                 let proofUrl = null;
                 
-                // Upload proof if exists (for non-balance payments)
-                if (proofFile && currentPurchase.paymentMethod !== 'balance') {
-                    proofUrl = await uploadToLitterbox(proofFile);
+                // Only handle proof upload for non-balance payments
+                if (currentPurchase.paymentMethod !== 'balance') {
+                    const proofInput = document.getElementById('payment-proof');
+                    const proofFile = proofInput && proofInput.files ? proofInput.files[0] : null;
+                    
+                    if (proofFile) {
+                        proofUrl = await uploadToLitterbox(proofFile);
+                    }
                 }
 
-                // Create pending order (for all payment methods)
-                await db.collection('orders').add({
-                    userId: username,
-                    username: username,
+                // Create order with proper structure
+                const orderData = {
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
                     listingId: currentPurchase.id,
                     listingTitle: currentPurchase.title,
-                    price: currentPurchase.price,
                     paymentMethod: currentPurchase.paymentMethod,
-                    proofUrl: proofUrl,
+                    price: currentPurchase.price,
                     status: 'Pending',
-                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                });
+                    userId: username,
+                    username: username,
+                    proofUrl: proofUrl  // Will be null for balance payments
+                };
+
+                // Create the order in Firebase
+                await db.collection('orders').add(orderData);
 
                 // Update listing status
                 await db.collection('listings').doc(currentPurchase.id).update({
@@ -1047,7 +1100,8 @@
                 });
                 
                 // Close modal and show success message
-                document.getElementById('purchase-modal').style.display = 'none';
+                const modal = document.getElementById('purchase-modal');
+                modal.style.display = 'none';
                 showAlert('Order submitted! Please wait for admin approval.', 'success');
                 
             } catch (error) {
