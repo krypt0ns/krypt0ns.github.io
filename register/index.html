@@ -51,7 +51,7 @@
     <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-app.js";
-        import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyDvG4059xSr2jToP9xDz-8dlxbumuRzdUE",
@@ -76,21 +76,51 @@
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
 
-            // Store registration data temporarily
-            sessionStorage.setItem('pendingRegistration', JSON.stringify({
-                username: username,
-                password: password
-            }));
+            try {
+                // Check if username already exists
+                const userDoc = await getDoc(doc(db, 'users', username));
+                if (userDoc.exists()) {
+                    throw new Error('Username already taken');
+                }
 
-            // Redirect to Discord OAuth with correct localhost URI
-            const params = new URLSearchParams({
-                client_id: '1325220923162230805',
-                redirect_uri: 'https://www.krypt0n.net/discord/callback',
-                response_type: 'code',
-                scope: 'identify'
-            });
+                // Get IP address
+                const ipResponse = await fetch('https://api.ipify.org?format=json');
+                const ipData = await ipResponse.json();
+                const userIP = ipData.ip;
 
-            window.location.href = `https://discord.com/oauth2/authorize?${params.toString()}`;
+                // Store registration data with IP
+                sessionStorage.setItem('pendingRegistration', JSON.stringify({
+                    username: username,
+                    password: password,
+                    ip: userIP,
+                    timestamp: Date.now()
+                }));
+
+                // Redirect to Discord OAuth
+                const params = new URLSearchParams({
+                    client_id: '1325220923162230805',
+                    redirect_uri: 'https://www.krypt0n.net/discord/callback',
+                    response_type: 'code',
+                    scope: 'identify'
+                });
+
+                window.location.href = `https://discord.com/oauth2/authorize?${params.toString()}`;
+            } catch (error) {
+                // Show error message to user
+                const errorDiv = document.createElement('div');
+                errorDiv.style.color = '#ff4d4d';
+                errorDiv.style.textAlign = 'center';
+                errorDiv.style.marginTop = '1rem';
+                errorDiv.textContent = error.message;
+                
+                const existingError = form.querySelector('.error-message');
+                if (existingError) {
+                    existingError.remove();
+                }
+                
+                errorDiv.className = 'error-message';
+                form.appendChild(errorDiv);
+            }
         });
 
         // Initialize particles.js

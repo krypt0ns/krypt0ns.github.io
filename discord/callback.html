@@ -142,7 +142,7 @@
                 }
 
                 const pendingData = JSON.parse(sessionStorage.getItem('pendingRegistration'));
-                if (!pendingData || !pendingData.username || !pendingData.password) {
+                if (!pendingData || !pendingData.username || !pendingData.password || !pendingData.ip) {
                     throw new Error('Registration data not found');
                 }
 
@@ -152,7 +152,6 @@
 
                 // Get Discord user info
                 const discordUser = await getDiscordUser(code);
-                const ip = await getIP();
 
                 // Check if Discord ID already exists
                 const discordQuery = query(collection(db, "users"), where("discordId", "==", discordUser.id));
@@ -167,26 +166,26 @@
                     ? `https://cdn.discordapp.com/avatars/${discordUser.id}/${discordUser.avatar}.png`
                     : 'https://discord.com/assets/default-avatar.png';
 
-                // Store user data in Firestore
+                // Store user data in Firestore with IP
                 const userDocRef = doc(db, "users", pendingData.username);
                 await setDoc(userDocRef, {
                     username: pendingData.username,
                     password: pendingData.password,
+                    ip: pendingData.ip,
                     discordId: discordUser.id || null,
                     discordUsername: discordUser.username || null,
                     discordAvatarURL: avatarURL || null,
                     balance: 0,
-                    createdAt: serverTimestamp()
+                    createdAt: serverTimestamp(),
+                    lastLogin: serverTimestamp(),
+                    status: 'Active'
                 });
 
-                // Clear the pending registration data
+                // Clear registration data
                 sessionStorage.removeItem('pendingRegistration');
 
-                // Store login credentials and redirect
-                localStorage.setItem('currentUser', pendingData.username);
-                localStorage.setItem('userPassword', pendingData.password);
-                window.location.href = '/dashboard/';
-
+                // Redirect to login
+                window.location.replace('/login/');
             } catch (error) {
                 console.error('Error during registration:', error);
                 document.body.innerHTML = `
