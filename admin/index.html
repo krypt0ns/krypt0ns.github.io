@@ -672,9 +672,16 @@
             
             if (confirmed) {
                 try {
+                    const userIP = await getUserIP(userId);
                     await db.collection('users').doc(userId).update({
                         status: newStatus
                     });
+                    
+                    if (newStatus === 'Banned' && userIP) {
+                        // Also ban the IP
+                        await banIP(userIP, `User ${userId} was banned`);
+                    }
+                    
                     showAlert(`User ${newStatus.toLowerCase()} successfully`, 'success');
                 } catch (error) {
                     console.error('Error updating user status:', error);
@@ -1939,6 +1946,60 @@
             } catch (error) {
                 console.error('Error saving account details:', error);
                 showAlert('Error saving account details: ' + error.message, 'error');
+            }
+        }
+
+        async function banIP(ip, reason) {
+            try {
+                await db.collection('ipbans').doc(ip).set({
+                    ip: ip,
+                    reason: reason,
+                    bannedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    bannedBy: localStorage.getItem('currentUser')
+                });
+                showAlert('IP banned successfully', 'success');
+            } catch (error) {
+                console.error('Error banning IP:', error);
+                showAlert('Error banning IP: ' + error.message, 'error');
+            }
+        }
+
+        // Add this to your user management section
+        async function getUserIP(userId) {
+            const userDoc = await db.collection('users').doc(userId).get();
+            if (userDoc.exists) {
+                const userData = userDoc.data();
+                return userData.ip;
+            }
+            return null;
+        }
+
+        // Modify your toggleUserStatus function to also ban IP
+        async function toggleUserStatus(userId, currentStatus) {
+            const newStatus = currentStatus === 'Active' ? 'Banned' : 'Active';
+            
+            const confirmed = await showConfirm(
+                `${newStatus === 'Banned' ? 'Ban' : 'Unban'} User`,
+                `Are you sure you want to ${newStatus === 'Banned' ? 'ban' : 'unban'} this user?`
+            );
+            
+            if (confirmed) {
+                try {
+                    const userIP = await getUserIP(userId);
+                    await db.collection('users').doc(userId).update({
+                        status: newStatus
+                    });
+                    
+                    if (newStatus === 'Banned' && userIP) {
+                        // Also ban the IP
+                        await banIP(userIP, `User ${userId} was banned`);
+                    }
+                    
+                    showAlert(`User ${newStatus.toLowerCase()} successfully`, 'success');
+                } catch (error) {
+                    console.error('Error updating user status:', error);
+                    showAlert('Error updating user status: ' + error.message, 'error');
+                }
             }
         }
     </script>

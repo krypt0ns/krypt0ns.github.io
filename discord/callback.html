@@ -33,9 +33,19 @@
                 const data = await response.json();
                 const currentIP = data.ip;
 
+                // Store IP in user document when registering
+                const pendingData = JSON.parse(sessionStorage.getItem('pendingRegistration'));
+                if (pendingData && pendingData.username) {
+                    await setDoc(doc(db, "users", pendingData.username), {
+                        ...pendingData,
+                        ip: currentIP,
+                        lastLogin: serverTimestamp()
+                    });
+                }
+
                 // Check if IP is banned
-                const banDoc = await db.collection('ipbans').doc(currentIP).get();
-                if (banDoc.exists) {
+                const banDoc = await getDoc(doc(db, 'ipbans', currentIP));
+                if (banDoc.exists()) {
                     const banData = banDoc.data();
                     // Clear any stored credentials
                     localStorage.removeItem('currentUser');
@@ -70,7 +80,7 @@
                                     margin-bottom: 1rem;
                                 "></i>
                                 <h2 style="margin-bottom: 1rem;">Access Denied</h2>
-                                <p style="margin-bottom: 1rem;">Your account has been banned.</p>
+                                <p style="margin-bottom: 1rem;">Your IP has been banned.</p>
                                 ${banData.reason ? `<p style="color: #ff6b6b;">Reason: ${banData.reason}</p>` : ''}
                             </div>
                         </div>
@@ -83,7 +93,6 @@
                 return false;
             }
         }
-
         async function getDiscordUser(code) {
             // Exchange code for access token
             const tokenResponse = await fetch('https://discord.com/api/oauth2/token', {
