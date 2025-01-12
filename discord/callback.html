@@ -34,7 +34,7 @@
                     client_secret: 'CnsILKBdkD12PUbU2HnoKCEE_dc6mfgZ',
                     code: code,
                     grant_type: 'authorization_code',
-                    redirect_uri: 'http://127.0.0.1:8080/discord/callback.html',
+                    redirect_uri: 'https://www.krypt0n.net/discord/callback',
                 }),
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded',
@@ -117,7 +117,7 @@
                 // Store login credentials and redirect
                 localStorage.setItem('currentUser', pendingData.username);
                 localStorage.setItem('userPassword', pendingData.password);
-                window.location.href = '/dashboard.html';
+                window.location.href = '/dashboard/';
 
             } catch (error) {
                 console.error('Error during registration:', error);
@@ -125,7 +125,7 @@
                     <div style="color: red; padding: 20px;">
                         Error creating account: ${error.message}
                         <br><br>
-                        <a href="/register.html">Try again</a>
+                        <a href="/register/">Try again</a>
                     </div>
                 `;
             }
