@@ -1,0 +1,1059 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Listings</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <link rel="stylesheet" href="/dashboard/dashboard.css">   
+</head>
+<body>
+    <div id="particles-js"></div>
+    
+    <div class="background-shapes">
+        <div class="shape shape-1"></div>
+        <div class="shape shape-2"></div>
+        <div class="shape shape-3"></div>
+    </div>
+
+    <header class="header">
+        <div class="header-content">
+            <div class="brand">
+                <i class="fas fa-bars hamburger-menu" onclick="toggleMenu()"></i>
+                <div class="discord-pfp">
+                    <img src="https://cdn.discordapp.com/embed/avatars/0.png" alt="Profile Picture">
+                </div>
+            </div>
+            <div class="balance">
+                <i class="fas fa-wallet"></i>
+                <span class="balance-amount">$1,234.56</span>
+            </div>
+        </div>
+        <div class="menu-dropdown">
+            <div class="menu-item" onclick="window.location.href='balance.html'">
+                <i class="fas fa-wallet"></i>
+                <span>Add balance</span>
+            </div>
+            
+            <div class="menu-item">
+                <i class="fas fa-shopping-cart"></i>
+                <span>My Orders</span>
+            </div>
+        </div>
+    </header>
+    <main class="main-content">
+        <div class="listings-container">
+            <div class="listings-grid" id="listings-grid">
+                <!-- Listings will be dynamically inserted here -->
+            </div>
+        </div>
+    </main>
+    </main>
+    <script type="module">
+        // Initialize particles
+        particlesJS('particles-js', {
+            particles: {
+                number: { value: 80, density: { enable: true, value_area: 800 } },
+                color: { value: '#ffffff' },
+                shape: { type: 'circle' },
+                opacity: {
+                    value: 0.2,
+                    random: true,
+                    animation: { enable: true, speed: 1, minimumValue: 0.1, sync: false }
+                },
+                size: {
+                    value: 3,
+                    random: true,
+                    animation: { enable: true, speed: 2, minimumValue: 0.1, sync: false }
+                },
+                line_linked: {
+                    enable: true,
+                    distance: 150,
+                    color: '#ffffff',
+                    opacity: 0.1,
+                    width: 1
+                },
+                move: {
+                    enable: true,
+                    speed: 1,
+                    direction: 'none',
+                    random: true,
+                    straight: false,
+                    outModes: { default: 'bounce' },
+                    attract: { enable: false, rotateX: 600, rotateY: 1200 }
+                }
+            },
+            interactivity: {
+                detectsOn: 'canvas',
+                events: {
+                    onHover: { enable: true, mode: 'repulse' },
+                    onClick: { enable: true, mode: 'push' },
+                    resize: true
+                },
+                modes: {
+                    repulse: { distance: 100, duration: 0.4 },
+                    push: { particles_nb: 4 }
+                }
+            },
+            retina_detect: true
+        });
+
+        // Add hover effect to listing cards
+        document.querySelectorAll('.listing-card').forEach((card, index) => {
+            card.style.animationDelay = `${index * 0.1}s`;
+            
+            card.addEventListener('mouseenter', function() {
+                this.style.transform = 'translateY(-5px)';
+            });
+            
+            card.addEventListener('mouseleave', function() {
+                this.style.transform = 'translateY(0)';
+            });
+        });
+
+        // Toggle menu dropdown
+        window.toggleMenu = function() {
+            const dropdown = document.querySelector('.menu-dropdown');
+            dropdown.classList.toggle('active');
+        }
+
+        // Close menu when clicking outside
+        document.addEventListener('click', function(event) {
+            const dropdown = document.querySelector('.menu-dropdown');
+            const hamburger = document.querySelector('.hamburger-menu');
+            if (!hamburger.contains(event.target) && !dropdown.contains(event.target)) {
+                dropdown.classList.remove('active');
+            }
+        });
+
+        // Initialize Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyDvG4059xSr2jToP9xDz-8dlxbumuRzdUE",
+            authDomain: "sdfkj238j98sdlkmzlknslaksdjfkl.firebaseapp.com", 
+            projectId: "sdfkj238j98sdlkmzlknslaksdjfkl",
+            storageBucket: "sdfkj238j98sdlkmzlknslaksdjfkl.firebasestorage.app",
+            messagingSenderId: "778178162130",
+            appId: "1:778178162130:web:a9513f09e404813aa2ec0b",
+            measurementId: "G-WP6QR49WZ3"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // Function to create a listing card with countdown
+        function createListingCard(listing, index) {
+            const now = Date.now();
+            const hasCountdown = listing.countdown?.active && listing.countdown.endTime > now;
+            const notReleased = listing.releaseTime > now;
+            
+            return `
+                <div class="listing-card" style="animation-delay: ${index * 0.1}s;">
+                    <div class="slideshow-container">
+                        <div class="slides">
+                            <img src="${listing.imageUrl}" alt="${listing.title}" class="listing-image active">
+                        </div>
+                    </div>
+                    <h2 class="listing-title">${listing.title}</h2>
+                    <p class="listing-price">$${listing.price}</p>
+                    <p class="listing-description">${listing.description}</p>
+                    <button class="listing-button ${notReleased || hasCountdown ? 'locked' : ''}" 
+                            onclick="showPurchaseModal('${listing.id}', '${listing.title}', ${listing.price})"
+                            ${notReleased ? `data-release-time="${listing.releaseTime}"` : 
+                              hasCountdown ? `data-end-time="${listing.countdown.endTime}"` : ''}>
+                        ${notReleased ? `Releases in ${formatTime(listing.releaseTime - now)}` :
+                          hasCountdown ? `Unlocks in ${formatTime(listing.countdown.endTime - now)}` : 
+                          'Purchase Now'}
+                    </button>
+                </div>
+            `;
+        }
+
+        // Function to format time
+        function formatTime(milliseconds) {
+            const totalSeconds = Math.ceil(milliseconds / 1000);
+            const hours = Math.floor(totalSeconds / 3600);
+            const minutes = Math.floor((totalSeconds % 3600) / 60);
+            const seconds = totalSeconds % 60;
+            
+            const parts = [];
+            if (hours > 0) parts.push(`${hours}h`);
+            if (minutes > 0) parts.push(`${minutes}m`);
+            parts.push(`${seconds}s`);
+            
+            return parts.join(' ');
+        }
+
+        // Function to load listings with countdown
+        function loadListings() {
+            const listingsGrid = document.getElementById('listings-grid');
+            
+            db.collection('listings').onSnapshot((snapshot) => {
+                listingsGrid.innerHTML = '';
+                let activeListingsCount = 0;
+                
+                snapshot.forEach((doc) => {
+                    const listing = { id: doc.id, ...doc.data() };
+                    
+                    // Skip disabled or sold listings
+                    if (listing.status === 'Disabled' || listing.status === 'Sold') {
+                        return;
+                    }
+                    
+                    activeListingsCount++;
+                    listingsGrid.innerHTML += createListingCard(listing, activeListingsCount);
+                });
+                
+                // Add classes based on number of active listings
+                listingsGrid.className = 'listings-grid';
+                if (activeListingsCount === 1) {
+                    listingsGrid.classList.add('single-listing');
+                } else if (activeListingsCount === 2) {
+                    listingsGrid.classList.add('two-listings');
+                }
+                
+                // Start countdown timers
+                startCountdownTimers();
+                
+                // Show message if no active listings
+                if (activeListingsCount === 0) {
+                    listingsGrid.innerHTML = `
+                        <div style="
+            text-align: center;
+            color: white;
+                            width: 100%;
+                            position: absolute;
+                            top: 50%;
+                            left: 50%;
+                            transform: translate(-50%, -50%);
+                            font-size: 1.5rem;
+            font-weight: 600;
+                            padding: 2rem;
+                            backdrop-filter: blur(10px);
+                            border-radius: 12px;
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+                        ">
+                            There are currently no active listings
+                        </div>
+                    `;
+                }
+            });
+        }
+
+        // Function to update countdown timers
+        function startCountdownTimers() {
+            if (window.countdownInterval) {
+                clearInterval(window.countdownInterval);
+            }
+            
+            window.countdownInterval = setInterval(() => {
+                const now = Date.now();
+                let needsRefresh = false;
+                
+                // Check release timers
+                document.querySelectorAll('[data-release-time]').forEach(element => {
+                    const releaseTime = parseInt(element.dataset.releaseTime);
+                    const timeLeft = releaseTime - now;
+                    
+                    if (timeLeft <= 0) {
+                        needsRefresh = true;
+                    } else {
+                        const timeString = formatTime(timeLeft);
+                        if (element.classList.contains('countdown-timer')) {
+                            element.textContent = `Releases in: ${timeString}`;
+                        }
+                        const button = element.closest('.listing-card').querySelector('.listing-button');
+                        if (button) {
+                            button.textContent = `Releases in ${timeString}`;
+                        }
+                    }
+                });
+
+                // Check countdown timers
+                document.querySelectorAll('[data-end-time]').forEach(element => {
+                    const endTime = parseInt(element.dataset.endTime);
+                    const timeLeft = endTime - now;
+                    
+                    if (timeLeft <= 0) {
+                        needsRefresh = true;
+                    } else {
+                        const timeString = formatTime(timeLeft);
+                        if (element.classList.contains('countdown-timer')) {
+                            element.textContent = timeString;
+                        }
+                        const button = element.closest('.listing-card').querySelector('.listing-button');
+                        if (button) {
+                            button.textContent = `Unlocks in ${timeString}`;
+                        }
+                    }
+                });
+                
+                if (needsRefresh) {
+                    loadListings(); // Refresh listings when any timer ends
+                }
+            }, 1000);
+        }
+
+        // Add this function to fetch user data
+        async function loadUserProfile() {
+            const username = localStorage.getItem('currentUser');
+            if (!username) return;
+
+            try {
+                const userDoc = await db.collection('users').doc(username).get();
+                if (userDoc.exists) {
+                    const userData = userDoc.data();
+                    if (userData.discordAvatarURL) {
+                        document.querySelector('.discord-pfp img').src = userData.discordAvatarURL;
+                    }
+                    // Update balance display
+                    document.querySelector('.balance-amount').textContent = 
+                        `$${userData.balance ? userData.balance.toFixed(2) : '0.00'}`;
+                }
+            } catch (error) {
+                console.error('Error loading user profile:', error);
+            }
+        }
+
+        // Initialize everything when the page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            loadListings();
+            loadUserProfile();
+            startCountdownTimers();
+        });
+
+        // New authentication checks
+        import { validateStoredCredentials } from './auth.js';
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            const isValid = await validateStoredCredentials();
+            if (!isValid) {
+                return;
+            }
+        });
+
+        window.addEventListener('storage', async (e) => {
+            if (e.key === 'currentUser' || e.key === 'userPassword') {
+                const isValid = await validateStoredCredentials();
+                if (!isValid) {
+                    return;
+                }
+            }
+        });
+
+        let currentPurchase = {
+            id: null,
+            price: 0,
+            title: '',
+            mathAnswer: null
+        };
+
+        // Add this function before showPurchaseModal
+        async function canPurchase(listingId) {
+            try {
+                const listingDoc = await db.collection('listings').doc(listingId).get();
+                const listingData = listingDoc.data();
+                const now = Date.now();
+                
+                // Check if listing is disabled, has pending order, not released, or has active countdown
+                if (listingData.status === 'Disabled' || 
+                    listingData.pendingOrder || 
+                    listingData.releaseTime > now ||
+                    (listingData.countdown?.active && listingData.countdown.endTime > now)) {
+                    return false;
+                }
+
+                return true;
+            } catch (error) {
+                console.error('Error checking purchase availability:', error);
+                showAlert('Error checking purchase availability', 'error');
+                return false;
+            }
+        }
+
+        // Add this function to show alerts
+        function showAlert(message, type = 'info') {
+            // Remove any existing alerts
+            const existingAlert = document.querySelector('.custom-alert');
+            if (existingAlert) {
+                existingAlert.remove();
+            }
+
+            // Create alert element
+            const alert = document.createElement('div');
+            alert.className = `custom-alert ${type}`;
+            
+            // Set icon based on type
+            let icon = 'info-circle';
+            if (type === 'success') icon = 'check-circle';
+            if (type === 'error') icon = 'exclamation-circle';
+
+            alert.innerHTML = `
+                <i class="fas fa-${icon} alert-icon"></i>
+                <div class="alert-content">${message}</div>
+                <div class="alert-close">
+                    <i class="fas fa-times"></i>
+                </div>
+            `;
+
+            // Add to document
+            document.body.appendChild(alert);
+
+            // Show alert
+            setTimeout(() => alert.classList.add('show'), 10);
+
+            // Add close handler
+            alert.querySelector('.alert-close').onclick = () => {
+                alert.classList.remove('show');
+                setTimeout(() => alert.remove(), 300);
+            };
+
+            // Auto remove after 5 seconds
+            setTimeout(() => {
+                if (alert.parentElement) {
+                    alert.classList.remove('show');
+                    setTimeout(() => alert.remove(), 300);
+                }
+            }, 5000);
+        }
+
+        // Then your existing showPurchaseModal function will work
+        window.showPurchaseModal = async function(listingId, title, price) {
+            // Get the button that was clicked
+            const button = document.querySelector(`button[onclick*="${listingId}"]`);
+            
+            // If button is locked, don't proceed
+            if (button.classList.contains('locked')) {
+                return;
+            }
+
+            const purchaseAllowed = await canPurchase(listingId);
+            
+            if (!purchaseAllowed) {
+                return; // Don't show modal if purchase not allowed
+            }
+            
+            const modal = document.getElementById('purchase-modal');
+            const details = document.getElementById('purchase-details');
+            
+            // Get current user's balance
+            const balanceElement = document.querySelector('.header .balance-amount');
+            const currentBalance = parseFloat(balanceElement.textContent.replace('$', ''));
+            
+            details.innerHTML = `
+                <p>Item: ${title}</p>
+                <p>Price: $${price}</p>
+                <p>Your Balance: $${currentBalance.toFixed(2)}</p>
+                <div class="payment-methods">
+                    <button class="payment-option" onclick="selectPaymentOption('balance')">
+                        <i class="fas fa-wallet"></i> Use Balance
+                    </button>
+                    <button class="payment-option" onclick="selectPaymentOption('cashapp')">
+                        <i class="fas fa-dollar-sign"></i> Cash App
+                    </button>
+                    <button class="payment-option" onclick="selectPaymentOption('paypal')">
+                        <i class="fab fa-paypal"></i> PayPal
+                    </button>
+                    <button class="payment-option" onclick="selectPaymentOption('crypto')">
+                        <i class="fab fa-bitcoin"></i> Crypto
+                    </button>
+                </div>
+                <div id="payment-info" style="display: none;">
+                    <div class="payment-address-container">
+                        <p>Send payment to:</p>
+                        <div class="payment-address"></div>
+                        <button class="copy-btn" onclick="copyPaymentAddress()">Copy Address</button>
+                    </div>
+                    <div class="proof-upload">
+                        <p>Upload Payment Proof:</p>
+                        <input type="file" id="payment-proof" accept="image/*" onchange="previewProof(this)">
+                        <div id="proof-preview" class="proof-preview"></div>
+                    </div>
+                    <button class="submit-payment-btn" onclick="handlePaymentSubmission()">Submit Payment</button>
+                </div>`;
+            
+            // Show modal with animation
+            modal.style.display = 'flex';
+            requestAnimationFrame(() => {
+                modal.classList.add('show');
+            });
+            
+            // Store purchase details
+            currentPurchase = {
+                id: listingId,
+                title: title,
+                price: price
+            };
+        }
+
+        // Add payment addresses
+        const paymentAddresses = {
+            cashapp: "$gu2u",
+            paypal: "PayPal.me/ledallaaa",
+            crypto: {
+                btc: "bc1qs3x0dj4pzhxtq0e26x7uhdehuhlqqsvvx4843f",
+                eth: "0x2C71Ee68A9Ec269377FCb49f04Ebf97c1241bBda",
+                ltc: "LbXhE3tmkyiPNHwnojfLh9jB7u3XBhGRJK"
+            }
+        };
+
+        window.selectPaymentOption = function(method) {
+            const paymentInfo = document.getElementById('payment-info');
+            const verificationContainer = document.getElementById('verification-container');
+            
+            // Store selected payment method
+            currentPurchase.paymentMethod = method;
+            
+            if (method === 'balance') {
+                // For balance, show only verification
+                paymentInfo.style.display = 'none';
+                showMathVerification();
+            } else {
+                // For other methods, show payment info
+                verificationContainer.style.display = 'none';
+                paymentInfo.innerHTML = `
+                    <div class="payment-address-container">
+                        <p>Send payment to:</p>
+                        <div class="payment-address">${method === 'crypto' ? 'Select a cryptocurrency to see the address' : paymentAddresses[method]}</div>
+                        ${method === 'crypto' ? `
+                            <div id="crypto-select-container">
+                                <select id="crypto-select">
+                                    <option value="">Select cryptocurrency...</option>
+                                    <option value="btc">Bitcoin (BTC)</option>
+                                    <option value="eth">Ethereum (ETH)</option>
+                                    <option value="ltc">Litecoin (LTC)</option>
+                                </select>
+                            </div>
+                        ` : ''}
+                        <button class="copy-btn">
+                            <i class="fas fa-copy"></i> Copy Address
+                        </button>
+                    </div>
+                    <div class="proof-upload">
+                        <p>Upload Payment Proof:</p>
+                        <input type="file" id="payment-proof" accept="image/*" required>
+                        <div id="proof-preview" class="proof-preview"></div>
+                    </div>
+                    <button class="submit-payment-btn" onclick="handlePaymentSubmission()">Submit Payment</button>
+                `;
+                paymentInfo.style.display = 'block';
+                
+                // Set up crypto select handler if needed
+                if (method === 'crypto') {
+                    document.getElementById('crypto-select').onchange = function() {
+                        const selectedCrypto = this.value;
+                        if (selectedCrypto) {
+                            document.querySelector('.payment-address').innerHTML = paymentAddresses.crypto[selectedCrypto];
+                        }
+                    };
+                }
+                
+                // Set up copy button handler
+                const copyBtn = document.querySelector('.copy-btn');
+                copyBtn.onclick = function() {
+                    if (method === 'crypto') {
+                        const select = document.getElementById('crypto-select');
+                        const selectedCrypto = select.value;
+                        
+                        if (!selectedCrypto) {
+                            showAlert('Please select a cryptocurrency first', 'error');
+                            return;
+                        }
+                        
+                        copyToClipboard(paymentAddresses.crypto[selectedCrypto], this);
+                    } else {
+                        copyToClipboard(paymentAddresses[method], this);
+                    }
+                };
+            }
+        }
+
+        function copyToClipboard(text, button) {
+            navigator.clipboard.writeText(text).then(() => {
+                const originalText = button.innerHTML;
+                button.innerHTML = '<i class="fas fa-check"></i> Copied!';
+                setTimeout(() => {
+                    button.innerHTML = originalText;
+                }, 2000);
+            });
+        }
+
+        window.showMathVerification = function() {
+            const verificationContainer = document.getElementById('verification-container');
+            
+            // Generate random math problem
+            const num1 = Math.floor(Math.random() * 10);
+            const num2 = Math.floor(Math.random() * 10);
+            currentPurchase.mathAnswer = num1 + num2;
+            
+            verificationContainer.style.display = 'block';
+            verificationContainer.innerHTML = `
+                <p>Please solve this verification:</p>
+                <p id="math-question">What is ${num1} + ${num2}?</p>
+                <input type="number" id="math-answer" placeholder="Enter answer">
+                <button onclick="verifyAndCompletePurchase()">Verify & Complete Purchase</button>
+            `;
+        }
+
+        window.verifyAndCompletePurchase = async function() {
+            const userAnswer = parseInt(document.getElementById('math-answer').value);
+            
+            if (userAnswer !== currentPurchase.mathAnswer) {
+                showAlert('Incorrect answer. Please try again.', 'error');
+                return;
+            }
+            
+            try {
+                const username = localStorage.getItem('currentUser');
+                if (!username) throw new Error('Not logged in');
+                
+                // Get the payment proof file
+                const proofInput = document.getElementById('payment-proof');
+                const proofFile = proofInput && proofInput.files ? proofInput.files[0] : null;
+                
+                // Get user's avatar
+                const userDoc = await db.collection('users').doc(username).get();
+                const userData = userDoc.data();
+                const userAvatar = userData?.discordAvatarURL || null;
+
+                let proofUrl = null;
+                
+                // Upload proof if exists (for non-balance payments)
+                if (proofFile && currentPurchase.paymentMethod !== 'balance') {
+                    proofUrl = await uploadToLitterbox(proofFile);
+                }
+
+                // Create order with proper structure
+                const orderData = {
+                    accountDetails: {
+                        username: '',  // Will be filled by admin
+                        password: ''   // Will be filled by admin
+                    },
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    completedAt: null, // Will be set by admin upon completion
+                    listingId: currentPurchase.id,
+                    listingTitle: currentPurchase.title,
+                    paymentMethod: currentPurchase.paymentMethod,
+                    price: currentPurchase.price,
+                    status: 'Pending',
+                    userAvatar: userAvatar,
+                    userId: username,
+                    username: username
+                };
+
+                // Add proofUrl if it exists
+                if (proofUrl) {
+                    orderData.proofUrl = proofUrl;
+                }
+
+                // Create the order in Firebase
+                await db.collection('orders').add(orderData);
+
+                // Update listing status
+                await db.collection('listings').doc(currentPurchase.id).update({
+                    pendingOrder: true,
+                    status: 'Disabled',
+                    buyerId: username,
+                    buyerUsername: username
+                });
+                
+                // Close modal and show success message
+                const modal = document.getElementById('purchase-modal');
+                modal.style.display = 'none';
+                showAlert('Order submitted! Please wait for admin approval.', 'success');
+                
+            } catch (error) {
+                console.error('Purchase error:', error);
+                showAlert('Error processing purchase: ' + error.message, 'error');
+            }
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('purchase-modal');
+            if (event.target === modal) {
+                modal.classList.remove('show');
+                setTimeout(() => {
+                    modal.style.display = 'none';
+                }, 300);
+            }
+        }
+
+        // Close modal when clicking X
+        document.querySelector('.close-modal').onclick = function() {
+            const modal = document.getElementById('purchase-modal');
+            modal.classList.remove('show');
+            setTimeout(() => {
+                modal.style.display = 'none';
+            }, 300);
+        }
+
+        // Add this function to handle image preview
+        window.previewProof = function(input) {
+            const preview = document.getElementById('proof-preview');
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                
+                reader.onload = function(e) {
+                    preview.innerHTML = `<img src="${e.target.result}" alt="Payment Proof Preview">`;
+                    preview.classList.add('show');
+                }
+                
+                reader.readAsDataURL(input.files[0]);
+            } else {
+                preview.innerHTML = '';
+                preview.classList.remove('show');
+            }
+        }
+
+        // Add this function to monitor countdown settings
+        function initializeCountdownListener() {
+            db.collection('settings').doc('countdown').onSnapshot(async (doc) => {
+                const countdownSettings = doc.data();
+                if (!countdownSettings) return;
+
+                if (countdownSettings.active) {
+                    try {
+                        // Get all active listings
+                        const listingsSnapshot = await db.collection('listings')
+                            .where('status', '==', 'Active')
+                            .get();
+
+                        // Batch update all active listings with countdown
+                        const batch = db.batch();
+                        listingsSnapshot.forEach(doc => {
+                            batch.update(doc.ref, {
+                                countdown: {
+                                    active: true,
+                                    endTime: countdownSettings.endTime,
+                                    startTime: countdownSettings.startTime,
+                                    duration: countdownSettings.duration
+                                }
+                            });
+                        });
+
+                        await batch.commit();
+                        loadListings(); // Reload listings to show countdown
+                    } catch (error) {
+                        console.error('Error updating listings with countdown:', error);
+                    }
+                }
+            });
+        }
+
+        // Add this function to update individual listing countdowns
+        async function updateListingCountdown(listingId, countdownSettings) {
+            try {
+                await db.collection('listings').doc(listingId).update({
+                    countdown: {
+                        active: countdownSettings.active,
+                        endTime: countdownSettings.endTime,
+                        startTime: countdownSettings.startTime,
+                        duration: countdownSettings.duration
+                    }
+                });
+            } catch (error) {
+                console.error('Error updating listing countdown:', error);
+            }
+        }
+
+        // Add this change to make showMyOrders globally accessible
+        window.showMyOrders = async function(page = 1) {
+            const ordersPerPage = 4; // Set number of orders per page
+            const modal = document.getElementById('orders-modal');
+            modal.style.display = 'flex';
+            setTimeout(() => modal.classList.add('show'), 10);
+
+            const ordersList = document.getElementById('orders-list');
+            ordersList.innerHTML = '<p class="loading-text">Loading orders...</p>';
+
+            try {
+                const username = localStorage.getItem('currentUser'); // Get current user
+                const ordersSnapshot = await db.collection('orders')
+                    .where('userId', '==', username) // Filter orders for current user
+                    .get();
+
+                const sortedOrders = ordersSnapshot.docs
+                    .map(doc => ({...doc.data(), id: doc.id}))
+                    .sort((a, b) => b.createdAt?.toDate() - a.createdAt?.toDate());
+
+                // Calculate pagination
+                const totalPages = Math.ceil(sortedOrders.length / ordersPerPage);
+                const startIndex = (page - 1) * ordersPerPage;
+                const paginatedOrders = sortedOrders.slice(startIndex, startIndex + ordersPerPage);
+
+                ordersList.innerHTML = '';
+                
+                if (sortedOrders.length === 0) {
+                    ordersList.innerHTML = '<p class="no-orders">No orders found</p>';
+                    return;
+                }
+
+                // Display paginated orders
+                paginatedOrders.forEach(order => {
+                    const timestamp = order.createdAt?.toDate() || new Date();
+                    const orderElement = document.createElement('div');
+                    orderElement.className = 'order-item';
+                    orderElement.innerHTML = `
+                        <div class="order-header">
+                            <span class="order-id">#${order.id.slice(-6).toUpperCase()}</span>
+                            <span class="order-date">${timestamp.toLocaleDateString()} ${timestamp.toLocaleTimeString()}</span>
+                        </div>
+                        <div class="order-details">
+                            <div class="order-title">${order.listingTitle}</div>
+                            <div class="order-price">$${order.price.toFixed(2)}</div>
+                            <div class="order-status ${order.status.toLowerCase()}">${order.status}</div>
+                        </div>
+                        <div class="order-actions">
+                            <button class="view-details-btn" onclick="viewOrderDetails('${order.id}')">
+                                <i class="fas fa-eye"></i> View Details
+                            </button>
+                        </div>
+                    `;
+                    ordersList.appendChild(orderElement);
+                });
+
+                // Add pagination controls if there are multiple pages
+                if (totalPages > 1) {
+                    const paginationControls = document.createElement('div');
+                    paginationControls.className = 'pagination-controls';
+                    paginationControls.innerHTML = `
+                        ${page > 1 ? `<button class="pagination-btn" onclick="window.showMyOrders(${page - 1})"><i class="fas fa-chevron-left"></i> Previous</button>` : ''}
+                        <span class="page-indicator">Page ${page} of ${totalPages}</span>
+                        ${page < totalPages ? `<button class="pagination-btn" onclick="window.showMyOrders(${page + 1})">Next <i class="fas fa-chevron-right"></i></button>` : ''}
+                    `;
+                    ordersList.appendChild(paginationControls);
+                }
+
+            } catch (error) {
+                console.error('Error loading orders:', error);
+                ordersList.innerHTML = `
+                    <p class="no-orders error">
+                        Error loading orders.<br>
+                        Please try again later.
+                    </p>`;
+            }
+        };
+
+        // Update the click handler for the My Orders menu item
+        document.querySelector('.menu-item:nth-child(2)').onclick = function() {
+            window.showMyOrders(1); // Always start at page 1 when opening
+            document.querySelector('.menu-dropdown').classList.remove('active');
+        };
+
+        // Add the orders modal HTML structure
+        const ordersModalHTML = `
+            <div id="orders-modal" class="modal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h2>My Orders</h2>
+                        <span class="close-modal">&times;</span>
+                    </div>
+                    <div class="orders-container">
+                        <div id="orders-list">
+                            <p class="loading-text">Loading orders...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+        document.body.insertAdjacentHTML('beforeend', ordersModalHTML);
+
+        // Add event listener to close orders modal
+        document.querySelector('#orders-modal .close-modal').addEventListener('click', function() {
+            const modal = document.getElementById('orders-modal');
+            modal.classList.remove('show');
+            setTimeout(() => {
+                modal.style.display = 'none';
+            }, 300);
+        });
+
+        // Add the order details modal HTML structure
+        const orderDetailsModalHTML = `
+            <div id="order-details-modal" class="modal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h2>Order Details</h2>
+                        <span class="close-modal">&times;</span>
+                    </div>
+                    <div class="order-details-container">
+                        <div id="order-details-content">
+                            <p class="loading-text">Loading details...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+        document.body.insertAdjacentHTML('beforeend', orderDetailsModalHTML);
+
+        // Add function to view order details
+        window.viewOrderDetails = async function(orderId) {
+            const modal = document.getElementById('order-details-modal');
+            const content = document.getElementById('order-details-content');
+            modal.style.display = 'flex';
+            setTimeout(() => modal.classList.add('show'), 10);
+            
+            content.innerHTML = '<p class="loading-text">Loading details...</p>';
+            
+            try {
+                const orderDoc = await db.collection('orders').doc(orderId).get();
+                const orderData = orderDoc.data();
+                
+                if (!orderDoc.exists || !orderData) {
+                    content.innerHTML = '<p class="error-text">Order not found</p>';
+                    return;
+                }
+                
+                const timestamp = orderData.createdAt?.toDate() || new Date();
+                content.innerHTML = `
+                    <div class="order-details-wrapper">
+                        <div class="order-info-section">
+                            <div class="info-group">
+                                <label>Order ID:</label>
+                                <span>#${orderId.slice(-6).toUpperCase()}</span>
+                            </div>
+                            <div class="info-group">
+                                <label>Status:</label>
+                                <span class="status-badge ${orderData.status.toLowerCase()}">${orderData.status}</span>
+                            </div>
+                            <div class="info-group">
+                                <label>Date:</label>
+                                <span>${timestamp.toLocaleDateString()} ${timestamp.toLocaleTimeString()}</span>
+                            </div>
+                            <div class="info-group">
+                                <label>Price:</label>
+                                <span>$${orderData.price.toFixed(2)}</span>
+                            </div>
+                            <div class="info-group">
+                                <label>Payment Method:</label>
+                                <span>${orderData.paymentMethod || 'N/A'}</span>
+                            </div>
+                        </div>
+
+                        <div class="account-details-section">
+                            ${orderData.accountDetails ? `
+                                <div class="credentials-box">
+                                    <h3>Login Credentials</h3>
+                                    <div class="credentials-group">
+                                        <label>Username:</label>
+                                        <span>${orderData.accountDetails.username || 'N/A'}</span>
+                                    </div>
+                                    <div class="credentials-group">
+                                        <label>Password:</label>
+                                        <span>${orderData.accountDetails.password || 'N/A'}</span>
+                                    </div>
+                                </div>
+                            ` : ''}
+                            
+                            <div class="security-box">
+                                <div class="security-icon">
+                                    <i class="fas fa-shield-alt"></i>
+                                </div>
+                                <h3>SECURE YOUR ACCOUNT</h3>
+                                <p>Don't lose access to your purchase!</p>
+                                <a href="/security.html" class="security-btn">
+                                    <i class="fas fa-lock"></i>
+                                    How to Secure Your Account
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } catch (error) {
+                console.error('Error loading order details:', error);
+                content.innerHTML = `
+                    <p class="error-text">
+                        Error loading order details.<br>
+                        Please try again later.
+                    </p>`;
+            }
+        };
+
+        // Add event listener to close order details modal
+        document.querySelector('#order-details-modal .close-modal').addEventListener('click', function() {
+            const modal = document.getElementById('order-details-modal');
+            modal.classList.remove('show');
+            setTimeout(() => {
+                modal.style.display = 'none';
+            }, 300);
+        });
+
+        // Add these new JavaScript functions
+        window.handlePaymentSubmission = function() {
+            const proofInput = document.getElementById('payment-proof');
+            
+            if (!proofInput || !proofInput.files || !proofInput.files[0]) {
+                showAlert('Please upload payment proof', 'error');
+                return;
+            }
+
+            // Hide payment info and show verification
+            document.getElementById('payment-info').style.display = 'none';
+            showMathVerification();
+        }
+
+        // Update the submitPurchase function
+        window.submitPurchase = async function() {
+            const mathAnswer = document.getElementById('math-answer').value;
+            if (mathAnswer !== currentPurchase.mathAnswer.toString()) {
+                showAlert('Incorrect verification answer', 'error');
+                return;
+            }
+            
+            try {
+                const username = localStorage.getItem('currentUser');
+                if (!username) throw new Error('Not logged in');
+                
+                // Get the payment proof file
+                const proofInput = document.getElementById('payment-proof');
+                const proofFile = proofInput && proofInput.files ? proofInput.files[0] : null;
+                
+                let proofUrl = null;
+                
+                // Upload proof if exists (for non-balance payments)
+                if (proofFile && currentPurchase.paymentMethod !== 'balance') {
+                    proofUrl = await uploadToLitterbox(proofFile);
+                }
+
+                // Create pending order (for all payment methods)
+                await db.collection('orders').add({
+                    userId: username,
+                    username: username,
+                    listingId: currentPurchase.id,
+                    listingTitle: currentPurchase.title,
+                    price: currentPurchase.price,
+                    paymentMethod: currentPurchase.paymentMethod,
+                    proofUrl: proofUrl,
+                    status: 'Pending',
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+
+                // Update listing status
+                await db.collection('listings').doc(currentPurchase.id).update({
+                    pendingOrder: true,
+                    status: 'Disabled',
+                    buyerId: username,
+                    buyerUsername: username
+                });
+                
+                // Close modal and show success message
+                document.getElementById('purchase-modal').style.display = 'none';
+                showAlert('Order submitted! Please wait for admin approval.', 'success');
+                
+            } catch (error) {
+                console.error('Purchase error:', error);
+                showAlert('Error processing purchase: ' + error.message, 'error');
+            }
+        }
+    </script>
+    <div id="purchase-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            <h2>Purchase Item</h2>
+            <div id="purchase-details"></div>
+            <div id="verification-container" style="display: none;"></div>
+        </div>
+    </div>
+</body>
+</html>

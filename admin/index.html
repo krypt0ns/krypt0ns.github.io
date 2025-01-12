@@ -1,0 +1,1949 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
+    <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+    <div id="particles-js"></div>
+    <div class="background-shapes">
+        <div class="shape shape-1"></div>
+        <div class="shape shape-2"></div>
+        <div class="shape shape-3"></div>
+    </div>
+
+    <header class="header">
+        <div class="header-content">
+            <div class="brand">
+                <h1>Dashboard</h1>
+            </div>
+        </div>
+    </header>
+
+    <div class="admin-container">
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3>...</h3>
+                <p>Active Listings</p>
+            </div>
+            <div class="stat-card">
+                <h3>...</h3>
+                <p>Total Users</p>
+            </div>
+            <div class="stat-card">
+                <h3>...</h3>
+                <p>Pending Orders</p>
+            </div>
+            <div class="stat-card">
+                <h3>...</h3>
+                <p>Total Revenue</p>
+            </div>
+        </div>
+
+        <div class="admin-nav">
+            <div class="nav-item active" onclick="showSection('listings', event)">Listings</div>
+            <div class="nav-item" onclick="showSection('users', event)">Users</div>
+            <div class="nav-item" onclick="showSection('orders', event)">Orders</div>
+            <div class="nav-item" onclick="showSection('payments', event)">Payments</div>
+        </div>
+
+        <div class="admin-content">
+            <div id="listings-section" class="content-section">
+                <div class="pending-orders-section" style="
+                    background: rgba(237, 137, 54, 0.1);
+                    border: 1px solid rgba(237, 137, 54, 0.2);
+                    border-radius: 12px;
+                    padding: 1.5rem;
+                    margin-bottom: 2rem;
+                ">
+                    <h3 style="
+                        color: #ed8936;
+                        margin-bottom: 1rem;
+                        display: flex;
+                        align-items: center;
+                        gap: 0.5rem;
+                    ">
+                        <i class="fas fa-clock"></i> Pending Orders
+                    </h3>
+                    <div id="pending-orders-container">
+                        <!-- Pending orders will be dynamically inserted here -->
+                    </div>
+                </div>
+                <div class="filters-container" style="margin-bottom: 1rem; display: flex; gap: 1rem; align-items: center;">
+                    <div class="search-box" style="flex: 1;">
+                        <input 
+                            type="text" 
+                            id="listing-search" 
+                            placeholder="Search listings..." 
+                            style="width: 100%; padding: 0.75rem; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; color: #fff;"
+                        >
+                    </div>
+                    <select 
+                        id="listing-status-filter" 
+                        style="padding: 0.75rem; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; color: #fff; cursor: pointer;"
+                    >
+                        <option value="all">All Status</option>
+                        <option value="Active">Active</option>
+                        <option value="Pending">Pending</option>
+                        <option value="Sold">Sold</option>
+                        <option value="Disabled">Disabled</option>
+                    </select>
+                </div>
+                <button class="action-btn edit-btn" onclick="showNewListingForm()" style="margin-bottom: 1rem;">
+                    <i class="fas fa-plus"></i> New Listing
+                </button>
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>Listing</th>
+                            <th>Price</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                            <th>Info</th>
+                        </tr>
+                    </thead>
+                    <tbody id="listings-table-body">
+                        <!-- Listings will be inserted here -->
+                    </tbody>
+                </table>
+            </div>
+
+            <div id="users-section" class="content-section" style="display: none;">
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>Username</th>
+                            <th>Balance</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Users will be dynamically inserted here -->
+                    </tbody>
+                </table>
+            </div>
+
+            <div id="orders-section" class="content-section" style="display: none;">
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>Order ID</th>
+                            <th>User</th>
+                            <th>Item</th>
+                            <th>Amount</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Orders will be dynamically inserted here -->
+                    </tbody>
+                </table>
+            </div>
+
+            <div id="payments-section" class="content-section" style="display: none;">
+                <div class="filters-container" style="margin-bottom: 1rem; display: flex; gap: 1rem; align-items: center;">
+                    <div class="search-box" style="flex: 1;">
+                        <input 
+                            type="text" 
+                            id="payment-search" 
+                            placeholder="Search by username..." 
+                            style="width: 100%; padding: 0.75rem; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; color: #fff;"
+                        >
+                    </div>
+                    <select 
+                        id="status-filter" 
+                        style="padding: 0.75rem; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; color: #fff; cursor: pointer;"
+                    >
+                        <option value="all" style="background: #1a1a1a; color: #fff;">All Status</option>
+                        <option value="Pending" style="background: #1a1a1a; color: #ed8936;">Pending</option>
+                        <option value="Completed" style="background: #1a1a1a; color: #48bb78;">Completed</option>
+                        <option value="Rejected" style="background: #1a1a1a; color: #e53e3e;">Rejected</option>
+                    </select>
+                </div>
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>Transaction ID</th>
+                            <th>User</th>
+                            <th>Amount</th>
+                            <th>Payment Method</th>
+                            <th>Status</th>
+                            <th>Date</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Payments will be dynamically inserted here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        particlesJS('particles-js', {
+            particles: {
+                number: { value: 80, density: { enable: true, value_area: 800 } },
+                color: { value: '#ffffff' },
+                shape: { type: 'circle' },
+                opacity: {
+                    value: 0.2,
+                    random: true,
+                    animation: { enable: true, speed: 1, minimumValue: 0.1, sync: false }
+                },
+                size: {
+                    value: 3,
+                    random: true,
+                    animation: { enable: true, speed: 2, minimumValue: 0.1, sync: false }
+                },
+                line_linked: {
+                    enable: true,
+                    distance: 150,
+                    color: '#ffffff',
+                    opacity: 0.1,
+                    width: 1
+                },
+                move: {
+                    enable: true,
+                    speed: 1,
+                    direction: 'none',
+                    random: true,
+                    straight: false,
+                    outModes: { default: 'bounce' },
+                    attract: { enable: false, rotateX: 600, rotateY: 1200 }
+                }
+            },
+            interactivity: {
+                detectsOn: 'canvas',
+                events: {
+                    onHover: { enable: true, mode: 'repulse' },
+                    onClick: { enable: true, mode: 'push' },
+                    resize: true
+                },
+                modes: {
+                    repulse: { distance: 100, duration: 0.4 },
+                    push: { particles_nb: 4 }
+                }
+            },
+            retina_detect: true
+        });
+
+        function showSection(sectionName, event) {
+            document.querySelectorAll('.content-section').forEach(section => {
+                section.style.display = 'none';
+            });
+            
+            document.getElementById(`${sectionName}-section`).style.display = 'block';
+            
+            // Initialize appropriate listener based on section
+            if (sectionName === 'orders') {
+                initializeOrdersListener();
+            } else if (sectionName === 'listings') {
+                initializeListingsListener();
+            } else if (sectionName === 'users') {
+                initializeUsersListener();
+            } else if (sectionName === 'payments') {
+                initializePaymentsListener();
+            }
+            
+            if (event) {
+                document.querySelectorAll('.nav-item').forEach(item => {
+                    item.classList.remove('active');
+                });
+                event.target.classList.add('active');
+            }
+        }
+
+        function showNewListingForm() {
+            const listingsSection = document.getElementById('listings-section');
+            listingsSection.innerHTML = `
+                <div class="admin-form">
+                    <div class="form-group">
+                        <input type="text" id="listing-title" required placeholder=" ">
+                        <label>Title</label>
+                    </div>
+                    <div class="form-group">
+                        <input type="number" id="listing-price" step="0.01" required placeholder=" ">
+                        <label>Price</label>
+                    </div>
+                    <div class="form-group">
+                        <textarea id="listing-description" rows="4" required placeholder=" "></textarea>
+                        <label>Description</label>
+                    </div>
+                    <div class="form-group">
+                        <input type="datetime-local" id="listing-release-time" required>
+                        <label class="datetime-label">Release Date/Time</label>
+                    </div>
+                    <!-- Updated Account Credentials Section -->
+                    <div class="form-group">
+                        <input type="text" id="account-username" placeholder=" ">
+                        <label>Account Username</label>
+                    </div>
+                    <div class="form-group">
+                        <input type="text" id="account-password" placeholder=" ">
+                        <label>Account Password</label>
+                    </div>
+                    <div class="form-group file-input-group">
+                        <input type="file" id="listing-image" accept="image/*" required>
+                        <label for="listing-image" class="file-label">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                            <span>Choose Image</span>
+                        </label>
+                        <div class="file-info">Image will be available for 72 hours</div>
+                    </div>
+                    <div style="display: flex; gap: 1rem;">
+                        <button class="action-btn edit-btn" onclick="handleListingSubmit()">Create Listing</button>
+                        <button class="action-btn cancel" onclick="showListingsTable()">Cancel</button>
+                    </div>
+                </div>
+            `;
+
+            // Update the file input change handler
+            document.getElementById('listing-image').addEventListener('change', function(e) {
+                const fileName = e.target.files[0]?.name || 'Choose Image';
+                const fileLabel = e.target.nextElementSibling.querySelector('span');
+                fileLabel.textContent = fileName;
+                fileLabel.classList.add('has-file');
+            });
+        }
+
+        function showListingsTable() {
+            const listingsSection = document.getElementById('listings-section');
+            listingsSection.innerHTML = `
+                <div class="filters-container" style="margin-bottom: 1rem; display: flex; gap: 1rem; align-items: center;">
+                    <div class="search-box" style="flex: 1;">
+                        <input 
+                            type="text" 
+                            id="listing-search" 
+                            placeholder="Search listings..." 
+                            style="width: 100%; padding: 0.75rem; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; color: #fff;"
+                        >
+                    </div>
+                    <select 
+                        id="listing-status-filter" 
+                        style="padding: 0.75rem; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; color: #fff; cursor: pointer;"
+                    >
+                        <option value="all">All Status</option>
+                        <option value="Active">Active</option>
+                        <option value="Pending">Pending</option>
+                        <option value="Sold">Sold</option>
+                        <option value="Disabled">Disabled</option>
+                    </select>
+                </div>
+                <button class="action-btn edit-btn" onclick="showNewListingForm()" style="margin-bottom: 1rem;">
+                    <i class="fas fa-plus"></i> New Listing
+                </button>
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>Listing</th>
+                            <th>Price</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                            <th>Info</th>
+                        </tr>
+                    </thead>
+                    <tbody id="listings-table-body">
+                        <!-- Listings will be inserted here -->
+                    </tbody>
+                </table>
+            `;
+
+            // Initialize listeners after creating the elements
+            initializeListingsListener();
+        }
+
+        async function handleListingSubmit() {
+            const formData = {
+                title: document.getElementById('listing-title').value,
+                price: document.getElementById('listing-price').value,
+                description: document.getElementById('listing-description').value,
+                releaseTime: new Date(document.getElementById('listing-release-time').value).getTime(),
+                image: document.getElementById('listing-image').files[0],
+                accountDetails: {
+                    username: document.getElementById('account-username').value.trim(),
+                    password: document.getElementById('account-password').value.trim()
+                }
+            };
+
+            if (!formData.title || !formData.price || !formData.description || !formData.image || !formData.releaseTime) {
+                showAlert('Please fill in all required fields.', 'error');
+                return;
+            }
+
+            // Validate that release time is in the future
+            if (formData.releaseTime <= Date.now()) {
+                showAlert('Release time must be in the future.', 'error');
+                return;
+            }
+
+            try {
+                const imageUrl = await uploadToLitterbox(formData.image);
+                formData.imageUrl = imageUrl;
+                delete formData.image;
+                
+                await createListing(formData);
+            } catch (error) {
+                console.error('Error:', error);
+                showAlert(`Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function uploadToLitterbox(file) {
+            const formData = new FormData();
+            formData.append('reqtype', 'fileupload');
+            formData.append('time', '72h'); // Files will be available for 72 hours
+            formData.append('fileToUpload', file);
+
+            const response = await fetch('https://litterbox.catbox.moe/resources/internals/api.php', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to upload image');
+            }
+
+            const imageUrl = await response.text();
+            return imageUrl.trim();
+        }
+
+        // Initialize Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyDvG4059xSr2jToP9xDz-8dlxbumuRzdUE",
+            authDomain: "sdfkj238j98sdlkmzlknslaksdjfkl.firebaseapp.com", 
+            projectId: "sdfkj238j98sdlkmzlknslaksdjfkl",
+            storageBucket: "sdfkj238j98sdlkmzlknslaksdjfkl.firebasestorage.app",
+            messagingSenderId: "778178162130",
+            appId: "1:778178162130:web:a9513f09e404813aa2ec0b",
+            measurementId: "G-WP6QR49WZ3"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const auth = firebase.auth(); // Add this line
+
+        // Create the listing in Firebase
+        async function createListing(formData) {
+            try {
+                await db.collection('listings').add({
+                    title: formData.title,
+                    price: parseFloat(formData.price),
+                    description: formData.description,
+                    imageUrl: formData.imageUrl,
+                    status: 'Active',
+                    releaseTime: formData.releaseTime,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    accountDetails: formData.accountDetails,
+                    countdown: {
+                        active: false,
+                        endTime: null,
+                        startTime: null,
+                        duration: null
+                    }
+                });
+
+                showAlert('Listing created successfully!', 'success');
+                showListingsTable();
+            } catch (error) {
+                console.error('Error creating listing:', error);
+                showAlert(`Error creating listing: ${error.message}`, 'error');
+            }
+        }
+
+        // Add these variables at the top of your script
+        let allListings = [];
+        let listingSearchTerm = '';
+        let listingStatusFilter = 'all';
+
+        // Update the initializeListingsListener function
+        function initializeListingsListener() {
+            const searchInput = document.getElementById('listing-search');
+            const statusSelect = document.getElementById('listing-status-filter');
+            
+            if (!searchInput || !statusSelect) return;
+
+            // Add event listeners for search and filter
+            searchInput.addEventListener('input', (e) => {
+                listingSearchTerm = e.target.value.toLowerCase();
+                renderListings();
+            });
+
+            statusSelect.addEventListener('change', (e) => {
+                listingStatusFilter = e.target.value;
+                renderListings();
+            });
+
+            // Listen for listings changes
+            db.collection('listings')
+                .orderBy('createdAt', 'desc')
+                .onSnapshot((snapshot) => {
+                    allListings = [];
+                    snapshot.forEach((doc) => {
+                        allListings.push({
+                            id: doc.id,
+                            ...doc.data()
+                        });
+                    });
+                    renderListings();
+                });
+        }
+
+        // Update the renderListings function
+        function renderListings() {
+            const tableBody = document.getElementById('listings-table-body');
+            if (!tableBody) return;
+            
+            tableBody.innerHTML = '';
+            
+            const filteredListings = allListings.filter(listing => {
+                const matchesSearch = (listing.title || '').toLowerCase().includes(listingSearchTerm || '');
+                const matchesStatus = listingStatusFilter === 'all' || listing.status === listingStatusFilter;
+                return matchesSearch && matchesStatus;
+            });
+
+            // Sort listings
+            filteredListings.sort((a, b) => {
+                // Define status priority
+                const priority = {
+                    'Pending': 0,
+                    'Active': 1,
+                    'Sold': 2,
+                    'Disabled': 3
+                };
+
+                // First sort by status priority
+                const statusDiff = (priority[a.status] || 99) - (priority[b.status] || 99);
+                if (statusDiff !== 0) return statusDiff;
+
+                // Then sort by date (newest first)
+                const aTime = a.createdAt?.toMillis() || 0;
+                const bTime = b.createdAt?.toMillis() || 0;
+                return bTime - aTime;
+            });
+
+            if (filteredListings.length === 0) {
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="5" style="text-align: center; padding: 2rem; color: rgba(255, 255, 255, 0.7);">
+                            No listings found
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            filteredListings.forEach(listing => {
+                const row = `
+                    <tr>
+                        <td>
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <img src="${listing.imageUrl}" alt="${listing.title}"
+                                     style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px;">
+                                <span style="color: white;">${listing.title}</span>
+                            </div>
+                        </td>
+                        <td style="color: #6b46c1;">$${listing.price}</td>
+                        <td>
+                            <span class="status-badge ${listing.status.toLowerCase()}">${listing.status}</span>
+                        </td>
+                        <td>
+                            <button class="action-btn ${listing.status === 'Disabled' ? 'edit-btn' : 'ban-btn'}" 
+                                    onclick="toggleListingStatus('${listing.id}', '${listing.status}')"
+                                    title="${listing.status === 'Disabled' ? 'Enable' : 'Disable'} listing">
+                                <i class="fas fa-${listing.status === 'Disabled' ? 'check' : 'ban'}"></i>
+                            </button>
+                            <button class="action-btn delete-btn" onclick="deleteListing('${listing.id}')"
+                                    title="Delete listing">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                        <td>
+                            <button class="action-btn info-btn" onclick="viewListingDetails('${listing.id}')"
+                                    title="View details">
+                                <i class="fas fa-info-circle"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+                tableBody.innerHTML += row;
+            });
+        }
+
+        // Simple delete function
+        async function deleteListing(listingId) {
+            const confirmed = await showConfirm(
+                'Delete Listing',
+                'Are you sure you want to delete this listing? This action cannot be undone.'
+            );
+            
+            if (confirmed) {
+                try {
+                    await db.collection('listings').doc(listingId).delete();
+                    showAlert('Listing deleted successfully', 'success');
+                } catch (error) {
+                    console.error('Error deleting listing:', error);
+                    showAlert('Error deleting listing: ' + error.message, 'error');
+                }
+            }
+        }
+
+        // Display users in real-time
+        function initializeUsersListener() {
+            const tableBody = document.querySelector('#users-section .admin-table tbody');
+            if (!tableBody) return;
+
+            db.collection('users').onSnapshot((snapshot) => {
+                tableBody.innerHTML = '';
+                
+                snapshot.forEach((doc) => {
+                    const user = doc.data();
+                    const row = `
+                        <tr>
+                            <td>
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <img src="${user.discordAvatarURL || 'https://cdn.discordapp.com/embed/avatars/0.png'}" 
+                                         alt="${user.username}" 
+                                         style="width: 32px; height: 32px; border-radius: 50%;">
+                                    ${user.username}
+                                </div>
+                            </td>
+                            <td>$${user.balance || 0}</td>
+                            <td>${user.status || 'Active'}</td>
+                            <td>
+                                <button class="action-btn edit-btn" onclick="modifyBalance('${doc.id}', ${user.balance || 0})">
+                                    <i class="fas fa-wallet"></i>
+                                </button>
+                                <button class="action-btn ban-btn" onclick="toggleUserStatus('${doc.id}', '${user.status || 'Active'}')">
+                                    <i class="fas fa-ban"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                    tableBody.innerHTML += row;
+                });
+            });
+        }
+
+        // Add balance modification function
+        async function modifyBalance(userId, currentBalance) {
+            const amount = await showPrompt(
+                'Modify Balance',
+                `Current balance: $${currentBalance}\nEnter amount to add/subtract:`,
+                "0"
+            );
+            
+            if (amount === null) return; // User cancelled
+            
+            const newBalance = currentBalance + parseFloat(amount);
+            if (isNaN(newBalance)) {
+                showAlert('Please enter a valid number', 'error');
+                return;
+            }
+
+            try {
+                await db.collection('users').doc(userId).update({
+                    balance: newBalance
+                });
+                showAlert('Balance updated successfully!', 'success');
+            } catch (error) {
+                console.error('Error updating balance:', error);
+                showAlert('Error updating balance: ' + error.message, 'error');
+            }
+        }
+
+        // Add user status toggle function
+        async function toggleUserStatus(userId, currentStatus) {
+            const newStatus = currentStatus === 'Active' ? 'Banned' : 'Active';
+            
+            const confirmed = await showConfirm(
+                `${newStatus === 'Banned' ? 'Ban' : 'Unban'} User`,
+                `Are you sure you want to ${newStatus === 'Banned' ? 'ban' : 'unban'} this user?`
+            );
+            
+            if (confirmed) {
+                try {
+                    await db.collection('users').doc(userId).update({
+                        status: newStatus
+                    });
+                    showAlert(`User ${newStatus.toLowerCase()} successfully`, 'success');
+                } catch (error) {
+                    console.error('Error updating user status:', error);
+                    showAlert('Error updating user status: ' + error.message, 'error');
+                }
+            }
+        }
+
+        // Add these variables at the top of your script, right after Firebase initialization
+        let allPayments = [];
+        let searchTerm = '';
+        let statusFilter = 'all';
+
+        // Update the payments listener to use filtering
+        function initializePaymentsListener() {
+            const tableBody = document.querySelector('#payments-section .admin-table tbody');
+            const searchInput = document.getElementById('payment-search');
+            const statusSelect = document.getElementById('status-filter');
+            
+            if (!tableBody) return;
+
+            // Add event listeners for search and filter
+            searchInput.addEventListener('input', (e) => {
+                searchTerm = e.target.value.toLowerCase();
+                renderPayments();
+            });
+
+            statusSelect.addEventListener('change', (e) => {
+                statusFilter = e.target.value;
+                renderPayments();
+            });
+
+            db.collection('payments').orderBy('timestamp', 'desc').onSnapshot(async (snapshot) => {
+                allPayments = [];
+                
+                // First, gather all payments and user data
+                for (const doc of snapshot.docs) {
+                    const payment = doc.data();
+                    const userDoc = await db.collection('users').doc(payment.userId).get();
+                    const userData = userDoc.data();
+                    
+                    allPayments.push({
+                        id: doc.id,
+                        ...payment,
+                        userData
+                    });
+                }
+                
+                renderPayments();
+            });
+        }
+
+        // Add this function to render filtered payments
+        async function renderPayments() {
+            const tableBody = document.querySelector('#payments-section .admin-table tbody');
+            tableBody.innerHTML = '';
+            
+            const filteredPayments = allPayments.filter(payment => {
+                const matchesSearch = payment.userData?.username?.toLowerCase().includes(searchTerm) ||
+                                    payment.id.toLowerCase().includes(searchTerm);
+                const matchesStatus = statusFilter === 'all' || payment.status === statusFilter;
+                
+                return matchesSearch && matchesStatus;
+            });
+
+            filteredPayments.forEach(payment => {
+                const timestamp = payment.timestamp?.toDate() || new Date();
+                const formattedDate = timestamp.toLocaleDateString() + ' ' + timestamp.toLocaleTimeString();
+                
+                const row = `
+                    <tr>
+                        <td>#${payment.id.slice(-6).toUpperCase()}</td>
+                        <td>
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <img src="${payment.userData?.discordAvatarURL || 'https://cdn.discordapp.com/embed/avatars/0.png'}" 
+                                     alt="${payment.userData?.username}" 
+                                     style="width: 32px; height: 32px; border-radius: 50%;">
+                                ${payment.userData?.username || 'Unknown User'}
+                            </div>
+                        </td>
+                        <td>$${payment.amount.toFixed(2)}</td>
+                        <td>${payment.paymentMethod}</td>
+                        <td>
+                            <span class="status-badge ${payment.status.toLowerCase()}">
+                                ${payment.status}
+                            </span>
+                        </td>
+                        <td>${formattedDate}</td>
+                        <td>
+                            <button class="action-btn edit-btn" onclick="viewPaymentDetails('${payment.id}')">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            ${payment.status === 'Pending' ? `
+                                <button class="action-btn edit-btn" onclick="updatePaymentStatus('${payment.id}', 'Completed')">
+                                    <i class="fas fa-check"></i>
+                                </button>
+                                <button class="action-btn delete-btn" onclick="updatePaymentStatus('${payment.id}', 'Rejected')">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            ` : ''}
+                        </td>
+                    </tr>
+                `;
+                tableBody.innerHTML += row;
+            });
+        }
+
+        // Add payment status update function
+        async function updatePaymentStatus(paymentId, newStatus) {
+            const confirmed = await showConfirm(
+                'Update Payment Status',
+                `Are you sure you want to mark this payment as ${newStatus}?`
+            );
+
+            if (confirmed) {
+                try {
+                    const paymentRef = db.collection('payments').doc(paymentId);
+                    const paymentDoc = await paymentRef.get();
+                    const paymentData = paymentDoc.data();
+
+                    const batch = db.batch();
+                    batch.update(paymentRef, { 
+                        status: newStatus,
+                        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+
+                    if (newStatus === 'Completed' && paymentData.status === 'Pending') {
+                        const userRef = db.collection('users').doc(paymentData.userId);
+                        batch.update(userRef, {
+                            balance: firebase.firestore.FieldValue.increment(paymentData.amount)
+                        });
+                    }
+
+                    await batch.commit();
+                    showAlert('Payment status updated successfully!', 'success');
+                } catch (error) {
+                    console.error('Error updating payment status:', error);
+                    showAlert('Error updating payment status: ' + error.message, 'error');
+                }
+            }
+        }
+
+        // Update the payment details view function
+        function viewPaymentDetails(paymentId) {
+            db.collection('payments').doc(paymentId).get().then(async (doc) => {
+                if (doc.exists) {
+                    const payment = doc.data();
+                    const timestamp = payment.timestamp?.toDate() || new Date();
+                    const userDoc = await db.collection('users').doc(payment.userId).get();
+                    const userData = userDoc.data();
+
+                    const detailsHTML = `
+                        <div class="payment-details-content">
+                            <div class="details-header">
+                                <h3>Payment Details</h3>
+                                <div class="alert-close">
+                                    <i class="fas fa-times"></i>
+                                </div>
+                            </div>
+                            <div class="details-body">
+                                <div class="detail-row">
+                                    <span class="detail-label">Transaction ID:</span>
+                                    <span class="detail-value">#${doc.id}</span>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="detail-label">User:</span>
+                                    <span class="detail-value">${userData?.username || 'Unknown User'}</span>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="detail-label">Amount:</span>
+                                    <span class="detail-value">$${payment.amount.toFixed(2)}</span>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="detail-label">Method:</span>
+                                    <span class="detail-value">${payment.paymentMethod}</span>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="detail-label">Status:</span>
+                                    <span class="status-badge ${payment.status.toLowerCase()}">${payment.status}</span>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="detail-label">Date:</span>
+                                    <span class="detail-value">${timestamp.toLocaleString()}</span>
+                                </div>
+                                ${payment.notes ? `
+                                    <div class="detail-row">
+                                        <span class="detail-label">Notes:</span>
+                                        <span class="detail-value">${payment.notes}</span>
+                                    </div>
+                                ` : ''}
+                                <div class="proof-section">
+                                    <span class="detail-label">Payment Proof:</span>
+                                    <img src="${payment.proofUrl}" alt="Payment Proof" class="proof-image">
+                                </div>
+                            </div>
+                        </div>
+                    `;
+
+                    // Add these styles to your CSS section
+                    const styles = `
+                        <style>
+                            .payment-details-content {
+                                background: rgba(20, 20, 20, 0.95);
+                                backdrop-filter: blur(10px);
+                                border-radius: 12px;
+                                border: 1px solid rgba(255, 255, 255, 0.1);
+                                color: white;
+                                width: 90%;
+                                max-width: 500px;
+                                overflow: hidden;
+                            }
+
+                            .details-header {
+                                padding: 1rem 1.5rem;
+                                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+                                display: flex;
+                                justify-content: space-between;
+                                align-items: center;
+                            }
+
+                            .details-header h3 {
+                                font-size: 1.25rem;
+                                margin: 0;
+                            }
+
+                            .details-body {
+                                padding: 1.5rem;
+                            }
+
+                            .detail-row {
+                                display: flex;
+                                justify-content: space-between;
+                                align-items: center;
+                                margin-bottom: 1rem;
+                                padding-bottom: 0.5rem;
+                                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+                            }
+
+                            .detail-label {
+                                color: rgba(255, 255, 255, 0.7);
+                                font-size: 0.9rem;
+                            }
+
+                            .detail-value {
+                                font-weight: 500;
+                            }
+
+                            .proof-section {
+                                margin-top: 1.5rem;
+                            }
+
+                            .proof-image {
+                                width: 100%;
+                                max-height: 300px;
+                                object-fit: contain;
+                                margin-top: 0.5rem;
+                                border-radius: 8px;
+                                background: rgba(0, 0, 0, 0.2);
+                            }
+                        </style>
+                    `;
+
+                    // Create and show modal
+                    const modal = document.createElement('div');
+                    modal.style.cssText = `
+                        position: fixed;
+                        top: 0;
+                        left: 0;
+                        right: 0;
+                        bottom: 0;
+                        background: rgba(0, 0, 0, 0.7);
+                        backdrop-filter: blur(5px);
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        z-index: 2000;
+                        padding: 20px;
+                        opacity: 0;
+                        transition: opacity 0.3s ease;
+                    `;
+                    modal.innerHTML = styles + detailsHTML;
+                    document.body.appendChild(modal);
+
+                    // Show with animation
+                    requestAnimationFrame(() => {
+                        modal.style.opacity = '1';
+                    });
+
+                    // Close handlers
+                    const closeBtn = modal.querySelector('.alert-close');
+                    const closeModal = () => {
+                        modal.style.opacity = '0';
+                        setTimeout(() => modal.remove(), 300);
+                    };
+
+                    closeBtn.onclick = closeModal;
+                    modal.onclick = (e) => {
+                        if (e.target === modal) closeModal();
+                    };
+                }
+            }).catch((error) => {
+                console.error('Error getting payment details:', error);
+                showAlert('Error getting payment details: ' + error.message, 'error');
+            });
+        }
+
+        // Add this function to calculate and update the stats:
+
+        async function updateStats() {
+            try {
+                // Get all listings
+                const listingsSnapshot = await db.collection('listings').get();
+                const activeListings = listingsSnapshot.docs.filter(doc => doc.data().status !== 'Inactive').length;
+
+                // Get total users
+                const usersSnapshot = await db.collection('users').get();
+                const totalUsers = usersSnapshot.size;
+
+                // Get pending orders (payments)
+                const paymentsSnapshot = await db.collection('payments').where('status', '==', 'Pending').get();
+                const pendingOrders = paymentsSnapshot.size;
+
+                // Calculate total revenue (from completed payments)
+                const completedPaymentsSnapshot = await db.collection('payments').where('status', '==', 'Completed').get();
+                const totalRevenue = completedPaymentsSnapshot.docs.reduce((sum, doc) => {
+                    return sum + (doc.data().amount || 0);
+                }, 0);
+
+                // Update the stats in the UI
+                document.querySelector('.stat-card:nth-child(1) h3').textContent = activeListings;
+                document.querySelector('.stat-card:nth-child(2) h3').textContent = totalUsers;
+                document.querySelector('.stat-card:nth-child(3) h3').textContent = pendingOrders;
+                document.querySelector('.stat-card:nth-child(4) h3').textContent = `$${totalRevenue.toLocaleString('en-US', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                })}`;
+
+            } catch (error) {
+                console.error('Error updating stats:', error);
+            }
+        }
+
+        // Set up real-time listeners for stats
+        function initializeStatsListeners() {
+            // Listen for changes in listings
+            db.collection('listings').onSnapshot(() => updateStats());
+            
+            // Listen for changes in users
+            db.collection('users').onSnapshot(() => updateStats());
+            
+            // Listen for changes in payments
+            db.collection('payments').onSnapshot(() => updateStats());
+        }
+
+        // Update the DOMContentLoaded event listener to include stats initialization
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeListingsListener();
+            initializeUsersListener();
+            initializePaymentsListener();
+            initializeStatsListeners();
+        });
+
+        function showAlert(message, type = 'info') {
+            // Remove any existing alerts
+            const existingAlert = document.querySelector('.custom-alert');
+            if (existingAlert) {
+                existingAlert.remove();
+            }
+
+            // Create alert element
+            const alert = document.createElement('div');
+            alert.className = `custom-alert ${type}`;
+            
+            // Set icon based on type
+            let icon = 'info-circle';
+            if (type === 'success') icon = 'check-circle';
+            if (type === 'error') icon = 'exclamation-circle';
+
+            alert.innerHTML = `
+                <i class="fas fa-${icon} alert-icon"></i>
+                <div class="alert-content">${message}</div>
+                <div class="alert-close">
+                    <i class="fas fa-times"></i>
+                </div>
+            `;
+
+            // Add to document
+            document.body.appendChild(alert);
+
+            // Show alert
+            setTimeout(() => alert.classList.add('show'), 10);
+
+            // Add close handler
+            alert.querySelector('.alert-close').onclick = () => {
+                alert.classList.remove('show');
+                setTimeout(() => alert.remove(), 300);
+            };
+
+            // Auto remove after 5 seconds
+            setTimeout(() => {
+                if (alert.parentElement) {
+                    alert.classList.remove('show');
+                    setTimeout(() => alert.remove(), 300);
+                }
+            }, 5000);
+        }
+
+        function showConfirm(title, message) {
+            return new Promise((resolve) => {
+                const overlay = document.createElement('div');
+                overlay.className = 'confirm-overlay';
+                
+                const dialog = document.createElement('div');
+                dialog.className = 'custom-confirm';
+                
+                dialog.innerHTML = `
+                    <h3 class="confirm-title">${title}</h3>
+                    <p class="confirm-message">${message}</p>
+                    <div class="confirm-buttons">
+                        <button class="confirm-button cancel">Cancel</button>
+                        <button class="confirm-button confirm">Confirm</button>
+                    </div>
+                `;
+
+                document.body.appendChild(overlay);
+                document.body.appendChild(dialog);
+
+                // Show with animation
+                setTimeout(() => {
+                    overlay.classList.add('show');
+                    dialog.classList.add('show');
+                }, 10);
+
+                function closeDialog(result) {
+                    overlay.classList.remove('show');
+                    dialog.classList.remove('show');
+                    setTimeout(() => {
+                        overlay.remove();
+                        dialog.remove();
+                        resolve(result);
+                    }, 300);
+                }
+
+                dialog.querySelector('.confirm-button.cancel').onclick = () => closeDialog(false);
+                dialog.querySelector('.confirm-button.confirm').onclick = () => closeDialog(true);
+                overlay.onclick = () => closeDialog(false);
+            });
+        }
+
+        function showPrompt(title, message, defaultValue = '') {
+            return new Promise((resolve) => {
+                const overlay = document.createElement('div');
+                overlay.className = 'confirm-overlay';
+                
+                const dialog = document.createElement('div');
+                dialog.className = 'custom-prompt';
+                
+                dialog.innerHTML = `
+                    <h3 class="prompt-title">${title}</h3>
+                    <p class="confirm-message">${message}</p>
+                    <input type="text" class="prompt-input" value="${defaultValue}">
+                    <div class="confirm-buttons">
+                        <button class="confirm-button cancel">Cancel</button>
+                        <button class="confirm-button confirm">Confirm</button>
+                    </div>
+                `;
+
+                document.body.appendChild(overlay);
+                document.body.appendChild(dialog);
+
+                const input = dialog.querySelector('.prompt-input');
+                input.focus();
+
+                // Show with animation
+                setTimeout(() => {
+                    overlay.classList.add('show');
+                    dialog.classList.add('show');
+                }, 10);
+
+                function closeDialog(result) {
+                    overlay.classList.remove('show');
+                    dialog.classList.remove('show');
+                    setTimeout(() => {
+                        overlay.remove();
+                        dialog.remove();
+                        resolve(result === false ? null : input.value);
+                    }, 300);
+                }
+
+                dialog.querySelector('.confirm-button.cancel').onclick = () => closeDialog(false);
+                dialog.querySelector('.confirm-button.confirm').onclick = () => closeDialog(true);
+                overlay.onclick = () => closeDialog(false);
+
+                // Handle Enter key
+                input.addEventListener('keyup', (e) => {
+                    if (e.key === 'Enter') closeDialog(true);
+                    if (e.key === 'Escape') closeDialog(false);
+                });
+            });
+        }
+
+        // Add this to your orders section initialization
+        function initializeOrdersListener() {
+            const tableBody = document.querySelector('#orders-section tbody');
+            if (!tableBody) return;
+            
+            db.collection('orders')
+                .orderBy('createdAt', 'desc')
+                .onSnapshot((snapshot) => {
+                    tableBody.innerHTML = '';
+                    
+                    snapshot.forEach((doc) => {
+                        const order = doc.data();
+                        const timestamp = order.createdAt?.toDate() || new Date();
+                        
+                        const row = `
+                            <tr>
+                                <td>#${doc.id.slice(-6).toUpperCase()}</td>
+                                <td>
+                                    <div style="display: flex; align-items: center; gap: 10px;">
+                                        <img src="${order.userAvatar || 'https://cdn.discordapp.com/embed/avatars/0.png'}" 
+                                             alt="${order.username}" 
+                                             style="width: 32px; height: 32px; border-radius: 50%;">
+                                        ${order.username}
+                                    </div>
+                                </td>
+                                <td>${order.listingTitle}</td>
+                                <td>$${order.price}</td>
+                                <td>
+                                    <span class="status-badge ${order.status.toLowerCase()}">
+                                        ${order.status}
+                                    </span>
+                                </td>
+                                <td>
+                                    <button class="action-btn info-btn" onclick="showOrderInfo('${doc.id}')" 
+                                            style="background: rgba(66, 153, 225, 0.1); color: #4299e1; margin-right: 0.5rem;">
+                                        <i class="fas fa-question-circle"></i>
+                                    </button>
+                                    ${order.status === 'Pending' ? `
+                                        <button class="action-btn edit-btn" onclick="approveOrder('${doc.id}')">
+                                            <i class="fas fa-check"></i>
+                                        </button>
+                                        <button class="action-btn delete-btn" onclick="rejectOrder('${doc.id}')">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    ` : ''}
+                                </td>
+                            </tr>
+                        `;
+                        tableBody.innerHTML += row;
+                    });
+                });
+        }
+
+        // Add this function to show order info
+        async function showOrderInfo(orderId) {
+            try {
+                const orderDoc = await db.collection('orders').doc(orderId).get();
+                const order = orderDoc.data();
+                
+                // Get the listing details
+                const listingDoc = await db.collection('listings').doc(order.listingId).get();
+                const listing = listingDoc.data();
+
+                const detailsHTML = `
+                    <div class="payment-details-content">
+                        <div class="details-header">
+                            <h3>Order Information</h3>
+                            <div class="alert-close">
+                                <i class="fas fa-times"></i>
+                            </div>
+                        </div>
+                        <div class="details-body">
+                            <div class="detail-row">
+                                <span class="detail-label">Order ID:</span>
+                                <span class="detail-value">#${orderId.slice(-6).toUpperCase()}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Buyer:</span>
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <img src="${order.userAvatar}" alt="${order.username}" 
+                                         style="width: 32px; height: 32px; border-radius: 50%;">
+                                    <span>${order.username}</span>
+                                </div>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Item:</span>
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <img src="${listing.imageUrl}" alt="${listing.title}"
+                                         style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px;">
+                                    <span>${listing.title}</span>
+                                </div>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Price:</span>
+                                <span class="detail-value">$${order.price}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Status:</span>
+                                <span class="status-badge ${order.status.toLowerCase()}">${order.status}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Order Date:</span>
+                                <span class="detail-value">${order.createdAt.toDate().toLocaleString()}</span>
+                            </div>
+                            ${order.completedAt ? `
+                                <div class="detail-row">
+                                    <span class="detail-label">Completed Date:</span>
+                                    <span class="detail-value">${order.completedAt.toDate().toLocaleString()}</span>
+                                </div>
+                            ` : ''}
+                            <div class="detail-row">
+                                <span class="detail-label">Description:</span>
+                                <span class="detail-value">${listing.description}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                // Create and show modal
+                const modal = document.createElement('div');
+                modal.style.cssText = `
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    right: 0;
+                    bottom: 0;
+                    background: rgba(0, 0, 0, 0.7);
+                    backdrop-filter: blur(5px);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    z-index: 2000;
+                    padding: 20px;
+                    opacity: 0;
+                    transition: opacity 0.3s ease;
+                `;
+                modal.innerHTML = detailsHTML;
+                document.body.appendChild(modal);
+
+                // Show with animation
+                requestAnimationFrame(() => {
+                    modal.style.opacity = '1';
+                });
+
+                // Close handlers
+                const closeBtn = modal.querySelector('.alert-close');
+                const closeModal = () => {
+                    modal.style.opacity = '0';
+                    setTimeout(() => modal.remove(), 300);
+                };
+
+                closeBtn.onclick = closeModal;
+                modal.onclick = (e) => {
+                    if (e.target === modal) closeModal();
+                };
+
+            } catch (error) {
+                console.error('Error showing order info:', error);
+                showAlert('Error showing order info: ' + error.message, 'error');
+            }
+        }
+
+        async function approveOrder(orderId) {
+            const confirmed = await showConfirm(
+                'Approve Order',
+                'Are you sure you want to approve this order?'
+            );
+
+            if (confirmed) {
+                try {
+                    const orderRef = db.collection('orders').doc(orderId);
+                    const orderDoc = await orderRef.get();
+                    const orderData = orderDoc.data();
+
+                    // Get listing details including account credentials
+                    const listingDoc = await db.collection('listings').doc(orderData.listingId).get();
+                    const listingData = listingDoc.data();
+
+                    const batch = db.batch();
+
+                    // Update order status and include account details
+                    batch.update(orderRef, {
+                        status: 'Completed',
+                        completedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                        accountDetails: listingData.accountDetails || null
+                    });
+
+                    // Update listing with final buyer info and sold status
+                    batch.update(db.collection('listings').doc(orderData.listingId), {
+                        status: 'Sold',
+                        pendingOrder: false,
+                        buyerId: orderData.userId,
+                        buyerUsername: orderData.username,
+                        buyerAvatar: orderData.userAvatar,
+                        soldAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+
+                    // Deduct balance from user
+                    batch.update(db.collection('users').doc(orderData.userId), {
+                        balance: firebase.firestore.FieldValue.increment(-orderData.price)
+                    });
+
+                    await batch.commit();
+                    showAlert('Order approved successfully!', 'success');
+                } catch (error) {
+                    console.error('Error approving order:', error);
+                    showAlert('Error approving order: ' + error.message, 'error');
+                }
+            }
+        }
+
+        async function rejectOrder(orderId) {
+            const confirmed = await showConfirm(
+                'Reject Order',
+                'Are you sure you want to reject this order?'
+            );
+
+            if (confirmed) {
+                try {
+                    const orderRef = db.collection('orders').doc(orderId);
+                    const orderDoc = await orderRef.get();
+                    const orderData = orderDoc.data();
+
+                    const batch = db.batch();
+
+                    // Update order status
+                    batch.update(orderRef, {
+                        status: 'Rejected',
+                        rejectedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+
+                    // Remove pending status from listing
+                    batch.update(db.collection('listings').doc(orderData.listingId), {
+                        pendingOrder: false
+                    });
+
+                    await batch.commit();
+                    showAlert('Order rejected successfully', 'success');
+                } catch (error) {
+                    console.error('Error rejecting order:', error);
+                    showAlert('Error rejecting order: ' + error.message, 'error');
+                }
+            }
+        }
+
+        // Add countdown management functions
+        async function manageCountdown() {
+            try {
+                const countdownDoc = await db.collection('settings').doc('countdown').get();
+                const currentSettings = countdownDoc.data() || { active: false, endTime: null };
+
+                const dialog = document.createElement('div');
+                dialog.className = 'custom-prompt';
+                dialog.innerHTML = `
+                    <h3 class="prompt-title">Manage Countdown</h3>
+                    <div class="countdown-settings">
+                        <div class="countdown-input">
+                            <label>Hours:</label>
+                            <input type="number" id="hours" min="0" value="0">
+                            <label>Minutes:</label>
+                            <input type="number" id="minutes" min="0" max="59" value="0">
+                            <label>Seconds:</label>
+                            <input type="number" id="seconds" min="0" max="59" value="0">
+                        </div>
+                        <div class="countdown-status">
+                            Status: 
+                            <span class="${currentSettings.active ? 'countdown-active' : 'countdown-inactive'}">
+                                ${currentSettings.active ? 'Active' : 'Inactive'}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="confirm-buttons" style="margin-top: 1rem;">
+                        ${currentSettings.active ? 
+                            '<button class="confirm-button cancel" onclick="stopCountdown()">Stop Countdown</button>' :
+                            ''
+                        }
+                        <button class="confirm-button confirm">Start Countdown</button>
+                    </div>
+                `;
+
+                const overlay = document.createElement('div');
+                overlay.className = 'confirm-overlay';
+
+                document.body.appendChild(overlay);
+                document.body.appendChild(dialog);
+
+                setTimeout(() => {
+                    overlay.classList.add('show');
+                    dialog.classList.add('show');
+                }, 10);
+
+                // Handle start countdown
+                dialog.querySelector('.confirm-button.confirm').onclick = async () => {
+                    const hours = parseInt(document.getElementById('hours').value) || 0;
+                    const minutes = parseInt(document.getElementById('minutes').value) || 0;
+                    const seconds = parseInt(document.getElementById('seconds').value) || 0;
+
+                    const totalMilliseconds = (hours * 3600 + minutes * 60 + seconds) * 1000;
+                    if (totalMilliseconds <= 0) {
+                        showAlert('Please enter a valid time', 'error');
+                        return;
+                    }
+
+                    const endTime = Date.now() + totalMilliseconds;
+
+                    try {
+                        await db.collection('settings').doc('countdown').set({
+                            active: true,
+                            endTime: endTime,
+                            startTime: Date.now(),
+                            duration: totalMilliseconds
+                        });
+
+                        showAlert('Countdown started successfully!', 'success');
+                        closeDialog();
+                    } catch (error) {
+                        console.error('Error starting countdown:', error);
+                        showAlert('Error starting countdown: ' + error.message, 'error');
+                    }
+                };
+
+                function closeDialog() {
+                    overlay.classList.remove('show');
+                    dialog.classList.remove('show');
+                    setTimeout(() => {
+                        overlay.remove();
+                        dialog.remove();
+                    }, 300);
+                }
+
+                overlay.onclick = closeDialog;
+            } catch (error) {
+                console.error('Error managing countdown:', error);
+                showAlert('Error managing countdown: ' + error.message, 'error');
+            }
+        }
+
+        async function stopCountdown() {
+            const confirmed = await showConfirm(
+                'Stop Countdown',
+                'Are you sure you want to stop the current countdown?'
+            );
+
+            if (confirmed) {
+                try {
+                    await db.collection('settings').doc('countdown').update({
+                        active: false,
+                        endTime: null
+                    });
+                    showAlert('Countdown stopped successfully', 'success');
+                } catch (error) {
+                    console.error('Error stopping countdown:', error);
+                    showAlert('Error stopping countdown: ' + error.message, 'error');
+                }
+            }
+        }
+
+        // Add the pending orders listener
+        function initializePendingOrdersListener() {
+            const container = document.getElementById('pending-orders-container');
+            if (!container) return;
+
+            db.collection('orders')
+                .where('status', '==', 'Pending')
+                .orderBy('createdAt', 'desc')
+                .onSnapshot(async (snapshot) => {
+                    if (snapshot.empty) {
+                        container.innerHTML = `
+                            <p style="color: rgba(255, 255, 255, 0.7); text-align: center;">
+                                No pending orders at the moment
+                            </p>
+                        `;
+                        return;
+                    }
+
+                    container.innerHTML = `
+                        <table class="admin-table" style="margin-top: 1rem;">
+                            <thead>
+                                <tr>
+                                    <th>User</th>
+                                    <th>Title</th>
+                                    <th>Price</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${await Promise.all(snapshot.docs.map(async (doc) => {
+                                    const order = doc.data();
+                                    const listingDoc = await db.collection('listings').doc(order.listingId).get();
+                                    const listing = listingDoc.data();
+                                    
+                                    return `
+                                        <tr>
+                                            <td>
+                                                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                                    <img src="${order.userAvatar}" alt="${order.username}" 
+                                                         style="width: 32px; height: 32px; border-radius: 50%;">
+                                                    <span style="color: white;">${order.username}</span>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                                    <img src="${listing.imageUrl}" alt="${listing.title}"
+                                                         style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px;">
+                                                    <span style="color: white;">${listing.title}</span>
+                                                </div>
+                                            </td>
+                                            <td style="color: #6b46c1;">$${order.price}</td>
+                                            <td>
+                                                <span class="status-badge pending">Pending</span>
+                                            </td>
+                                            <td>
+                                                <button class="action-btn edit-btn" 
+                                                        onclick="approveOrder('${doc.id}')"
+                                                        style="padding: 0.5rem;">
+                                                    <i class="fas fa-check"></i> Approve
+                                                </button>
+                                                <button class="action-btn delete-btn"
+                                                        onclick="rejectOrder('${doc.id}')"
+                                                        style="padding: 0.5rem;">
+                                                    <i class="fas fa-times"></i> Reject
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    `;
+                                }))}
+                            </tbody>
+                        </table>
+                    `;
+                });
+        }
+
+        async function toggleListingStatus(listingId, currentStatus) {
+            const newStatus = currentStatus === 'Disabled' ? 'Active' : 'Disabled';
+            const confirmed = await showConfirm(
+                `${newStatus === 'Disabled' ? 'Disable' : 'Enable'} Listing`,
+                `Are you sure you want to ${newStatus === 'Disabled' ? 'disable' : 'enable'} this listing?`
+            );
+            
+            if (confirmed) {
+                try {
+                    await db.collection('listings').doc(listingId).update({
+                        status: newStatus
+                    });
+                    showAlert(`Listing ${newStatus.toLowerCase()} successfully`, 'success');
+                } catch (error) {
+                    console.error('Error updating listing status:', error);
+                    showAlert('Error updating listing status: ' + error.message, 'error');
+                }
+            }
+        }
+
+        async function viewListingDetails(listingId) {
+            try {
+                const listingDoc = await db.collection('listings').doc(listingId).get();
+                const listing = listingDoc.data();
+                
+                // Get buyer information if available
+                let buyerInfo = 'Not available';
+                if (listing.buyerId) {
+                    const buyerDoc = await db.collection('users').doc(listing.buyerId).get();
+                    const buyer = buyerDoc.data();
+                    buyerInfo = `
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <img src="${buyer.discordAvatarURL}" alt="${buyer.username}" 
+                                 style="width: 32px; height: 32px; border-radius: 50%;">
+                            <span>${buyer.username}</span>
+                        </div>
+                    `;
+                }
+
+                const detailsHTML = `
+                    <div class="payment-details-content">
+                        <div class="details-header">
+                            <h3>Listing Details</h3>
+                            <div class="alert-close">
+                                <i class="fas fa-times"></i>
+                            </div>
+                        </div>
+                        <div class="details-body">
+                            <div class="detail-row">
+                                <span class="detail-label">Title:</span>
+                                <span class="detail-value">${listing.title}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Price:</span>
+                                <span class="detail-value">$${listing.price}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Status:</span>
+                                <span class="status-badge ${listing.status.toLowerCase()}">${listing.status}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Release Date:</span>
+                                <span class="detail-value">${new Date(listing.releaseTime).toLocaleString()}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Sold Date:</span>
+                                <span class="detail-value">${listing.soldAt ? new Date(listing.soldAt.toDate()).toLocaleString() : 'N/A'}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Buyer:</span>
+                                <span class="detail-value">${buyerInfo}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Description:</span>
+                                <span class="detail-value">${listing.description}</span>
+                            </div>
+                            <div class="proof-section">
+                                <span class="detail-label">Image:</span>
+                                <img src="${listing.imageUrl}" alt="${listing.title}" class="proof-image">
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Account Credentials:</span>
+                                <div class="account-credentials-input">
+                                    <div class="input-group">
+                                        <label>Username:</label>
+                                        <input type="text" id="account-username" value="${listing.accountDetails?.username || ''}" 
+                                               placeholder="Account username">
+                                    </div>
+                                    <div class="input-group">
+                                        <label>Password:</label>
+                                        <input type="text" id="account-password" value="${listing.accountDetails?.password || ''}" 
+                                               placeholder="Account password">
+                                    </div>
+                                    <button class="action-btn edit-btn" onclick="saveAccountDetails('${listingId}')">
+                                        Save Credentials
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                // Create and show modal
+                const modal = document.createElement('div');
+                modal.style.cssText = `
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    right: 0;
+                    bottom: 0;
+                    background: rgba(0, 0, 0, 0.7);
+                    backdrop-filter: blur(5px);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    z-index: 2000;
+                    padding: 20px;
+                    opacity: 0;
+                    transition: opacity 0.3s ease;
+                `;
+                modal.innerHTML = detailsHTML;
+                document.body.appendChild(modal);
+
+                // Show with animation
+                requestAnimationFrame(() => {
+                    modal.style.opacity = '1';
+                });
+
+                // Close handlers
+                const closeBtn = modal.querySelector('.alert-close');
+                const closeModal = () => {
+                    modal.style.opacity = '0';
+                    setTimeout(() => modal.remove(), 300);
+                };
+
+                closeBtn.onclick = closeModal;
+                modal.onclick = (e) => {
+                    if (e.target === modal) closeModal();
+                };
+            } catch (error) {
+                console.error('Error getting listing details:', error);
+                showAlert('Error getting listing details: ' + error.message, 'error');
+            }
+        }
+
+        // Function to start countdown for a listing
+        async function startCountdown(listingId, duration) {
+            try {
+                await db.collection('listings').doc(listingId).update({
+                    countdown: {
+                        active: true,
+                        endTime: Date.now() + duration,
+                        startTime: Date.now(),
+                        duration: duration
+                    }
+                });
+                showAlert('Countdown started successfully', 'success');
+            } catch (error) {
+                console.error('Error starting countdown:', error);
+                showAlert('Error starting countdown', 'error');
+            }
+        }
+
+        // Function to stop countdown for a listing
+        async function stopCountdown(listingId) {
+            try {
+                await db.collection('listings').doc(listingId).update({
+                    countdown: {
+                        active: false,
+                        endTime: null,
+                        startTime: null,
+                        duration: null
+                    }
+                });
+                showAlert('Countdown stopped successfully', 'success');
+            } catch (error) {
+                console.error('Error stopping countdown:', error);
+                showAlert('Error stopping countdown', 'error');
+            }
+        }
+
+        // Add countdown controls to the listing card
+        function createListingCard(listing) {
+            return `
+                <div class="listing-card" id="listing-${listing.id}">
+                    <!-- Existing listing card content -->
+                    
+                    <!-- Add countdown controls -->
+                    <div class="countdown-controls">
+                        <select class="countdown-duration">
+                            <option value="300000">5 minutes</option>
+                            <option value="600000">10 minutes</option>
+                            <option value="900000">15 minutes</option>
+                            <option value="1800000">30 minutes</option>
+                            <option value="3600000">1 hour</option>
+                            <option value="7200000">2 hours</option>
+                            <option value="86400000">24 hours</option>
+                        </select>
+                        <button onclick="startCountdown('${listing.id}', document.querySelector('#listing-${listing.id} .countdown-duration').value)">
+                            Start Countdown
+                        </button>
+                        <button onclick="stopCountdown('${listing.id}')">
+                            Stop Countdown
+                        </button>
+                    </div>
+                    
+                    <!-- Add countdown status display -->
+                    ${listing.countdown?.active ? `
+                        <div class="countdown-status">
+                            Countdown active - Ends in: ${formatTime(listing.countdown.endTime - Date.now())}
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        }
+
+        // Function to update countdown displays in admin panel
+        function updateCountdownDisplays() {
+            const now = Date.now();
+            document.querySelectorAll('.countdown-status').forEach(status => {
+                const listingCard = status.closest('.listing-card');
+                const listingId = listingCard.id.replace('listing-', '');
+                
+                db.collection('listings').doc(listingId).get().then(doc => {
+                    const listing = doc.data();
+                    if (listing.countdown?.active) {
+                        if (listing.countdown.endTime > now) {
+                            status.textContent = `Countdown active - Ends in: ${formatTime(listing.countdown.endTime - now)}`;
+                        } else {
+                            status.textContent = 'Countdown ended';
+                            // Optionally auto-stop the countdown
+                            stopCountdown(listingId);
+                        }
+                    }
+                });
+            });
+        }
+
+        // Start updating countdown displays
+        setInterval(updateCountdownDisplays, 1000);
+
+        // Add this right after Firebase initialization and before any other code
+        const allowedUsers = ['vdjq'];
+
+        // Replace the Firebase auth check with localStorage check
+        firebase.auth().onAuthStateChanged(async (user) => {
+            // Remove this entire block
+        });
+
+        // Add this new authentication check
+        async function checkAdminAuth() {
+            const username = localStorage.getItem('currentUser');
+            const password = localStorage.getItem('userPassword');
+
+            if (!username || !password) {
+                // No credentials - redirect immediately
+                window.location.href = 'dashboard.html';
+                return;
+            }
+
+            try {
+                // Get user doc using username (like other pages do)
+                const userDoc = await db.collection('users').doc(username).get();
+                const userData = userDoc.data();
+                
+                // Add detailed debug logging
+                console.log('Full user data:', userData);
+                console.log('Discord Username:', userData?.discordUsername);
+                console.log('Username:', userData?.username);
+                console.log('Discord ID:', userData?.discordId);
+                
+                // Verify password matches
+                if (!userDoc.exists || !userData || userData.password !== password) {
+                    console.error('Invalid credentials');
+                    window.location.href = 'dashboard.html';
+                    return;
+                }
+
+                // Check if user is vdjq (case-insensitive)
+                const isVdjq = userData.discordUsername?.toLowerCase() === 'vdjq';
+                
+                console.log('Auth check:', {
+                    username: userData.discordUsername,
+                    isVdjq: isVdjq,
+                    lowerCaseUsername: userData.discordUsername?.toLowerCase(),
+                    comparison: 'vdjq'
+                });
+
+                if (isVdjq) {
+                    // User is vdjq - initialize admin features
+                    console.log('Admin authorized:', userData.discordUsername);
+                    document.body.style.display = 'block';
+                    initializeListingsListener();
+                    initializeUsersListener();
+                    initializePaymentsListener();
+                    initializeStatsListeners();
+                } else {
+                    // Not authorized - redirect immediately
+                    console.log('User not authorized:', userData.discordUsername);
+                    window.location.href = 'dashboard.html';
+                }
+                
+            } catch (error) {
+                console.error('Error checking authorization:', error);
+                console.error('Full error:', error);
+                window.location.href = 'dashboard.html';
+            }
+        }
+
+        // Call the auth check when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            // Initially hide the content
+            document.body.style.display = 'none';
+            // Check authentication
+            checkAdminAuth();
+        });
+
+        async function saveAccountDetails(listingId) {
+            try {
+                const username = document.getElementById('account-username').value.trim();
+                const password = document.getElementById('account-password').value.trim();
+                
+                await db.collection('listings').doc(listingId).update({
+                    accountDetails: {
+                        username: username,
+                        password: password
+                    }
+                });
+                
+                showAlert('Account credentials saved successfully', 'success');
+            } catch (error) {
+                console.error('Error saving account details:', error);
+                showAlert('Error saving account details: ' + error.message, 'error');
+            }
+        }
+    </script>
+</body>
+</html>
