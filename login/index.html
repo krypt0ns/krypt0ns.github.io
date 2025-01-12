@@ -11,14 +11,14 @@
     <script type="module">
         import { checkIPBan } from '../auth.js';
         
-        // Initialize Firebase first (you already have this)
-        // Then check for IP ban
-        checkIPBan();
+        document.addEventListener('DOMContentLoaded', async () => {
+            await checkIPBan();
+        });
     </script>
 </head>
 <body>
     <script>
-        // Check IP ban before allowing login
+        // Add IP ban check
         checkIPBan();
     </script>
     <div id="particles-js"></div>
@@ -145,20 +145,15 @@
                 if (userDoc.exists()) {
                     const userData = userDoc.data();
                     
+                    // Check if account is banned
+                    if (userData.status === 'Banned') {
+                        throw new Error(`Account banned. ${userData.banReason ? `Reason: ${userData.banReason}` : ''}`);
+                    }
+                    
                     if (userData.password === password) {
                         // Successful login
                         localStorage.setItem('currentUser', username);
                         localStorage.setItem('userPassword', password);
-                        
-                        // Log login attempt
-                        const loginAttempt = {
-                            username: username,
-                            timestamp: new Date().toISOString(),
-                            success: true
-                        };
-                        
-                        // You can add this to a 'loginLogs' collection if needed
-                        console.log('Login successful:', loginAttempt);
                         
                         // Redirect to dashboard or home page
                         window.location.href = '/dashboard/';

@@ -12,8 +12,6 @@
     <script type="module">
         import { checkIPBan } from '../auth.js';
         
-        // Initialize Firebase first (you already have this)
-        // Then check for IP ban
         document.addEventListener('DOMContentLoaded', async () => {
             await checkIPBan();
         });

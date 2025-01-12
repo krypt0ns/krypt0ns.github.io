@@ -10,6 +10,13 @@
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
     <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
     <link rel="stylesheet" href="admin.css">
+    <script type="module">
+        import { checkIPBan } from '../auth.js';
+        
+        document.addEventListener('DOMContentLoaded', async () => {
+            await checkIPBan();
+        });
+    </script>
 </head>
 <body>
     <div id="particles-js"></div>
@@ -430,6 +437,7 @@
 
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
+        const serverTimestamp = firebase.firestore.FieldValue.serverTimestamp;
         const auth = firebase.auth(); // Add this line
 
         // Create the listing in Firebase
@@ -665,28 +673,125 @@
         async function toggleUserStatus(userId, currentStatus) {
             const newStatus = currentStatus === 'Active' ? 'Banned' : 'Active';
             
-            const confirmed = await showConfirm(
-                `${newStatus === 'Banned' ? 'Ban' : 'Unban'} User`,
-                `Are you sure you want to ${newStatus === 'Banned' ? 'ban' : 'unban'} this user?`
-            );
-            
-            if (confirmed) {
+            if (currentStatus === 'Active') {
+                // Create custom input modal for ban reason
+                const overlay = document.createElement('div');
+                overlay.className = 'confirm-overlay';
+                
+                const dialog = document.createElement('div');
+                dialog.className = 'custom-prompt';
+                
+                dialog.innerHTML = `
+                    <h3 class="prompt-title">Ban User</h3>
+                    <p class="confirm-message">Please enter a reason for the ban:</p>
+                    <textarea 
+                        class="prompt-input" 
+                        style="
+                            width: 100%;
+                            min-height: 100px;
+                            margin: 1rem 0;
+                            padding: 0.75rem;
+                            background: rgba(255, 255, 255, 0.05);
+                            border: 1px solid rgba(255, 255, 255, 0.1);
+                            border-radius: 8px;
+                            color: #fff;
+                            resize: vertical;
+                        "
+                        placeholder="Enter ban reason..."
+                    ></textarea>
+                    <div class="confirm-buttons">
+                        <button class="confirm-button cancel">Cancel</button>
+                        <button class="confirm-button confirm">Ban User</button>
+                    </div>
+                `;
+
+                document.body.appendChild(overlay);
+                document.body.appendChild(dialog);
+
+                const reason = await new Promise((resolve) => {
+                    setTimeout(() => {
+                        overlay.classList.add('show');
+                        dialog.classList.add('show');
+                    }, 10);
+
+                    function closeDialog(confirmed) {
+                        const reasonText = dialog.querySelector('.prompt-input').value;
+                        overlay.classList.remove('show');
+                        dialog.classList.remove('show');
+                        setTimeout(() => {
+                            overlay.remove();
+                            dialog.remove();
+                            resolve(confirmed ? reasonText : null);
+                        }, 300);
+                    }
+
+                    dialog.querySelector('.confirm-button.cancel').onclick = () => closeDialog(false);
+                    dialog.querySelector('.confirm-button.confirm').onclick = () => closeDialog(true);
+                    overlay.onclick = () => closeDialog(false);
+                });
+
+                if (reason === null) return; // User cancelled
+
                 try {
                     const userIP = await getUserIP(userId);
+                    
+                    // Update user status with reason (default if empty)
                     await db.collection('users').doc(userId).update({
-                        status: newStatus
+                        status: newStatus,
+                        banReason: reason.trim() || "No reason provided",
+                        bannedAt: serverTimestamp()
                     });
                     
-                    if (newStatus === 'Banned' && userIP) {
-                        // Also ban the IP
-                        await banIP(userIP, `User ${userId} was banned`);
+                    if (userIP) {
+                        // Ban the IP with reason
+                        await banIP(userIP, reason.trim() || "No reason provided");
                     }
                     
-                    showAlert(`User ${newStatus.toLowerCase()} successfully`, 'success');
+                    showAlert('User banned successfully', 'success');
                 } catch (error) {
-                    console.error('Error updating user status:', error);
-                    showAlert('Error updating user status: ' + error.message, 'error');
+                    console.error('Error banning user:', error);
+                    showAlert('Error banning user: ' + error.message, 'error');
                 }
+            } else {
+                // Handle unban
+                const confirmed = await showConfirm(
+                    'Unban User',
+                    'Are you sure you want to unban this user?'
+                );
+                
+                if (confirmed) {
+                    try {
+                        const userIP = await getUserIP(userId);
+                        
+                        // Update user status
+                        await db.collection('users').doc(userId).update({
+                            status: newStatus,
+                            banReason: null,
+                            bannedAt: null
+                        });
+                        
+                        if (userIP) {
+                            // Remove IP from ipbans collection when unbanning
+                            await db.collection('ipbans').doc(userIP).delete();
+                        }
+                        
+                        showAlert('User unbanned successfully', 'success');
+                    } catch (error) {
+                        console.error('Error unbanning user:', error);
+                        showAlert('Error unbanning user: ' + error.message, 'error');
+                    }
+                }
+            }
+        }
+
+        // Add this function to unban IP
+        async function unbanIP(ip) {
+            try {
+                await db.collection('ipbans').doc(ip).delete();
+                showAlert('IP unbanned successfully', 'success');
+            } catch (error) {
+                console.error('Error unbanning IP:', error);
+                showAlert('Error unbanning IP: ' + error.message, 'error');
             }
         }
 
@@ -1972,35 +2077,6 @@
                 return userData.ip;
             }
             return null;
-        }
-
-        // Modify your toggleUserStatus function to also ban IP
-        async function toggleUserStatus(userId, currentStatus) {
-            const newStatus = currentStatus === 'Active' ? 'Banned' : 'Active';
-            
-            const confirmed = await showConfirm(
-                `${newStatus === 'Banned' ? 'Ban' : 'Unban'} User`,
-                `Are you sure you want to ${newStatus === 'Banned' ? 'ban' : 'unban'} this user?`
-            );
-            
-            if (confirmed) {
-                try {
-                    const userIP = await getUserIP(userId);
-                    await db.collection('users').doc(userId).update({
-                        status: newStatus
-                    });
-                    
-                    if (newStatus === 'Banned' && userIP) {
-                        // Also ban the IP
-                        await banIP(userIP, `User ${userId} was banned`);
-                    }
-                    
-                    showAlert(`User ${newStatus.toLowerCase()} successfully`, 'success');
-                } catch (error) {
-                    console.error('Error updating user status:', error);
-                    showAlert('Error updating user status: ' + error.message, 'error');
-                }
-            }
         }
     </script>
 </body>

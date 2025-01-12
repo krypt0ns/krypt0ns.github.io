@@ -7,8 +7,19 @@
     <link rel="stylesheet" href="register.css">
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <script type="module">
+        import { checkIPBan } from '../auth.js';
+        
+        document.addEventListener('DOMContentLoaded', async () => {
+            await checkIPBan();
+        });
+    </script>
 </head>
 <body>
+    <script>
+        // Add IP ban check
+        checkIPBan();
+    </script>
     <div id="particles-js"></div>
     
     <div class="background-shapes">
