@@ -193,8 +193,8 @@
 
         .menu-dropdown {
             position: absolute;
-            top: 100%;
-            left: 2rem;
+            top: calc(100% + 0.5rem);
+            left: 0;
             background: rgba(20, 20, 20, 0.95);
             backdrop-filter: blur(20px);
             border: 1px solid rgba(255, 255, 255, 0.1);
@@ -1722,4 +1722,9 @@
                 -ms-overflow-style: none;
                 scrollbar-width: none;
             }
+        }
+
+        /* Add positioning context for dropdown */
+        .hamburger-container {
+            position: relative;
         }
