@@ -61,7 +61,7 @@
             <div class="brand">
                 <i class="fas fa-bars hamburger-menu" onclick="toggleMenu()"></i>
                 <div class="discord-pfp">
-                    <img src="https://cdn.pfps.gg/pfps/8115-riley.png" alt="Profile Picture">
+                    <img src="https://cdn.discordapp.com/embed/avatars/0.png" alt="Profile Picture">
                 </div>
             </div>
             <div class="balance">
@@ -76,6 +76,45 @@
             </div>
         </div>
     </header>
+
+    <script>
+        // Toggle menu dropdown
+        window.toggleMenu = function() {
+            const dropdown = document.querySelector('.menu-dropdown');
+            const hamburger = document.querySelector('.hamburger-menu');
+            
+            // Get hamburger position
+            const hamburgerRect = hamburger.getBoundingClientRect();
+            
+            // Position dropdown relative to hamburger
+            dropdown.style.position = 'fixed';
+            dropdown.style.top = `${hamburgerRect.bottom + 10}px`; // 10px gap
+            dropdown.style.left = `${hamburgerRect.left}px`;
+            
+            // Toggle active class
+            dropdown.classList.toggle('active');
+        }
+
+        // Add window resize handler
+        window.addEventListener('resize', function() {
+            const dropdown = document.querySelector('.menu-dropdown');
+            if (dropdown.classList.contains('active')) {
+                const hamburger = document.querySelector('.hamburger-menu');
+                const hamburgerRect = hamburger.getBoundingClientRect();
+                dropdown.style.top = `${hamburgerRect.bottom + 10}px`;
+                dropdown.style.left = `${hamburgerRect.left}px`;
+            }
+        });
+
+        // Add click outside handler
+        document.addEventListener('click', function(event) {
+            const dropdown = document.querySelector('.menu-dropdown');
+            const hamburger = document.querySelector('.hamburger-menu');
+            if (!hamburger.contains(event.target) && !dropdown.contains(event.target)) {
+                dropdown.classList.remove('active');
+            }
+        });
+    </script>
 
     <div class="balance-container">
         <div class="payment-methods">
@@ -428,54 +467,6 @@
                 }
             },
             retina_detect: true
-        });
-
-        // Toggle menu dropdown
-        function toggleMenu() {
-            const dropdown = document.querySelector('.menu-dropdown');
-            const hamburger = document.querySelector('.hamburger-menu');
-            
-            if (!dropdown.classList.contains('active')) {
-                // Get hamburger position
-                const hamburgerRect = hamburger.getBoundingClientRect();
-                
-                // Calculate optimal position
-                const viewportWidth = window.innerWidth;
-                const dropdownWidth = 200; // Approximate width of dropdown
-                
-                // Default position aligned with hamburger
-                let left = hamburgerRect.left;
-                
-                // Check if dropdown would overflow right edge
-                if (left + dropdownWidth > viewportWidth) {
-                    left = viewportWidth - dropdownWidth - 10; // 10px padding from edge
-                }
-                
-                // Set position
-                dropdown.style.top = `${hamburgerRect.bottom + 5}px`;
-                dropdown.style.left = `${left}px`;
-            }
-            
-            dropdown.classList.toggle('active');
-        }
-
-        // Add window resize handler
-        window.addEventListener('resize', () => {
-            const dropdown = document.querySelector('.menu-dropdown');
-            if (dropdown.classList.contains('active')) {
-                toggleMenu(); // Close menu
-                toggleMenu(); // Reopen in correct position
-            }
-        });
-
-        // Update the click outside handler
-        document.addEventListener('click', function(event) {
-            const dropdown = document.querySelector('.menu-dropdown');
-            const hamburger = document.querySelector('.hamburger-menu');
-            
-            if (!hamburger.contains(event.target) && !dropdown.contains(event.target)) {
-                dropdown.classList.remove('active');
-            }
         });
 
         async function loadUserProfile() {

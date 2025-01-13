@@ -78,16 +78,17 @@
         .header-content {
             max-width: 1200px;
             margin: 0 auto;
+            padding: 0 2rem;
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
 
         .brand {
+            margin-left: -19rem;
             display: flex;
             align-items: center;
             gap: 1rem;
-            margin-left: calc(-1225vw);
             position: relative;
         }
 
@@ -122,9 +123,7 @@
         }
 
         .menu-dropdown {
-            position: absolute;
-            top: 100%;
-            left: 2rem;
+            position: fixed;
             background: rgba(20, 20, 20, 0.95);
             backdrop-filter: blur(20px);
             border: 1px solid rgba(255, 255, 255, 0.1);
@@ -185,6 +184,26 @@
         @media only screen and (max-width: 1200px) {
             .brand {
                 margin-left: 1rem;
+            }
+            
+            .header-content {
+                max-width: 100%;
+            }
+        }
+
+        @media only screen and (max-width: 992px) {
+            .brand {
+                margin-left: 0;
+            }
+        }
+
+        @media only screen and (max-width: 768px) {
+            .brand {
+                margin-left: 0;
+            }
+            
+            .header-content {
+                padding: 0 1rem;
             }
         }
 
@@ -494,4 +513,10 @@
 
         .alert-close:hover {
             opacity: 1;
+        }
+
+        @media screen and (min-width: 3440px) {
+            .header-content {
+                max-width: 3000px;
+            }
         }
