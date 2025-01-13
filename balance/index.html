@@ -9,6 +9,29 @@
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
     <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
     <link rel="stylesheet" href="balance.css">
+    <style>
+        .menu-dropdown {
+            position: fixed;
+            top: 70px; /* Will be dynamically updated */
+            left: 20px; /* Will be dynamically updated */
+            background: rgba(17, 17, 17, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 0.5rem;
+            display: none;
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+            transform: translateY(-10px);
+            opacity: 0;
+            transition: all 0.3s ease;
+        }
+
+        .menu-dropdown.active {
+            display: block;
+            opacity: 1;
+            transform: translateY(0);
+        }
+    </style>
     <script type="module">
         import { checkIPBan } from '../auth.js';
         
@@ -410,13 +433,46 @@
         // Toggle menu dropdown
         function toggleMenu() {
             const dropdown = document.querySelector('.menu-dropdown');
+            const hamburger = document.querySelector('.hamburger-menu');
+            
+            if (!dropdown.classList.contains('active')) {
+                // Get hamburger position
+                const hamburgerRect = hamburger.getBoundingClientRect();
+                
+                // Calculate optimal position
+                const viewportWidth = window.innerWidth;
+                const dropdownWidth = 200; // Approximate width of dropdown
+                
+                // Default position aligned with hamburger
+                let left = hamburgerRect.left;
+                
+                // Check if dropdown would overflow right edge
+                if (left + dropdownWidth > viewportWidth) {
+                    left = viewportWidth - dropdownWidth - 10; // 10px padding from edge
+                }
+                
+                // Set position
+                dropdown.style.top = `${hamburgerRect.bottom + 5}px`;
+                dropdown.style.left = `${left}px`;
+            }
+            
             dropdown.classList.toggle('active');
         }
 
-        // Close menu when clicking outside
+        // Add window resize handler
+        window.addEventListener('resize', () => {
+            const dropdown = document.querySelector('.menu-dropdown');
+            if (dropdown.classList.contains('active')) {
+                toggleMenu(); // Close menu
+                toggleMenu(); // Reopen in correct position
+            }
+        });
+
+        // Update the click outside handler
         document.addEventListener('click', function(event) {
             const dropdown = document.querySelector('.menu-dropdown');
             const hamburger = document.querySelector('.hamburger-menu');
+            
             if (!hamburger.contains(event.target) && !dropdown.contains(event.target)) {
                 dropdown.classList.remove('active');
             }
