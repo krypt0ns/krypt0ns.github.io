@@ -1,4 +1,3 @@
-
         * {
             margin: 0;
             padding: 0;
@@ -95,7 +94,7 @@
         }
 
         .header-content {
-            max-width: 1200px;
+            max-width: 1800px;
             margin: 0 auto;
             display: flex;
             justify-content: space-between;
@@ -103,11 +102,10 @@
         }
 
         .brand {
+            margin-left: 0;
             display: flex;
             align-items: center;
             gap: 1rem;
-            margin-left: calc(-1225vw);
-            position: relative;
         }
 
         @media only screen and (min-width: 1400px) {
@@ -254,52 +252,52 @@
 
         /* Listings Container */
         .listings-container {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
+            position: relative;
             width: 100%;
-            max-width: 1200px;
-            padding: 0 2rem;
-            margin-top: 40px; /* Half of header height */
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 80px 2rem 2rem;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
         }
 
         /* Listings Grid */
         .listings-grid {
             display: grid;
-            grid-template-columns: repeat(3, minmax(280px, 1fr));
-            gap: 1.5rem;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 350px));
+            gap: 2rem;
             justify-content: center;
-            justify-items: center;
+            width: 100%;
+            margin: 0 auto;
         }
 
         /* Large tablets and small desktops */
         @media only screen and (max-width: 1200px) {
             .listings-grid {
-                grid-template-columns: repeat(2, minmax(280px, 1fr));
-                max-width: 900px;
+                grid-template-columns: repeat(auto-fit, minmax(280px, 330px));
+                gap: 1.5rem;
             }
         }
 
         /* Tablets */
         @media only screen and (max-width: 992px) {
             .listings-grid {
-                grid-template-columns: repeat(2, minmax(250px, 1fr));
+                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
                 gap: 1rem;
-                padding: 0 1.5rem;
             }
         }
 
         /* Large phones */
         @media only screen and (max-width: 768px) {
             .listings-grid {
-                grid-template-columns: minmax(250px, 1fr);
-                max-width: 500px;
-                padding: 0 1rem;
+                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+                gap: 1rem;
             }
 
             .main-content {
-                padding: 80px 1rem 0;
+                padding: 80px 1rem 1rem;
             }
 
             .listing-card {
@@ -333,13 +331,11 @@
 
         /* Single and double listing layouts */
         .listings-grid.single-listing {
-            grid-template-columns: minmax(280px, 350px);
-            justify-content: center;
+            grid-template-columns: minmax(280px, 400px);
         }
 
         .listings-grid.two-listings {
-            grid-template-columns: repeat(2, minmax(280px, 350px));
-            justify-content: center;
+            grid-template-columns: repeat(2, minmax(280px, 400px));
         }
 
         @media only screen and (max-width: 768px) {
@@ -364,6 +360,7 @@
             opacity: 0;
             width: 100%;
             max-width: 350px;
+            margin: 0 auto;
         }
 
         /* Update slideshow container for better mobile support */
@@ -1565,4 +1562,132 @@
             opacity: 0.5;
             cursor: not-allowed;
             background: rgba(255, 255, 255, 0.1);
+        }
+
+        /* Add container width breakpoints */
+        @media screen and (min-width: 1921px) {
+            .listings-container {
+                max-width: 1800px;
+            }
+            
+            .listings-grid {
+                grid-template-columns: repeat(auto-fit, minmax(300px, 400px));
+                gap: 2.5rem;
+            }
+        }
+
+        @media screen and (min-width: 2560px) {
+            .listings-container {
+                max-width: 2200px;
+            }
+            
+            .listings-grid {
+                grid-template-columns: repeat(auto-fit, minmax(350px, 450px));
+                gap: 3rem;
+            }
+        }
+
+        /* Update header styles for better scaling */
+        .header {
+            width: 100%;
+            position: fixed;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .header-content {
+            max-width: 1800px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+
+        /* Update brand positioning */
+        .brand {
+            margin-left: 0;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        /* Add styles for ultra-wide screens */
+        @media screen and (min-width: 3440px) {
+            .listings-container {
+                max-width: 3000px;
+            }
+            
+            .listings-grid {
+                grid-template-columns: repeat(auto-fit, minmax(400px, 500px));
+                gap: 3.5rem;
+            }
+            
+            .header-content {
+                max-width: 3000px;
+            }
+        }
+
+        /* Update responsive breakpoints */
+        @media screen and (max-width: 1200px) {
+            .listings-grid {
+                grid-template-columns: repeat(auto-fit, minmax(280px, 330px));
+                gap: 1.5rem;
+            }
+        }
+
+        @media screen and (max-width: 768px) {
+            .listings-container {
+                padding: 80px 1rem 1rem;
+            }
+            
+            .listings-grid {
+                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+                gap: 1rem;
+            }
+            
+            .header-content {
+                padding: 0 1rem;
+            }
+        }
+
+        /* Add styles for maintaining aspect ratio */
+        .listing-card {
+            display: flex;
+            flex-direction: column;
+            aspect-ratio: 3/4;
+        }
+
+        .slideshow-container {
+            aspect-ratio: 16/9;
+            width: 100%;
+            height: auto;
+            min-height: 150px;
+        }
+
+        /* Add styles for better vertical alignment */
+        .main-content {
+            min-height: 100vh;
+            padding-bottom: 2rem;
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+        }
+
+        /* Update single and double listing layouts */
+        .listings-grid.single-listing,
+        .listings-grid.two-listings {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .listings-grid.single-listing {
+            grid-template-columns: minmax(280px, 400px);
+        }
+
+        .listings-grid.two-listings {
+            grid-template-columns: repeat(2, minmax(280px, 400px));
+        }
+
+        @media screen and (max-width: 768px) {
+            .listings-grid.two-listings {
+                grid-template-columns: minmax(250px, 1fr);
+            }
         }
