@@ -155,8 +155,7 @@
         // Function to create a listing card with countdown
         function createListingCard(listing, index) {
             const now = Date.now();
-            const hasCountdown = listing.countdown?.active && listing.countdown.endTime > now;
-            const notReleased = listing.releaseTime > now;
+            const hasCountdown = listing.countdown?.active && listing.countdown.endTime?.toMillis() > now;
             
             return `
                 <div class="listing-card" style="animation-delay: ${index * 0.1}s;">
@@ -168,13 +167,10 @@
                     <h2 class="listing-title">${listing.title}</h2>
                     <p class="listing-price">$${listing.price}</p>
                     <p class="listing-description">${listing.description}</p>
-                    <button class="listing-button ${notReleased || hasCountdown ? 'locked' : ''}" 
+                    <button class="listing-button ${hasCountdown ? 'locked' : ''}" 
                             onclick="showPurchaseModal('${listing.id}', '${listing.title}', ${listing.price})"
-                            ${notReleased ? `data-release-time="${listing.releaseTime}"` : 
-                              hasCountdown ? `data-end-time="${listing.countdown.endTime}"` : ''}>
-                        ${notReleased ? `Releases in ${formatTime(listing.releaseTime - now)}` :
-                          hasCountdown ? `Unlocks in ${formatTime(listing.countdown.endTime - now)}` : 
-                          'Purchase Now'}
+                            ${hasCountdown ? `data-end-time="${listing.countdown.endTime.toMillis()}"` : ''}>
+                        ${hasCountdown ? `Unlocks in ${formatTimeRemaining(listing.countdown.endTime.toMillis() - now)}` : 'Purchase Now'}
                     </button>
                 </div>
             `;
@@ -262,25 +258,6 @@
                 const now = Date.now();
                 let needsRefresh = false;
                 
-                // Check release timers
-                document.querySelectorAll('[data-release-time]').forEach(element => {
-                    const releaseTime = parseInt(element.dataset.releaseTime);
-                    const timeLeft = releaseTime - now;
-                    
-                    if (timeLeft <= 0) {
-                        needsRefresh = true;
-                    } else {
-                        const timeString = formatTime(timeLeft);
-                        if (element.classList.contains('countdown-timer')) {
-                            element.textContent = `Releases in: ${timeString}`;
-                        }
-                        const button = element.closest('.listing-card').querySelector('.listing-button');
-                        if (button) {
-                            button.textContent = `Releases in ${timeString}`;
-                        }
-                    }
-                });
-
                 // Check countdown timers
                 document.querySelectorAll('[data-end-time]').forEach(element => {
                     const endTime = parseInt(element.dataset.endTime);
@@ -289,7 +266,7 @@
                     if (timeLeft <= 0) {
                         needsRefresh = true;
                     } else {
-                        const timeString = formatTime(timeLeft);
+                        const timeString = formatTimeRemaining(timeLeft);
                         if (element.classList.contains('countdown-timer')) {
                             element.textContent = timeString;
                         }
@@ -1220,9 +1197,8 @@
                     const listing = doc.data();
                     
                     if (listing?.countdown?.active) {
-                        const dropTime = listing.countdown.dropTime.toMillis();
-                        const currentTime = Date.now();
-                        const timeLeft = dropTime - currentTime;
+                        const endTime = listing.countdown.endTime.toMillis();
+                        const timeLeft = endTime - Date.now();
                         
                         if (timeLeft <= 0) {
                             if (element.classList.contains('countdown-timer')) {
@@ -1255,21 +1231,23 @@
             });
         }
 
-        // Update the formatTimeRemaining function to be more precise
+        // Update the formatTimeRemaining function for better display
         function formatTimeRemaining(milliseconds) {
-            const minutes = Math.floor(milliseconds / 60000);
+            const hours = Math.floor(milliseconds / 3600000);
+            const minutes = Math.floor((milliseconds % 3600000) / 60000);
             const seconds = Math.floor((milliseconds % 60000) / 1000);
             
-            if (minutes > 0) {
-                return `${minutes}m ${seconds.toString().padStart(2, '0')}s`;
+            if (hours > 0) {
+                return `${hours}h ${minutes}m ${seconds}s`;
+            } else if (minutes > 0) {
+                return `${minutes}m ${seconds}s`;
             }
             return `${seconds}s`;
         }
 
-        // Update initialization to refresh more frequently
+        // Update initialization for smoother countdown
         document.addEventListener('DOMContentLoaded', () => {
-            // Update countdowns very frequently (every 10ms for smooth countdown)
-            setInterval(updateCountdownDisplays, 10);
+            setInterval(updateCountdownDisplays, 100); // Update every 100ms for smooth countdown
             
             // ... rest of your initialization code ...
         });

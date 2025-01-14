@@ -17,6 +17,35 @@
             await checkIPBan();
         });
     </script>
+    <style>
+    .countdown-inputs {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+        margin: 1rem 0;
+    }
+
+    .input-group {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .input-group label {
+        margin-bottom: 0.5rem;
+        color: #fff;
+    }
+
+    .input-group input {
+        width: 70px;
+        padding: 0.5rem;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 4px;
+        background: rgba(255, 255, 255, 0.05);
+        color: #fff;
+        text-align: center;
+    }
+    </style>
 </head>
 <body>
     <div id="particles-js"></div>
@@ -296,11 +325,22 @@
                         <textarea id="listing-description" rows="4" required placeholder=" "></textarea>
                         <label>Description</label>
                     </div>
-                    <div class="form-group">
-                        <input type="datetime-local" id="listing-release-time" required>
-                        <label class="datetime-label">Release Date/Time</label>
+                    <!-- Replace datetime with countdown inputs -->
+                    <div class="countdown-inputs">
+                        <div class="input-group">
+                            <input type="number" id="countdown-hours" min="0" max="23" value="0">
+                            <label>Hours</label>
+                        </div>
+                        <div class="input-group">
+                            <input type="number" id="countdown-minutes" min="0" max="59" value="0">
+                            <label>Minutes</label>
+                        </div>
+                        <div class="input-group">
+                            <input type="number" id="countdown-seconds" min="0" max="59" value="0">
+                            <label>Seconds</label>
+                        </div>
                     </div>
-                    <!-- Updated Account Credentials Section -->
+                    <!-- Account credentials section -->
                     <div class="form-group">
                         <input type="text" id="account-username" placeholder=" ">
                         <label>Account Username</label>
@@ -379,28 +419,34 @@
         }
 
         async function handleListingSubmit() {
+            const hours = parseInt(document.getElementById('countdown-hours').value) || 0;
+            const minutes = parseInt(document.getElementById('countdown-minutes').value) || 0;
+            const seconds = parseInt(document.getElementById('countdown-seconds').value) || 0;
+
+            // Calculate total duration in milliseconds
+            const durationMs = (hours * 3600000) + (minutes * 60000) + (seconds * 1000);
+            const startTime = Date.now();
+            const endTime = startTime + durationMs;
+
             const formData = {
                 title: document.getElementById('listing-title').value,
                 price: document.getElementById('listing-price').value,
                 description: document.getElementById('listing-description').value,
-                releaseTime: new Date(document.getElementById('listing-release-time').value).getTime(),
-                // Add release duration in minutes
-                releaseDuration: calculateDuration(new Date(document.getElementById('listing-release-time').value).getTime()),
                 image: document.getElementById('listing-image').files[0],
                 accountDetails: {
                     username: document.getElementById('account-username').value.trim(),
                     password: document.getElementById('account-password').value.trim()
+                },
+                countdown: {
+                    active: true,
+                    startTime: firebase.firestore.Timestamp.fromMillis(startTime),
+                    endTime: firebase.firestore.Timestamp.fromMillis(endTime),
+                    duration: durationMs
                 }
             };
 
-            if (!formData.title || !formData.price || !formData.description || !formData.image || !formData.releaseTime) {
+            if (!formData.title || !formData.price || !formData.description || !formData.image) {
                 showAlert('Please fill in all required fields.', 'error');
-                return;
-            }
-
-            // Validate that release time is in the future
-            if (formData.releaseTime <= Date.now()) {
-                showAlert('Release time must be in the future.', 'error');
                 return;
             }
 
@@ -460,15 +506,9 @@
                     description: formData.description,
                     imageUrl: formData.imageUrl,
                     status: 'Active',
-                    releaseTime: formData.releaseTime,
                     createdAt: firebase.firestore.FieldValue.serverTimestamp(),
                     accountDetails: formData.accountDetails,
-                    countdown: {
-                        active: false,
-                        endTime: null,
-                        startTime: null,
-                        duration: null
-                    }
+                    countdown: formData.countdown
                 });
 
                 showAlert('Listing created successfully!', 'success');
@@ -2279,6 +2319,61 @@
                 return `${minutes}m ${seconds}s`;
             }
             return `${seconds}s`;
+        }
+
+        // Add a function to start countdown with simple duration input
+        async function startCountdown(listingId) {
+            try {
+                // Create countdown input HTML
+                const inputHtml = `
+                    <div class="countdown-inputs" style="margin: 1rem 0;">
+                        <div class="input-group">
+                            <label>Hours:</label>
+                            <input type="number" id="countdown-hours" min="0" max="23" value="0">
+                        </div>
+                        <div class="input-group">
+                            <label>Minutes:</label>
+                            <input type="number" id="countdown-minutes" min="0" max="59" value="0">
+                        </div>
+                        <div class="input-group">
+                            <label>Seconds:</label>
+                            <input type="number" id="countdown-seconds" min="0" max="59" value="0">
+                        </div>
+                    </div>
+                `;
+
+                // Show confirmation dialog with inputs
+                const confirmed = await showConfirmDialog(
+                    'Start Countdown',
+                    `Set countdown duration:${inputHtml}`,
+                    'Start'
+                );
+
+                if (confirmed) {
+                    const hours = parseInt(document.getElementById('countdown-hours').value) || 0;
+                    const minutes = parseInt(document.getElementById('countdown-minutes').value) || 0;
+                    const seconds = parseInt(document.getElementById('countdown-seconds').value) || 0;
+
+                    // Calculate total duration in milliseconds
+                    const durationMs = (hours * 3600000) + (minutes * 60000) + (seconds * 1000);
+                    const startTime = Date.now();
+                    const endTime = startTime + durationMs;
+
+                    await db.collection('listings').doc(listingId).update({
+                        countdown: {
+                            active: true,
+                            startTime: firebase.firestore.Timestamp.fromMillis(startTime),
+                            endTime: firebase.firestore.Timestamp.fromMillis(endTime),
+                            duration: durationMs
+                        }
+                    });
+
+                    showAlert('Countdown started successfully', 'success');
+                }
+            } catch (error) {
+                console.error('Error starting countdown:', error);
+                showAlert('Error starting countdown: ' + error.message, 'error');
+            }
         }
     </script>
 </body>
