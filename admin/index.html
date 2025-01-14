@@ -423,10 +423,10 @@
             const minutes = parseInt(document.getElementById('countdown-minutes').value) || 0;
             const seconds = parseInt(document.getElementById('countdown-seconds').value) || 0;
 
-            // Calculate total duration in milliseconds
-            const durationMs = (hours * 3600000) + (minutes * 60000) + (seconds * 1000);
-            const startTime = Date.now();
-            const endTime = startTime + durationMs;
+            // Get EST time for the drop
+            const estTime = new Date().toLocaleString("en-US", {timeZone: "America/New_York"});
+            const estStartTime = new Date(estTime).getTime();
+            const estEndTime = estStartTime + ((hours * 3600000) + (minutes * 60000) + (seconds * 1000));
 
             const formData = {
                 title: document.getElementById('listing-title').value,
@@ -439,9 +439,9 @@
                 },
                 countdown: {
                     active: true,
-                    startTime: firebase.firestore.Timestamp.fromMillis(startTime),
-                    endTime: firebase.firestore.Timestamp.fromMillis(endTime),
-                    duration: durationMs
+                    startTime: firebase.firestore.Timestamp.fromMillis(estStartTime),
+                    endTime: firebase.firestore.Timestamp.fromMillis(estEndTime),
+                    timezone: 'EST'
                 }
             };
 
@@ -2163,23 +2163,35 @@
 
         // Function to update countdown displays in admin panel
         function updateCountdownDisplays() {
-            const now = Date.now();
-            document.querySelectorAll('.countdown-status').forEach(status => {
+            document.querySelectorAll('.countdown-status').forEach(async status => {
                 const listingCard = status.closest('.listing-card');
                 const listingId = listingCard.id.replace('listing-', '');
                 
-                db.collection('listings').doc(listingId).get().then(doc => {
+                try {
+                    const doc = await db.collection('listings').doc(listingId).get();
                     const listing = doc.data();
-                    if (listing.countdown?.active) {
-                        const timeLeft = listing.countdown.endTime - now;
+                    
+                    if (listing?.countdown?.active) {
+                        // Get current EST time
+                        const estTime = new Date().toLocaleString("en-US", {timeZone: "America/New_York"});
+                        const estNow = new Date(estTime).getTime();
+                        const endTime = listing.countdown.endTime.toMillis();
+                        const timeLeft = endTime - estNow;
+
                         if (timeLeft > 0) {
-                            status.textContent = `Countdown active - Time remaining: ${formatTimeRemaining(timeLeft)}`;
+                            status.textContent = `Drops in: ${formatTimeRemaining(timeLeft)} EST`;
                         } else {
-                            status.textContent = 'Countdown ended';
-                            stopCountdown(listingId);
+                            status.textContent = 'Drop time reached';
+                            // Update listing status when drop time is reached
+                            await db.collection('listings').doc(listingId).update({
+                                'countdown.active': false,
+                                status: 'Active' // or whatever status you want for dropped items
+                            });
                         }
                     }
-                });
+                } catch (error) {
+                    console.error('Error updating countdown:', error);
+                }
             });
         }
 
@@ -2312,68 +2324,21 @@
 
         // Add function to format remaining time in a more readable way
         function formatTimeRemaining(milliseconds) {
-            const minutes = Math.floor(milliseconds / 60000);
+            const hours = Math.floor(milliseconds / 3600000);
+            const minutes = Math.floor((milliseconds % 3600000) / 60000);
             const seconds = Math.floor((milliseconds % 60000) / 1000);
             
-            if (minutes > 0) {
-                return `${minutes}m ${seconds}s`;
-            }
-            return `${seconds}s`;
+            const parts = [];
+            if (hours > 0) parts.push(`${hours}h`);
+            if (minutes > 0) parts.push(`${minutes}m`);
+            parts.push(`${seconds}s`);
+            
+            return parts.join(' ');
         }
 
-        // Add a function to start countdown with simple duration input
-        async function startCountdown(listingId) {
-            try {
-                // Create countdown input HTML
-                const inputHtml = `
-                    <div class="countdown-inputs" style="margin: 1rem 0;">
-                        <div class="input-group">
-                            <label>Hours:</label>
-                            <input type="number" id="countdown-hours" min="0" max="23" value="0">
-                        </div>
-                        <div class="input-group">
-                            <label>Minutes:</label>
-                            <input type="number" id="countdown-minutes" min="0" max="59" value="0">
-                        </div>
-                        <div class="input-group">
-                            <label>Seconds:</label>
-                            <input type="number" id="countdown-seconds" min="0" max="59" value="0">
-                        </div>
-                    </div>
-                `;
-
-                // Show confirmation dialog with inputs
-                const confirmed = await showConfirmDialog(
-                    'Start Countdown',
-                    `Set countdown duration:${inputHtml}`,
-                    'Start'
-                );
-
-                if (confirmed) {
-                    const hours = parseInt(document.getElementById('countdown-hours').value) || 0;
-                    const minutes = parseInt(document.getElementById('countdown-minutes').value) || 0;
-                    const seconds = parseInt(document.getElementById('countdown-seconds').value) || 0;
-
-                    // Calculate total duration in milliseconds
-                    const durationMs = (hours * 3600000) + (minutes * 60000) + (seconds * 1000);
-                    const startTime = Date.now();
-                    const endTime = startTime + durationMs;
-
-                    await db.collection('listings').doc(listingId).update({
-                        countdown: {
-                            active: true,
-                            startTime: firebase.firestore.Timestamp.fromMillis(startTime),
-                            endTime: firebase.firestore.Timestamp.fromMillis(endTime),
-                            duration: durationMs
-                        }
-                    });
-
-                    showAlert('Countdown started successfully', 'success');
-                }
-            } catch (error) {
-                console.error('Error starting countdown:', error);
-                showAlert('Error starting countdown: ' + error.message, 'error');
-            }
+        // Add a function to convert any time to EST
+        function convertToEST(date) {
+            return new Date(date.toLocaleString("en-US", {timeZone: "America/New_York"}));
         }
     </script>
 </body>

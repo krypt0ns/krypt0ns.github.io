@@ -154,11 +154,10 @@
 
         // Function to create a listing card with countdown
         function createListingCard(listing, index) {
-            const now = Date.now();
-            const hasCountdown = listing.countdown?.active && listing.countdown.endTime?.toMillis() > now;
+            const estEndTime = listing.countdown?.active ? formatEstTime(listing.countdown.endTime.toMillis()) : '';
             
             return `
-                <div class="listing-card" style="animation-delay: ${index * 0.1}s;">
+                <div class="listing-card" id="listing-${listing.id}">
                     <div class="slideshow-container">
                         <div class="slides">
                             <img src="${listing.imageUrl}" alt="${listing.title}" class="listing-image active">
@@ -167,11 +166,17 @@
                     <h2 class="listing-title">${listing.title}</h2>
                     <p class="listing-price">$${listing.price}</p>
                     <p class="listing-description">${listing.description}</p>
-                    <button class="listing-button ${hasCountdown ? 'locked' : ''}" 
+                    <button class="listing-button ${listing.countdown?.active ? 'locked' : ''}" 
                             onclick="showPurchaseModal('${listing.id}', '${listing.title}', ${listing.price})"
-                            ${hasCountdown ? `data-end-time="${listing.countdown.endTime.toMillis()}"` : ''}>
-                        ${hasCountdown ? `Unlocks in ${formatTimeRemaining(listing.countdown.endTime.toMillis() - now)}` : 'Purchase Now'}
+                            ${listing.countdown?.active ? `data-end-time="${listing.countdown.endTime.toMillis()}"` : ''}>
+                        ${listing.countdown?.active ? `Unlocks in ${formatTimeRemaining(listing.countdown.endTime.toMillis() - Date.now())}` : 'Purchase Now'}
                     </button>
+                    ${listing.countdown?.active ? `
+                        <div class="countdown-info">
+                            <span class="est-time">Drops at: ${estEndTime} EST</span>
+                            <span class="countdown-timer" data-end-time="${listing.countdown.endTime.toMillis()}"></span>
+                        </div>
+                    ` : ''}
                 </div>
             `;
         }
@@ -192,24 +197,27 @@
         }
 
         // Function to load listings with countdown
-        function loadListings() {
+        async function loadListings() {
             const listingsGrid = document.getElementById('listings-grid');
             
-            db.collection('listings').onSnapshot((snapshot) => {
+            db.collection('listings').onSnapshot(async (snapshot) => {
                 listingsGrid.innerHTML = '';
                 let activeListingsCount = 0;
                 
-                snapshot.forEach((doc) => {
-                    const listing = { id: doc.id, ...doc.data() };
+                const listings = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                
+                for (let i = 0; i < listings.length; i++) {
+                    const listing = listings[i];
                     
                     // Skip disabled or sold listings
                     if (listing.status === 'Disabled' || listing.status === 'Sold') {
-                        return;
+                        continue;
                     }
                     
                     activeListingsCount++;
-                    listingsGrid.innerHTML += createListingCard(listing, activeListingsCount);
-                });
+                    const cardHtml = await createListingCard(listing, activeListingsCount);
+                    listingsGrid.innerHTML += cardHtml;
+                }
                 
                 // Add classes based on number of active listings
                 listingsGrid.className = 'listings-grid';
@@ -255,31 +263,34 @@
             }
             
             window.countdownInterval = setInterval(() => {
-                const now = Date.now();
-                let needsRefresh = false;
-                
-                // Check countdown timers
-                document.querySelectorAll('[data-end-time]').forEach(element => {
-                    const endTime = parseInt(element.dataset.endTime);
-                    const timeLeft = endTime - now;
+                // Get server time first
+                db.collection('server').doc('time').get().then(doc => {
+                    const serverTime = doc.data().timestamp.toMillis();
+                    let needsRefresh = false;
                     
-                    if (timeLeft <= 0) {
-                        needsRefresh = true;
-                    } else {
-                        const timeString = formatTimeRemaining(timeLeft);
-                        if (element.classList.contains('countdown-timer')) {
-                            element.textContent = timeString;
+                    document.querySelectorAll('[data-end-time]').forEach(element => {
+                        const endTime = parseInt(element.dataset.endTime);
+                        const timeLeft = endTime - serverTime;
+                        
+                        if (timeLeft <= 0) {
+                            needsRefresh = true;
+                        } else {
+                            const timeString = formatTimeRemaining(timeLeft);
+                            if (element.classList.contains('countdown-timer')) {
+                                element.textContent = timeString;
+                            }
+                            const button = element.closest('.listing-card').querySelector('.listing-button');
+                            if (button) {
+                                button.textContent = `Unlocks in ${timeString}`;
+                                button.classList.add('locked');
+                            }
                         }
-                        const button = element.closest('.listing-card').querySelector('.listing-button');
-                        if (button) {
-                            button.textContent = `Unlocks in ${timeString}`;
-                        }
+                    });
+                    
+                    if (needsRefresh) {
+                        loadListings();
                     }
                 });
-                
-                if (needsRefresh) {
-                    loadListings(); // Refresh listings when any timer ends
-                }
             }, 1000);
         }
 
@@ -1198,29 +1209,26 @@
                     
                     if (listing?.countdown?.active) {
                         const endTime = listing.countdown.endTime.toMillis();
-                        const timeLeft = endTime - Date.now();
+                        // Get current EST time
+                        const currentEstTime = new Date().toLocaleString("en-US", {timeZone: "America/New_York"});
+                        const estNow = new Date(currentEstTime).getTime();
+                        const timeLeft = endTime - estNow;
                         
                         if (timeLeft <= 0) {
                             if (element.classList.contains('countdown-timer')) {
-                                element.textContent = 'Ended';
+                                element.textContent = 'Available Now';
                             }
                             const button = element.closest('.listing-card').querySelector('.listing-button');
                             if (button) {
-                                button.textContent = 'Available Now';
+                                button.textContent = 'Purchase';
                                 button.classList.remove('disabled');
                             }
-                            
-                            await db.collection('listings').doc(listingId).update({
-                                'countdown.active': false
-                            });
                         } else {
                             const timeString = formatTimeRemaining(timeLeft);
-                            if (element.classList.contains('countdown-timer')) {
-                                element.textContent = timeString;
-                            }
+                            element.textContent = `Drops in: ${timeString} EST`;
                             const button = element.closest('.listing-card').querySelector('.listing-button');
                             if (button) {
-                                button.textContent = `Unlocks in ${timeString}`;
+                                button.textContent = `Drops in ${timeString} EST`;
                                 button.classList.add('disabled');
                             }
                         }
@@ -1251,6 +1259,17 @@
             
             // ... rest of your initialization code ...
         });
+
+        // Add a helper function to display EST time
+        function formatEstTime(timestamp) {
+            return new Date(timestamp).toLocaleString("en-US", {
+                timeZone: "America/New_York",
+                hour: 'numeric',
+                minute: 'numeric',
+                second: 'numeric',
+                hour12: true
+            });
+        }
     </script>
     <div id="purchase-modal" class="modal">
         <div class="modal-content">
