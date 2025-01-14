@@ -1107,17 +1107,29 @@
                     price: currentPurchase.price,
                     paymentMethod: currentPurchase.paymentMethod,
                     proofUrl: currentPurchase.proofUrl || null,
-                    status: currentPurchase.paymentMethod === 'balance' ? 'Processing' : 'Pending',
+                    status: 'Pending',
                     createdAt: firebase.firestore.FieldValue.serverTimestamp(),
                     ip: userData.ip,
-                    quantity: 1 // Added for admin panel display
+                    quantity: 1,
+                    adminViewed: false,
+                    adminId: null,
+                    lastUpdated: firebase.firestore.FieldValue.serverTimestamp(),
+                    notes: '',
+                    orderNumber: Date.now().toString(36).toUpperCase()
                 };
 
                 // Add order to database
-                const orderRef = await db.collection('orders').add(orderData);
+                await db.collection('orders').add(orderData);
 
-                // If using balance, deduct immediately
+                // Only deduct balance if payment method is 'balance'
                 if (currentPurchase.paymentMethod === 'balance') {
+                    // Verify user has sufficient balance before deducting
+                    const currentBalance = userData.balance || 0;
+                    if (currentBalance < currentPurchase.price) {
+                        showAlert('Insufficient balance', 'error');
+                        return;
+                    }
+
                     await db.collection('users').doc(username).update({
                         balance: firebase.firestore.FieldValue.increment(-currentPurchase.price)
                     });

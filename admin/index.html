@@ -384,6 +384,8 @@
                 price: document.getElementById('listing-price').value,
                 description: document.getElementById('listing-description').value,
                 releaseTime: new Date(document.getElementById('listing-release-time').value).getTime(),
+                // Add release duration in minutes
+                releaseDuration: calculateDuration(new Date(document.getElementById('listing-release-time').value).getTime()),
                 image: document.getElementById('listing-image').files[0],
                 accountDetails: {
                     username: document.getElementById('account-username').value.trim(),
@@ -1521,7 +1523,7 @@
                     return;
                 }
 
-                const timestamp = orderDoc.data().createdAt?.toDate() || new Date();
+                const timestamp = order.createdAt?.toDate() || new Date();
                 const detailsHTML = `
                     <div class="order-details-content">
                         <div class="order-details-header">
@@ -1531,7 +1533,7 @@
                         <div class="order-details-body">
                             <div class="order-detail-row">
                                 <span class="order-detail-label">Order ID:</span>
-                                <span class="order-detail-value">#${orderId.slice(-6).toUpperCase()}</span>
+                                <span class="order-detail-value">#${order.orderNumber || orderId.slice(-6).toUpperCase()}</span>
                             </div>
                             <div class="order-detail-row">
                                 <span class="order-detail-label">User:</span>
@@ -1613,51 +1615,52 @@
         }
 
         async function approveOrder(orderId) {
-            const confirmed = await showConfirm(
-                'Approve Order',
-                'Are you sure you want to approve this order?'
-            );
+            try {
+                const orderRef = db.collection('orders').doc(orderId);
+                const orderDoc = await orderRef.get();
+                const orderData = orderDoc.data();
 
-            if (confirmed) {
-                try {
-                    const orderRef = db.collection('orders').doc(orderId);
-                    const orderDoc = await orderRef.get();
-                    const orderData = orderDoc.data();
+                // Get listing data
+                const listingDoc = await db.collection('listings').doc(orderData.listingId).get();
+                const listingData = listingDoc.data();
 
-                    // Get listing details including account credentials
-                    const listingDoc = await db.collection('listings').doc(orderData.listingId).get();
-                    const listingData = listingDoc.data();
+                if (!orderDoc.exists || !listingDoc.exists) {
+                    showAlert('Order or listing not found', 'error');
+                    return;
+                }
 
-                    const batch = db.batch();
+                const batch = db.batch();
 
-                    // Update order status and include account details
-                    batch.update(orderRef, {
-                        status: 'Completed',
-                        completedAt: firebase.firestore.FieldValue.serverTimestamp(),
-                        accountDetails: listingData.accountDetails || null
-                    });
+                // Update order status and include account details
+                batch.update(orderRef, {
+                    status: 'Completed',
+                    completedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    accountDetails: listingData.accountDetails || null
+                });
 
-                    // Update listing with final buyer info and sold status
-                    batch.update(db.collection('listings').doc(orderData.listingId), {
-                        status: 'Sold',
-                        pendingOrder: false,
-                        buyerId: orderData.userId,
-                        buyerUsername: orderData.username,
-                        buyerAvatar: orderData.userAvatar,
-                        soldAt: firebase.firestore.FieldValue.serverTimestamp()
-                    });
+                // Update listing with final buyer info and sold status
+                batch.update(db.collection('listings').doc(orderData.listingId), {
+                    status: 'Sold',
+                    pendingOrder: false,
+                    buyerId: orderData.userId,
+                    buyerUsername: orderData.username,
+                    buyerAvatar: orderData.userAvatar,
+                    soldAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
 
-                    // Deduct balance from user
+                // Only deduct balance if payment method was 'balance'
+                if (orderData.paymentMethod === 'balance') {
                     batch.update(db.collection('users').doc(orderData.userId), {
                         balance: firebase.firestore.FieldValue.increment(-orderData.price)
                     });
-
-                    await batch.commit();
-                    showAlert('Order approved successfully!', 'success');
-                } catch (error) {
-                    console.error('Error approving order:', error);
-                    showAlert('Error approving order: ' + error.message, 'error');
                 }
+
+                await batch.commit();
+                showAlert('Order approved successfully', 'success');
+                
+            } catch (error) {
+                console.error('Error approving order:', error);
+                showAlert('Error approving order: ' + error.message, 'error');
             }
         }
 
@@ -2031,12 +2034,13 @@
         // Function to start countdown for a listing
         async function startCountdown(listingId, duration) {
             try {
+                const now = Date.now();
                 await db.collection('listings').doc(listingId).update({
                     countdown: {
                         active: true,
-                        endTime: Date.now() + duration,
-                        startTime: Date.now(),
-                        duration: duration
+                        startTime: now,
+                        endTime: now + (parseInt(duration) * 60000), // Convert minutes to milliseconds
+                        duration: parseInt(duration)
                     }
                 });
                 showAlert('Countdown started successfully', 'success');
@@ -2066,20 +2070,25 @@
 
         // Add countdown controls to the listing card
         function createListingCard(listing) {
+            const duration = listing.releaseDuration || 0;
+            
             return `
                 <div class="listing-card" id="listing-${listing.id}">
                     <!-- Existing listing card content -->
                     
-                    <!-- Add countdown controls -->
+                    <!-- Add countdown controls with calculated duration -->
                     <div class="countdown-controls">
                         <select class="countdown-duration">
-                            <option value="300000">5 minutes</option>
-                            <option value="600000">10 minutes</option>
-                            <option value="900000">15 minutes</option>
-                            <option value="1800000">30 minutes</option>
-                            <option value="3600000">1 hour</option>
-                            <option value="7200000">2 hours</option>
-                            <option value="86400000">24 hours</option>
+                            <option value="${duration}" ${duration > 0 ? 'selected' : ''}>
+                                ${duration} minutes (Release Time)
+                            </option>
+                            <option value="5">5 minutes</option>
+                            <option value="10">10 minutes</option>
+                            <option value="15">15 minutes</option>
+                            <option value="30">30 minutes</option>
+                            <option value="60">1 hour</option>
+                            <option value="120">2 hours</option>
+                            <option value="1440">24 hours</option>
                         </select>
                         <button onclick="startCountdown('${listing.id}', document.querySelector('#listing-${listing.id} .countdown-duration').value)">
                             Start Countdown
@@ -2089,10 +2098,10 @@
                         </button>
                     </div>
                     
-                    <!-- Add countdown status display -->
+                    <!-- Update countdown status display -->
                     ${listing.countdown?.active ? `
                         <div class="countdown-status">
-                            Countdown active - Ends in: ${formatTime(listing.countdown.endTime - Date.now())}
+                            Countdown active - Time remaining: ${formatTimeRemaining(listing.countdown.endTime - Date.now())}
                         </div>
                     ` : ''}
                 </div>
@@ -2109,11 +2118,11 @@
                 db.collection('listings').doc(listingId).get().then(doc => {
                     const listing = doc.data();
                     if (listing.countdown?.active) {
-                        if (listing.countdown.endTime > now) {
-                            status.textContent = `Countdown active - Ends in: ${formatTime(listing.countdown.endTime - now)}`;
+                        const timeLeft = listing.countdown.endTime - now;
+                        if (timeLeft > 0) {
+                            status.textContent = `Countdown active - Time remaining: ${formatTimeRemaining(timeLeft)}`;
                         } else {
                             status.textContent = 'Countdown ended';
-                            // Optionally auto-stop the countdown
                             stopCountdown(listingId);
                         }
                     }
@@ -2239,6 +2248,24 @@
                 return userData.ip;
             }
             return null;
+        }
+
+        // Add function to calculate duration in minutes
+        function calculateDuration(targetTime) {
+            const now = Date.now();
+            const difference = targetTime - now;
+            return Math.max(0, Math.floor(difference / 60000)); // Convert to minutes, minimum 0
+        }
+
+        // Add function to format remaining time in a more readable way
+        function formatTimeRemaining(milliseconds) {
+            const minutes = Math.floor(milliseconds / 60000);
+            const seconds = Math.floor((milliseconds % 60000) / 1000);
+            
+            if (minutes > 0) {
+                return `${minutes}m ${seconds}s`;
+            }
+            return `${seconds}s`;
         }
     </script>
 </body>
