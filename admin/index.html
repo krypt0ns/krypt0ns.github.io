@@ -2043,15 +2043,17 @@
         // Function to start countdown for a listing
         async function startCountdown(listingId, duration) {
             try {
-                const now = Date.now();
-                const endTime = now + (parseInt(duration) * 60000); // Convert minutes to milliseconds
+                // Get the admin's local time for drop
+                const dropTime = Date.now() + (parseInt(duration) * 60000);
+                const currentTime = Date.now();
+                const countdownDuration = dropTime - currentTime; // Time difference in milliseconds
                 
                 await db.collection('listings').doc(listingId).update({
                     countdown: {
                         active: true,
-                        startTime: firebase.firestore.Timestamp.fromMillis(now),
-                        duration: parseInt(duration),
-                        endTime: firebase.firestore.Timestamp.fromMillis(endTime)
+                        dropTime: firebase.firestore.Timestamp.fromMillis(dropTime),
+                        duration: countdownDuration, // Store the fixed duration in milliseconds
+                        startTime: firebase.firestore.Timestamp.fromMillis(currentTime)
                     }
                 });
                 showAlert('Countdown started successfully', 'success');

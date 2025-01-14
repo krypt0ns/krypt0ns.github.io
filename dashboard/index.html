@@ -1220,8 +1220,9 @@
                     const listing = doc.data();
                     
                     if (listing?.countdown?.active) {
-                        // Calculate time left using server timestamp
-                        const timeLeft = listing.countdown.endTime.toMillis() - Date.now();
+                        const dropTime = listing.countdown.dropTime.toMillis();
+                        const currentTime = Date.now();
+                        const timeLeft = dropTime - currentTime;
                         
                         if (timeLeft <= 0) {
                             if (element.classList.contains('countdown-timer')) {
@@ -1233,7 +1234,6 @@
                                 button.classList.remove('disabled');
                             }
                             
-                            // Update listing status when countdown ends
                             await db.collection('listings').doc(listingId).update({
                                 'countdown.active': false
                             });
@@ -1255,16 +1255,15 @@
             });
         }
 
-        // Update the formatTimeRemaining function for more precise timing
+        // Update the formatTimeRemaining function to be more precise
         function formatTimeRemaining(milliseconds) {
             const minutes = Math.floor(milliseconds / 60000);
             const seconds = Math.floor((milliseconds % 60000) / 1000);
-            const ms = Math.floor((milliseconds % 1000) / 10); // Get centiseconds (1/100th of a second)
             
             if (minutes > 0) {
                 return `${minutes}m ${seconds.toString().padStart(2, '0')}s`;
             }
-            return `${seconds}s ${ms.toString().padStart(2, '0')}`;
+            return `${seconds}s`;
         }
 
         // Update initialization to refresh more frequently
