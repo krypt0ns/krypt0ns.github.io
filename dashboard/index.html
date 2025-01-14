@@ -154,10 +154,12 @@
 
         // Function to create a listing card with countdown
         function createListingCard(listing, index) {
-            const estEndTime = listing.countdown?.active ? formatEstTime(listing.countdown.endTime.toMillis()) : '';
+            const now = Date.now();
+            const hasCountdown = listing.countdown?.active && listing.countdown.endTime > now;
+            const notReleased = listing.releaseTime > now;
             
             return `
-                <div class="listing-card" id="listing-${listing.id}">
+                <div class="listing-card" style="animation-delay: ${index * 0.1}s;">
                     <div class="slideshow-container">
                         <div class="slides">
                             <img src="${listing.imageUrl}" alt="${listing.title}" class="listing-image active">
@@ -166,17 +168,14 @@
                     <h2 class="listing-title">${listing.title}</h2>
                     <p class="listing-price">$${listing.price}</p>
                     <p class="listing-description">${listing.description}</p>
-                    <button class="listing-button ${listing.countdown?.active ? 'locked' : ''}" 
+                    <button class="listing-button ${notReleased || hasCountdown ? 'locked' : ''}" 
                             onclick="showPurchaseModal('${listing.id}', '${listing.title}', ${listing.price})"
-                            ${listing.countdown?.active ? `data-end-time="${listing.countdown.endTime.toMillis()}"` : ''}>
-                        ${listing.countdown?.active ? `Unlocks in ${formatTimeRemaining(listing.countdown.endTime.toMillis() - Date.now())}` : 'Purchase Now'}
+                            ${notReleased ? `data-release-time="${listing.releaseTime}"` : 
+                              hasCountdown ? `data-end-time="${listing.countdown.endTime}"` : ''}>
+                        ${notReleased ? `Releases in ${formatTime(listing.releaseTime - now)}` :
+                          hasCountdown ? `Unlocks in ${formatTime(listing.countdown.endTime - now)}` : 
+                          'Purchase Now'}
                     </button>
-                    ${listing.countdown?.active ? `
-                        <div class="countdown-info">
-                            <span class="est-time">Drops at: ${estEndTime} EST</span>
-                            <span class="countdown-timer" data-end-time="${listing.countdown.endTime.toMillis()}"></span>
-                        </div>
-                    ` : ''}
                 </div>
             `;
         }
@@ -197,27 +196,24 @@
         }
 
         // Function to load listings with countdown
-        async function loadListings() {
+        function loadListings() {
             const listingsGrid = document.getElementById('listings-grid');
             
-            db.collection('listings').onSnapshot(async (snapshot) => {
+            db.collection('listings').onSnapshot((snapshot) => {
                 listingsGrid.innerHTML = '';
                 let activeListingsCount = 0;
                 
-                const listings = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                
-                for (let i = 0; i < listings.length; i++) {
-                    const listing = listings[i];
+                snapshot.forEach((doc) => {
+                    const listing = { id: doc.id, ...doc.data() };
                     
                     // Skip disabled or sold listings
                     if (listing.status === 'Disabled' || listing.status === 'Sold') {
-                        continue;
+                        return;
                     }
                     
                     activeListingsCount++;
-                    const cardHtml = await createListingCard(listing, activeListingsCount);
-                    listingsGrid.innerHTML += cardHtml;
-                }
+                    listingsGrid.innerHTML += createListingCard(listing, activeListingsCount);
+                });
                 
                 // Add classes based on number of active listings
                 listingsGrid.className = 'listings-grid';
@@ -263,34 +259,50 @@
             }
             
             window.countdownInterval = setInterval(() => {
-                // Get server time first
-                db.collection('server').doc('time').get().then(doc => {
-                    const serverTime = doc.data().timestamp.toMillis();
-                    let needsRefresh = false;
+                const now = Date.now();
+                let needsRefresh = false;
+                
+                // Check release timers
+                document.querySelectorAll('[data-release-time]').forEach(element => {
+                    const releaseTime = parseInt(element.dataset.releaseTime);
+                    const timeLeft = releaseTime - now;
                     
-                    document.querySelectorAll('[data-end-time]').forEach(element => {
-                        const endTime = parseInt(element.dataset.endTime);
-                        const timeLeft = endTime - serverTime;
-                        
-                        if (timeLeft <= 0) {
-                            needsRefresh = true;
-                        } else {
-                            const timeString = formatTimeRemaining(timeLeft);
-                            if (element.classList.contains('countdown-timer')) {
-                                element.textContent = timeString;
-                            }
-                            const button = element.closest('.listing-card').querySelector('.listing-button');
-                            if (button) {
-                                button.textContent = `Unlocks in ${timeString}`;
-                                button.classList.add('locked');
-                            }
+                    if (timeLeft <= 0) {
+                        needsRefresh = true;
+                    } else {
+                        const timeString = formatTime(timeLeft);
+                        if (element.classList.contains('countdown-timer')) {
+                            element.textContent = `Releases in: ${timeString}`;
                         }
-                    });
-                    
-                    if (needsRefresh) {
-                        loadListings();
+                        const button = element.closest('.listing-card').querySelector('.listing-button');
+                        if (button) {
+                            button.textContent = `Releases in ${timeString}`;
+                        }
                     }
                 });
+
+                // Check countdown timers
+                document.querySelectorAll('[data-end-time]').forEach(element => {
+                    const endTime = parseInt(element.dataset.endTime);
+                    const timeLeft = endTime - now;
+                    
+                    if (timeLeft <= 0) {
+                        needsRefresh = true;
+                    } else {
+                        const timeString = formatTime(timeLeft);
+                        if (element.classList.contains('countdown-timer')) {
+                            element.textContent = timeString;
+                        }
+                        const button = element.closest('.listing-card').querySelector('.listing-button');
+                        if (button) {
+                            button.textContent = `Unlocks in ${timeString}`;
+                        }
+                    }
+                });
+                
+                if (needsRefresh) {
+                    loadListings(); // Refresh listings when any timer ends
+                }
             }, 1000);
         }
 
@@ -444,7 +456,7 @@
                 title: title,
                 price: price,
                 mathAnswer: null,
-                paymentMethod: null,
+                paymentMethod: null, // Initialize payment method as null
                 proofUrl: null
             };
 
@@ -459,7 +471,6 @@
             `;
             
             modal.style.display = 'flex';
-            modal.classList.add('purchase-locked');
             requestAnimationFrame(() => {
                 modal.classList.add('show');
             });
@@ -537,9 +548,10 @@
                 return;
             }
             
-            // Generate random numbers between 1 and 50
-            const num1 = Math.floor(Math.random() * 50) + 1;
-            const num2 = Math.floor(Math.random() * 50) + 1;
+            // Generate random numbers between 10 and 999 for first number
+            // and between 10 and 99 for second number
+            const num1 = Math.floor(Math.random() * 990) + 10; // 10 to 999
+            const num2 = Math.floor(Math.random() * 90) + 10;  // 10 to 99
             currentPurchase.mathAnswer = num1 + num2;
             
             verificationContainer.innerHTML = `
@@ -552,7 +564,7 @@
             document.getElementById('math-answer').focus();
         }
 
-        // Update verifyAnswer function to log the captcha winner
+        // Add verifyAnswer function back
         window.verifyAnswer = async function() {
             const userAnswer = parseInt(document.getElementById('math-answer').value);
             
@@ -569,30 +581,21 @@
                 // Try to claim verification for this listing
                 const listingRef = db.collection('listings').doc(currentPurchase.id);
                 const username = localStorage.getItem('currentUser');
-                
-                // Get user data for logging
-                const userDoc = await db.collection('users').doc(username).get();
-                const userData = userDoc.data();
 
                 await db.runTransaction(async (transaction) => {
                     const listingDoc = await transaction.get(listingRef);
                     const listingData = listingDoc.data();
                     
-                    // Check if listing is already claimed
-                    if (listingData.verifiedBuyer) {
+                    // Check if listing is already claimed or disabled
+                    if (listingData.status === 'Disabled' || listingData.verifiedBuyer) {
                         throw new Error('Someone else was faster to verify this listing');
                     }
 
-                    // Update listing with captcha winner details
+                    // Set current user as verified buyer and disable the listing
                     transaction.update(listingRef, {
                         verifiedBuyer: username,
                         verificationTime: firebase.firestore.FieldValue.serverTimestamp(),
-                        status: 'Pending',
-                        captchaWinner: {
-                            userId: username,
-                            username: userData.username,
-                            verifiedAt: firebase.firestore.FieldValue.serverTimestamp()
-                        }
+                        status: 'Disabled' // Disable the listing immediately
                     });
                 });
 
@@ -600,7 +603,7 @@
                 showAlert('Verification successful! Please select payment method.', 'success');
                 showPaymentMethods();
 
-                // Update the listing card in the UI
+                // Update the listing card in the UI to show as unavailable
                 const listingCard = document.querySelector(`[onclick*="${currentPurchase.id}"]`).closest('.listing-card');
                 if (listingCard) {
                     const button = listingCard.querySelector('.listing-button');
@@ -685,7 +688,6 @@
                 // Close modal and show success message
                 const modal = document.getElementById('purchase-modal');
                 modal.classList.remove('show');
-                modal.classList.remove('purchase-locked');
                 setTimeout(() => {
                     modal.style.display = 'none';
                 }, 300);
@@ -739,13 +741,22 @@
 
         // Close modal when clicking outside
         window.onclick = function(event) {
-            // Remove the modal close functionality
-            // The modal can only be closed after purchase is completed
+            const modal = document.getElementById('purchase-modal');
+            if (event.target === modal) {
+                modal.classList.remove('show');
+                setTimeout(() => {
+                    modal.style.display = 'none';
+                }, 300);
+            }
         }
 
         // Close modal when clicking X
-        document.querySelector('.close-modal').removeEventListener('click', function() {
-            // Remove the close button functionality
+        document.querySelector('.close-modal').addEventListener('click', function() {
+            const modal = document.getElementById('purchase-modal');
+            modal.classList.remove('show');
+            setTimeout(() => {
+                modal.style.display = 'none';
+            }, 300);
         });
 
         // Add this function to handle image preview
@@ -1127,7 +1138,6 @@
                 // Close modal and show success message
                 const modal = document.getElementById('purchase-modal');
                 modal.classList.remove('show');
-                modal.classList.remove('purchase-locked');
                 setTimeout(() => {
                     modal.style.display = 'none';
                 }, 300);
@@ -1196,79 +1206,6 @@
                 return false;
             }
             return true;
-        }
-
-        // Update the countdown display logic
-        function updateCountdownDisplays() {
-            document.querySelectorAll('[data-end-time]').forEach(async element => {
-                const listingId = element.closest('.listing-card').id.replace('listing-', '');
-                
-                try {
-                    const doc = await db.collection('listings').doc(listingId).get();
-                    const listing = doc.data();
-                    
-                    if (listing?.countdown?.active) {
-                        const endTime = listing.countdown.endTime.toMillis();
-                        // Get current EST time
-                        const currentEstTime = new Date().toLocaleString("en-US", {timeZone: "America/New_York"});
-                        const estNow = new Date(currentEstTime).getTime();
-                        const timeLeft = endTime - estNow;
-                        
-                        if (timeLeft <= 0) {
-                            if (element.classList.contains('countdown-timer')) {
-                                element.textContent = 'Available Now';
-                            }
-                            const button = element.closest('.listing-card').querySelector('.listing-button');
-                            if (button) {
-                                button.textContent = 'Purchase';
-                                button.classList.remove('disabled');
-                            }
-                        } else {
-                            const timeString = formatTimeRemaining(timeLeft);
-                            element.textContent = `Drops in: ${timeString} EST`;
-                            const button = element.closest('.listing-card').querySelector('.listing-button');
-                            if (button) {
-                                button.textContent = `Drops in ${timeString} EST`;
-                                button.classList.add('disabled');
-                            }
-                        }
-                    }
-                } catch (error) {
-                    console.error('Error updating countdown:', error);
-                }
-            });
-        }
-
-        // Update the formatTimeRemaining function for better display
-        function formatTimeRemaining(milliseconds) {
-            const hours = Math.floor(milliseconds / 3600000);
-            const minutes = Math.floor((milliseconds % 3600000) / 60000);
-            const seconds = Math.floor((milliseconds % 60000) / 1000);
-            
-            if (hours > 0) {
-                return `${hours}h ${minutes}m ${seconds}s`;
-            } else if (minutes > 0) {
-                return `${minutes}m ${seconds}s`;
-            }
-            return `${seconds}s`;
-        }
-
-        // Update initialization for smoother countdown
-        document.addEventListener('DOMContentLoaded', () => {
-            setInterval(updateCountdownDisplays, 100); // Update every 100ms for smooth countdown
-            
-            // ... rest of your initialization code ...
-        });
-
-        // Add a helper function to display EST time
-        function formatEstTime(timestamp) {
-            return new Date(timestamp).toLocaleString("en-US", {
-                timeZone: "America/New_York",
-                hour: 'numeric',
-                minute: 'numeric',
-                second: 'numeric',
-                hour12: true
-            });
         }
     </script>
     <div id="purchase-modal" class="modal">

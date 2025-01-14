@@ -17,35 +17,6 @@
             await checkIPBan();
         });
     </script>
-    <style>
-    .countdown-inputs {
-        display: flex;
-        gap: 1rem;
-        justify-content: center;
-        margin: 1rem 0;
-    }
-
-    .input-group {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-    }
-
-    .input-group label {
-        margin-bottom: 0.5rem;
-        color: #fff;
-    }
-
-    .input-group input {
-        width: 70px;
-        padding: 0.5rem;
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        border-radius: 4px;
-        background: rgba(255, 255, 255, 0.05);
-        color: #fff;
-        text-align: center;
-    }
-    </style>
 </head>
 <body>
     <div id="particles-js"></div>
@@ -325,22 +296,14 @@
                         <textarea id="listing-description" rows="4" required placeholder=" "></textarea>
                         <label>Description</label>
                     </div>
-                    <!-- Replace datetime with countdown inputs -->
-                    <div class="countdown-inputs">
-                        <div class="input-group">
-                            <input type="number" id="countdown-hours" min="0" max="23" value="0">
-                            <label>Hours</label>
-                        </div>
-                        <div class="input-group">
-                            <input type="number" id="countdown-minutes" min="0" max="59" value="0">
-                            <label>Minutes</label>
-                        </div>
-                        <div class="input-group">
-                            <input type="number" id="countdown-seconds" min="0" max="59" value="0">
-                            <label>Seconds</label>
-                        </div>
+                    <div class="form-group">
+                        <input type="datetime-local" id="listing-release-time" required>
+                        <label class="datetime-label">Release Date/Time (Will be converted to EST)</label>
+                        <small style="color: rgba(255,255,255,0.6); margin-top: 4px; display: block;">
+                            Times will be automatically converted to EST for consistent release timing
+                        </small>
                     </div>
-                    <!-- Account credentials section -->
+                    <!-- Updated Account Credentials Section -->
                     <div class="form-group">
                         <input type="text" id="account-username" placeholder=" ">
                         <label>Account Username</label>
@@ -419,43 +382,51 @@
         }
 
         async function handleListingSubmit() {
-            const hours = parseInt(document.getElementById('countdown-hours').value) || 0;
-            const minutes = parseInt(document.getElementById('countdown-minutes').value) || 0;
-            const seconds = parseInt(document.getElementById('countdown-seconds').value) || 0;
-
-            // Get EST time for the drop
-            const estTime = new Date().toLocaleString("en-US", {timeZone: "America/New_York"});
-            const estStartTime = new Date(estTime).getTime();
-            const estEndTime = estStartTime + ((hours * 3600000) + (minutes * 60000) + (seconds * 1000));
-
-            const formData = {
-                title: document.getElementById('listing-title').value,
-                price: document.getElementById('listing-price').value,
-                description: document.getElementById('listing-description').value,
-                image: document.getElementById('listing-image').files[0],
-                accountDetails: {
-                    username: document.getElementById('account-username').value.trim(),
-                    password: document.getElementById('account-password').value.trim()
-                },
-                countdown: {
-                    active: true,
-                    startTime: firebase.firestore.Timestamp.fromMillis(estStartTime),
-                    endTime: firebase.firestore.Timestamp.fromMillis(estEndTime),
-                    timezone: 'EST'
-                }
-            };
-
-            if (!formData.title || !formData.price || !formData.description || !formData.image) {
-                showAlert('Please fill in all required fields.', 'error');
-                return;
-            }
-
             try {
+                const localDateTime = document.getElementById('listing-release-time').value;
+                if (!localDateTime) {
+                    showAlert('Please select a release time', 'error');
+                    return;
+                }
+
+                // Convert local datetime to EST Unix timestamp
+                const localDate = new Date(localDateTime);
+                const estOffset = -5; // EST is UTC-5
+                const utc = localDate.getTime() + (localDate.getTimezoneOffset() * 60000);
+                const estTime = new Date(utc + (3600000 * estOffset));
+                const estTimestamp = estTime.getTime();
+
+                const formData = {
+                    title: document.getElementById('listing-title').value,
+                    price: document.getElementById('listing-price').value,
+                    description: document.getElementById('listing-description').value,
+                    releaseTime: estTimestamp, // Use EST timestamp
+                    image: document.getElementById('listing-image').files[0],
+                    accountDetails: {
+                        username: document.getElementById('account-username').value.trim(),
+                        password: document.getElementById('account-password').value.trim()
+                    }
+                };
+
+                if (!formData.title || !formData.price || !formData.description || !formData.image) {
+                    showAlert('Please fill in all required fields.', 'error');
+                    return;
+                }
+
+                // Validate that release time is in the future (comparing with EST)
+                const currentEstTime = Date.now() + (estOffset * 3600000);
+                if (formData.releaseTime <= currentEstTime) {
+                    showAlert('Release time must be in the future (EST).', 'error');
+                    return;
+                }
+
                 const imageUrl = await uploadToLitterbox(formData.image);
                 formData.imageUrl = imageUrl;
                 delete formData.image;
                 
                 await createListing(formData);
+                showAlert('Listing created successfully!', 'success');
+                showListingsTable();
             } catch (error) {
                 console.error('Error:', error);
                 showAlert(`Error: ${error.message}`, 'error');
@@ -506,9 +477,15 @@
                     description: formData.description,
                     imageUrl: formData.imageUrl,
                     status: 'Active',
+                    releaseTime: formData.releaseTime,
                     createdAt: firebase.firestore.FieldValue.serverTimestamp(),
                     accountDetails: formData.accountDetails,
-                    countdown: formData.countdown
+                    countdown: {
+                        active: false,
+                        endTime: null,
+                        startTime: null,
+                        duration: null
+                    }
                 });
 
                 showAlert('Listing created successfully!', 'success');
@@ -1726,20 +1703,11 @@
 
                     // Remove pending status from listing
                     batch.update(db.collection('listings').doc(orderData.listingId), {
-                        pendingOrder: false,
-                        status: 'Active', // Re-activate the listing
-                        verifiedBuyer: null // Clear the verified buyer
+                        pendingOrder: false
                     });
 
-                    // If payment method was balance, refund the user
-                    if (orderData.paymentMethod === 'balance') {
-                        batch.update(db.collection('users').doc(orderData.userId), {
-                            balance: firebase.firestore.FieldValue.increment(orderData.price)
-                        });
-                    }
-
                     await batch.commit();
-                    showAlert('Order rejected and balance refunded successfully', 'success');
+                    showAlert('Order rejected successfully', 'success');
                 } catch (error) {
                     console.error('Error rejecting order:', error);
                     showAlert('Error rejecting order: ' + error.message, 'error');
@@ -1960,17 +1928,16 @@
                 const listingDoc = await db.collection('listings').doc(listingId).get();
                 const listing = listingDoc.data();
                 
-                // Get captcha winner information
+                // Get buyer information if available
                 let buyerInfo = 'Not available';
-                if (listing.captchaWinner) {
+                if (listing.buyerId) {
+                    const buyerDoc = await db.collection('users').doc(listing.buyerId).get();
+                    const buyer = buyerDoc.data();
                     buyerInfo = `
-                        <div style="display: flex; flex-direction: column; gap: 0.5rem;">
-                            <div style="display: flex; align-items: center; gap: 0.5rem;">
-                                <span>Captcha Winner: ${listing.captchaWinner.username}</span>
-                            </div>
-                            <div style="font-size: 0.9em; color: #666;">
-                                Verified at: ${listing.captchaWinner.verifiedAt?.toDate().toLocaleString() || 'N/A'}
-                            </div>
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <img src="${buyer.discordAvatarURL}" alt="${buyer.username}" 
+                                 style="width: 32px; height: 32px; border-radius: 50%;">
+                            <span>${buyer.username}</span>
                         </div>
                     `;
                 }
@@ -1979,9 +1946,6 @@
                     <div class="payment-details-content">
                         <div class="details-header">
                             <h3>Listing Details</h3>
-                            <div class="buyer-info">
-                                <strong>Buyer:</strong> ${buyerInfo}
-                            </div>
                             <div class="alert-close">
                                 <i class="fas fa-times"></i>
                             </div>
@@ -2006,6 +1970,10 @@
                             <div class="detail-row">
                                 <span class="detail-label">Sold Date:</span>
                                 <span class="detail-value">${listing.soldAt ? new Date(listing.soldAt.toDate()).toLocaleString() : 'N/A'}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Buyer:</span>
+                                <span class="detail-value">${buyerInfo}</span>
                             </div>
                             <div class="detail-row">
                                 <span class="detail-label">Description:</span>
@@ -2075,25 +2043,20 @@
                     if (e.target === modal) closeModal();
                 };
             } catch (error) {
-                console.error('Error viewing listing details:', error);
-                showAlert('Error loading listing details', 'error');
+                console.error('Error getting listing details:', error);
+                showAlert('Error getting listing details: ' + error.message, 'error');
             }
         }
 
         // Function to start countdown for a listing
         async function startCountdown(listingId, duration) {
             try {
-                // Get the admin's local time for drop
-                const dropTime = Date.now() + (parseInt(duration) * 60000);
-                const currentTime = Date.now();
-                const countdownDuration = dropTime - currentTime; // Time difference in milliseconds
-                
                 await db.collection('listings').doc(listingId).update({
                     countdown: {
                         active: true,
-                        dropTime: firebase.firestore.Timestamp.fromMillis(dropTime),
-                        duration: countdownDuration, // Store the fixed duration in milliseconds
-                        startTime: firebase.firestore.Timestamp.fromMillis(currentTime)
+                        endTime: Date.now() + duration,
+                        startTime: Date.now(),
+                        duration: duration
                     }
                 });
                 showAlert('Countdown started successfully', 'success');
@@ -2123,25 +2086,20 @@
 
         // Add countdown controls to the listing card
         function createListingCard(listing) {
-            const duration = listing.releaseDuration || 0;
-            
             return `
                 <div class="listing-card" id="listing-${listing.id}">
                     <!-- Existing listing card content -->
                     
-                    <!-- Add countdown controls with calculated duration -->
+                    <!-- Add countdown controls -->
                     <div class="countdown-controls">
                         <select class="countdown-duration">
-                            <option value="${duration}" ${duration > 0 ? 'selected' : ''}>
-                                ${duration} minutes (Release Time)
-                            </option>
-                            <option value="5">5 minutes</option>
-                            <option value="10">10 minutes</option>
-                            <option value="15">15 minutes</option>
-                            <option value="30">30 minutes</option>
-                            <option value="60">1 hour</option>
-                            <option value="120">2 hours</option>
-                            <option value="1440">24 hours</option>
+                            <option value="300000">5 minutes</option>
+                            <option value="600000">10 minutes</option>
+                            <option value="900000">15 minutes</option>
+                            <option value="1800000">30 minutes</option>
+                            <option value="3600000">1 hour</option>
+                            <option value="7200000">2 hours</option>
+                            <option value="86400000">24 hours</option>
                         </select>
                         <button onclick="startCountdown('${listing.id}', document.querySelector('#listing-${listing.id} .countdown-duration').value)">
                             Start Countdown
@@ -2151,10 +2109,10 @@
                         </button>
                     </div>
                     
-                    <!-- Update countdown status display -->
+                    <!-- Add countdown status display -->
                     ${listing.countdown?.active ? `
                         <div class="countdown-status">
-                            Countdown active - Time remaining: ${formatTimeRemaining(listing.countdown.endTime - Date.now())}
+                            Countdown active - Ends in: ${formatTime(listing.countdown.endTime - Date.now())}
                         </div>
                     ` : ''}
                 </div>
@@ -2163,35 +2121,23 @@
 
         // Function to update countdown displays in admin panel
         function updateCountdownDisplays() {
-            document.querySelectorAll('.countdown-status').forEach(async status => {
+            const now = Date.now();
+            document.querySelectorAll('.countdown-status').forEach(status => {
                 const listingCard = status.closest('.listing-card');
                 const listingId = listingCard.id.replace('listing-', '');
                 
-                try {
-                    const doc = await db.collection('listings').doc(listingId).get();
+                db.collection('listings').doc(listingId).get().then(doc => {
                     const listing = doc.data();
-                    
-                    if (listing?.countdown?.active) {
-                        // Get current EST time
-                        const estTime = new Date().toLocaleString("en-US", {timeZone: "America/New_York"});
-                        const estNow = new Date(estTime).getTime();
-                        const endTime = listing.countdown.endTime.toMillis();
-                        const timeLeft = endTime - estNow;
-
-                        if (timeLeft > 0) {
-                            status.textContent = `Drops in: ${formatTimeRemaining(timeLeft)} EST`;
+                    if (listing.countdown?.active) {
+                        if (listing.countdown.endTime > now) {
+                            status.textContent = `Countdown active - Ends in: ${formatTime(listing.countdown.endTime - now)}`;
                         } else {
-                            status.textContent = 'Drop time reached';
-                            // Update listing status when drop time is reached
-                            await db.collection('listings').doc(listingId).update({
-                                'countdown.active': false,
-                                status: 'Active' // or whatever status you want for dropped items
-                            });
+                            status.textContent = 'Countdown ended';
+                            // Optionally auto-stop the countdown
+                            stopCountdown(listingId);
                         }
                     }
-                } catch (error) {
-                    console.error('Error updating countdown:', error);
-                }
+                });
             });
         }
 
@@ -2313,32 +2259,6 @@
                 return userData.ip;
             }
             return null;
-        }
-
-        // Add function to calculate duration in minutes
-        function calculateDuration(targetTime) {
-            const now = Date.now();
-            const difference = targetTime - now;
-            return Math.max(0, Math.floor(difference / 60000)); // Convert to minutes, minimum 0
-        }
-
-        // Add function to format remaining time in a more readable way
-        function formatTimeRemaining(milliseconds) {
-            const hours = Math.floor(milliseconds / 3600000);
-            const minutes = Math.floor((milliseconds % 3600000) / 60000);
-            const seconds = Math.floor((milliseconds % 60000) / 1000);
-            
-            const parts = [];
-            if (hours > 0) parts.push(`${hours}h`);
-            if (minutes > 0) parts.push(`${minutes}m`);
-            parts.push(`${seconds}s`);
-            
-            return parts.join(' ');
-        }
-
-        // Add a function to convert any time to EST
-        function convertToEST(date) {
-            return new Date(date.toLocaleString("en-US", {timeZone: "America/New_York"}));
         }
     </script>
 </body>

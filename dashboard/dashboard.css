@@ -241,13 +241,13 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 80px 0 0 0;
+            padding: 0;
             z-index: 2;
         }
 
         @media only screen and (max-width: 768px) {
             .main-content {
-                padding: 80px 1rem;
+                padding: 80px 1rem 0;
             }
         }
 
@@ -255,57 +255,23 @@
         .listings-container {
             position: relative;
             width: 100%;
-            max-width: 1400px;
+            max-width: 1200px;
             margin: 0 auto;
-            padding: 0 2rem;
+            padding: 80px 1rem 2rem;
+            min-height: calc(100vh - 80px);
             display: flex;
             justify-content: center;
             align-items: center;
-            min-height: calc(100vh - 80px);
         }
 
         /* Listings Grid */
         .listings-grid {
             display: grid;
-            grid-template-columns: repeat(3, minmax(300px, 1fr));
-            gap: 2rem;
+            grid-template-columns: repeat(3, 300px);
+            gap: 1.5rem;
             justify-content: center;
-            align-items: center;
+            align-items: start;
             margin: 0 auto;
-            padding: 1rem;
-            width: 100%;
-            max-width: 1400px;
-        }
-
-        /* Update responsive breakpoints for better spacing */
-        @media screen and (max-width: 1400px) {
-            .listings-grid {
-                grid-template-columns: repeat(3, minmax(280px, 1fr));
-                gap: 1.5rem;
-            }
-        }
-
-        @media screen and (max-width: 1200px) {
-            .listings-grid {
-                grid-template-columns: repeat(2, minmax(280px, 1fr));
-                gap: 1.5rem;
-            }
-        }
-
-        @media screen and (max-width: 768px) {
-            .listings-grid {
-                grid-template-columns: repeat(1, 1fr);
-                gap: 1rem;
-                padding: 0.5rem;
-            }
-            
-            .main-content {
-                padding: 80px 1rem;
-            }
-            
-            .listings-container {
-                padding: 0 1rem;
-            }
         }
 
         /* Large tablets and small desktops */
@@ -1788,14 +1754,4 @@
                 opacity: 1;
                 transform: translateY(0);
             }
-        }
-
-        /* Update modal styles to prevent clicking outside */
-        .modal.purchase-locked {
-            pointer-events: all;
-            cursor: default;
-        }
-
-        .modal.purchase-locked .close-modal {
-            display: none;
         }
