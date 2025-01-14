@@ -233,44 +233,79 @@
 
         /* Main Content */
         .main-content {
-            position: relative;
+            position: fixed;
             top: 0;
             left: 0;
             width: 100%;
-            min-height: 100vh;
+            height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 0;
+            padding: 80px 0 0 0;
             z-index: 2;
         }
 
         @media only screen and (max-width: 768px) {
             .main-content {
-                padding: 80px 1rem 0;
+                padding: 80px 1rem;
             }
         }
 
         /* Listings Container */
         .listings-container {
+            position: relative;
             width: 100%;
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
-            padding: 80px 1rem 2rem;
-            height: auto;
+            padding: 0 2rem;
             display: flex;
             justify-content: center;
             align-items: center;
+            min-height: calc(100vh - 80px);
         }
 
         /* Listings Grid */
         .listings-grid {
             display: grid;
-            grid-template-columns: repeat(3, 300px);
-            gap: 1.5rem;
+            grid-template-columns: repeat(3, minmax(300px, 1fr));
+            gap: 2rem;
             justify-content: center;
-            align-items: start;
+            align-items: center;
             margin: 0 auto;
+            padding: 1rem;
+            width: 100%;
+            max-width: 1400px;
+        }
+
+        /* Update responsive breakpoints for better spacing */
+        @media screen and (max-width: 1400px) {
+            .listings-grid {
+                grid-template-columns: repeat(3, minmax(280px, 1fr));
+                gap: 1.5rem;
+            }
+        }
+
+        @media screen and (max-width: 1200px) {
+            .listings-grid {
+                grid-template-columns: repeat(2, minmax(280px, 1fr));
+                gap: 1.5rem;
+            }
+        }
+
+        @media screen and (max-width: 768px) {
+            .listings-grid {
+                grid-template-columns: repeat(1, 1fr);
+                gap: 1rem;
+                padding: 0.5rem;
+            }
+            
+            .main-content {
+                padding: 80px 1rem;
+            }
+            
+            .listings-container {
+                padding: 0 1rem;
+            }
         }
 
         /* Large tablets and small desktops */
@@ -1710,7 +1745,7 @@
             }
 
             .listings-grid {
-                width: 100%;
+                width: max-content; /* Allow grid to maintain size */
                 padding: 0 1rem;
             }
             
