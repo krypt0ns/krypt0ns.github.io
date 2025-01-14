@@ -2043,13 +2043,16 @@
         // Function to start countdown for a listing
         async function startCountdown(listingId, duration) {
             try {
-                const now = Date.now();
+                const serverTimestamp = firebase.firestore.FieldValue.serverTimestamp();
+                
                 await db.collection('listings').doc(listingId).update({
                     countdown: {
                         active: true,
-                        startTime: now,
-                        endTime: now + (parseInt(duration) * 60000), // Convert minutes to milliseconds
-                        duration: parseInt(duration)
+                        startTime: serverTimestamp,
+                        duration: parseInt(duration), // Duration in minutes
+                        endTime: firebase.firestore.Timestamp.fromMillis(
+                            Date.now() + (parseInt(duration) * 60000)
+                        )
                     }
                 });
                 showAlert('Countdown started successfully', 'success');

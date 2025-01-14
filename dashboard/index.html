@@ -1209,6 +1209,72 @@
             }
             return true;
         }
+
+        // Update the countdown display logic
+        function updateCountdownDisplays() {
+            document.querySelectorAll('[data-end-time]').forEach(async element => {
+                const listingId = element.closest('.listing-card').id.replace('listing-', '');
+                
+                try {
+                    const doc = await db.collection('listings').doc(listingId).get();
+                    const listing = doc.data();
+                    
+                    if (listing?.countdown?.active) {
+                        // Get server time
+                        const timeSnapshot = await db.collection('time').doc('now').get();
+                        const serverNow = timeSnapshot.data().timestamp.toMillis();
+                        const endTime = listing.countdown.endTime.toMillis();
+                        const timeLeft = endTime - serverNow;
+                        
+                        if (timeLeft <= 0) {
+                            if (element.classList.contains('countdown-timer')) {
+                                element.textContent = 'Ended';
+                            }
+                            const button = element.closest('.listing-card').querySelector('.listing-button');
+                            if (button) {
+                                button.textContent = 'Available Now';
+                                button.classList.remove('disabled');
+                            }
+                        } else {
+                            const timeString = formatTimeRemaining(timeLeft);
+                            if (element.classList.contains('countdown-timer')) {
+                                element.textContent = timeString;
+                            }
+                            const button = element.closest('.listing-card').querySelector('.listing-button');
+                            if (button) {
+                                button.textContent = `Unlocks in ${timeString}`;
+                                button.classList.add('disabled');
+                            }
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error updating countdown:', error);
+                }
+            });
+        }
+
+        // Add server time sync function
+        async function syncServerTime() {
+            try {
+                // Create or update a timestamp document
+                await db.collection('time').doc('now').set({
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                });
+            } catch (error) {
+                console.error('Error syncing server time:', error);
+            }
+        }
+
+        // Update initialization
+        document.addEventListener('DOMContentLoaded', () => {
+            // Start server time sync
+            setInterval(syncServerTime, 1000);
+            
+            // Update countdowns more frequently
+            setInterval(updateCountdownDisplays, 100);
+            
+            // ... rest of your initialization code ...
+        });
     </script>
     <div id="purchase-modal" class="modal">
         <div class="modal-content">
