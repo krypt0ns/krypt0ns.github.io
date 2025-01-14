@@ -564,7 +564,7 @@
         border: 1px solid rgba(255, 255, 255, 0.1);
         color: white;
         width: 90%;
-        max-width: 500px;
+        max-width: 400px;
         overflow: hidden;
     }
 
@@ -609,8 +609,8 @@
 
     .proof-image {
         width: 100%;
-        max-height: 300px;
-        object-fit: contain;
+        height: 180px;
+        object-fit: cover;
         margin-top: 0.5rem;
         border-radius: 8px;
         background: rgba(0, 0, 0, 0.2);
@@ -855,10 +855,106 @@
         border-radius: 6px;
         color: white;
         font-size: 0.9rem;
-    }
-
-    .account-credentials-input input:focus {
+    }    .account-credentials-input input:focus {
         outline: none;
         border-color: #6b46c1;
         box-shadow: 0 0 0 2px rgba(107, 70, 193, 0.2);
     }
+
+    /* Order Info Modal Specific Styling */
+    .order-modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.7);
+        backdrop-filter: blur(5px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 2000;
+        padding: 20px;
+    }
+
+    /* Match payment details styling exactly */
+    .order-details-content {
+        background: rgba(20, 20, 20, 0.95);
+        backdrop-filter: blur(10px);
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        color: white;
+        width: 90%;
+        max-width: 400px;
+        overflow: hidden;
+    }
+
+    .order-details-header {
+        padding: 1rem 1.5rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .order-details-header h3 {
+        font-size: 1.25rem;
+        margin: 0;
+    }
+
+    .order-details-body {
+        padding: 1.5rem;
+    }
+
+    .order-detail-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .order-detail-label {
+        color: rgba(255, 255, 255, 0.7);
+        font-size: 0.9rem;
+    }
+
+    .order-detail-value {
+        font-weight: 500;
+    }
+
+    .order-proof-section {
+        margin-top: 1.5rem;
+    }
+
+    .order-proof-image {
+        width: 100%;
+        height: 180px;
+        object-fit: cover;
+        margin-top: 0.5rem;
+        border-radius: 8px;
+        background: rgba(0, 0, 0, 0.2);
+    }
+
+    .alert-close {
+        background: none;
+        border: none;
+        color: rgba(255, 255, 255, 0.6);
+        font-size: 1.5rem;
+        cursor: pointer;
+        padding: 0.5rem;
+        transition: color 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+    }
+
+    .alert-close:hover {
+        color: #fff;
+        background: rgba(255, 255, 255, 0.1);
+    }
+

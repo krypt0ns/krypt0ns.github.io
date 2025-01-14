@@ -193,8 +193,8 @@
 
         .menu-dropdown {
             position: absolute;
-            top: calc(100% + 0.5rem);
-            left: 0;
+            top: 100%;
+            left: 2rem;
             background: rgba(20, 20, 20, 0.95);
             backdrop-filter: blur(20px);
             border: 1px solid rgba(255, 255, 255, 0.1);
@@ -257,19 +257,20 @@
             width: 100%;
             max-width: 1200px;
             margin: 0 auto;
-            padding: 80px 2rem 2rem;
+            padding: 80px 1rem 2rem;
             min-height: calc(100vh - 80px);
             display: flex;
             justify-content: center;
-            align-items: flex-start;
+            align-items: center;
         }
 
         /* Listings Grid */
         .listings-grid {
             display: grid;
-            grid-template-columns: repeat(3, 350px);
-            gap: 2rem;
+            grid-template-columns: repeat(3, 300px);
+            gap: 1.5rem;
             justify-content: center;
+            align-items: start;
             margin: 0 auto;
         }
 
@@ -347,7 +348,7 @@
         /* Update listing card styles for better mobile support */
         .listing-card {
             width: 350px;
-            height: 500px;
+            height: auto;
             margin: 0 auto;
             display: flex;
             flex-direction: column;
@@ -1067,6 +1068,11 @@
             position: fixed;
             top: 20px;
             right: 20px;
+            background: rgba(20, 20, 20, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 1.5rem;
+            border-radius: 12px;
+            color: white;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
             z-index: 2000;
             display: flex;
@@ -1657,11 +1663,7 @@
         }
 
         /* Add styles for maintaining aspect ratio */
-        .listing-card {
-            display: flex;
-            flex-direction: column;
-            aspect-ratio: 3/4;
-        }
+
 
         .slideshow-container {
             aspect-ratio: 16/9;
@@ -1724,7 +1726,32 @@
             }
         }
 
-        /* Add positioning context for dropdown */
-        .hamburger-container {
-            position: relative;
+        /* Add these styles for error messages */
+        .error-message {
+            background: rgba(229, 62, 62, 0.1);
+            border: 1px solid rgba(229, 62, 62, 0.2);
+            color: #e53e3e;
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            margin: 0.5rem 0;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .error-message i {
+            font-size: 1rem;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-5px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }

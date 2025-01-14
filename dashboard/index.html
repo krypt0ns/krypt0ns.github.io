@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Krypton | Dashboard</title>
+    <title>Krypton | Dashboards</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
@@ -38,7 +38,7 @@
             </div>
             <div class="balance">
                 <i class="fas fa-wallet"></i>
-                <span class="balance-amount">$0.00</span>
+                <span class="balance-amount">$1,234.56</span>
             </div>
         </div>
         <div class="menu-dropdown">
@@ -126,30 +126,8 @@
         // Toggle menu dropdown
         window.toggleMenu = function() {
             const dropdown = document.querySelector('.menu-dropdown');
-            const hamburger = document.querySelector('.hamburger-menu');
-            
-            // Get hamburger position
-            const hamburgerRect = hamburger.getBoundingClientRect();
-            
-            // Position dropdown relative to hamburger
-            dropdown.style.position = 'fixed';
-            dropdown.style.top = `${hamburgerRect.bottom + 10}px`; // 10px gap
-            dropdown.style.left = `${hamburgerRect.left}px`;
-            
-            // Toggle active class
             dropdown.classList.toggle('active');
         }
-
-        // Update position on window resize
-        window.addEventListener('resize', function() {
-            const dropdown = document.querySelector('.menu-dropdown');
-            if (dropdown.classList.contains('active')) {
-                const hamburger = document.querySelector('.hamburger-menu');
-                const hamburgerRect = hamburger.getBoundingClientRect();
-                dropdown.style.top = `${hamburgerRect.bottom + 10}px`;
-                dropdown.style.left = `${hamburgerRect.left}px`;
-            }
-        });
 
         // Close menu when clicking outside
         document.addEventListener('click', function(event) {
@@ -387,26 +365,15 @@
             try {
                 const listingDoc = await db.collection('listings').doc(listingId).get();
                 const listingData = listingDoc.data();
-                const now = Date.now();
                 
-                // Add verification check
-                if (listingData.verifiedBuyer) {
-                    // If verification is older than 15 minutes, clear it
-                    const verificationTime = listingData.verificationTime?.toDate().getTime() || 0;
-                    if (now - verificationTime > 15 * 60 * 1000) {
-                        await db.collection('listings').doc(listingId).update({
-                            verifiedBuyer: null,
-                            verificationTime: null
-                        });
-                    } else if (listingData.verifiedBuyer !== localStorage.getItem('currentUser')) {
-                        return false;
-                    }
+                // Check if listing is disabled or has a verified buyer
+                if (listingData.status === 'Disabled' || listingData.verifiedBuyer) {
+                    return false;
                 }
                 
-                // Existing checks
-                if (listingData.status === 'Disabled' || 
-                    listingData.pendingOrder || 
-                    listingData.releaseTime > now ||
+                // Check other conditions (release time, countdown, etc.)
+                const now = Date.now();
+                if (listingData.releaseTime > now ||
                     (listingData.countdown?.active && listingData.countdown.endTime > now)) {
                     return false;
                 }
@@ -467,10 +434,8 @@
 
         // Then your existing showPurchaseModal function will work
         window.showPurchaseModal = async function(listingId, title, price) {
-            // Get the button that was clicked
             const button = document.querySelector(`button[onclick*="${listingId}"]`);
             
-            // If button is locked, don't proceed
             if (button.classList.contains('locked')) {
                 return;
             }
@@ -478,65 +443,39 @@
             const purchaseAllowed = await canPurchase(listingId);
             
             if (!purchaseAllowed) {
-                return; // Don't show modal if purchase not allowed
+                showAlert('This item is not available for purchase at the moment.', 'error');
+                return;
             }
             
             const modal = document.getElementById('purchase-modal');
             const details = document.getElementById('purchase-details');
             
-            // Get current user's balance
-            const balanceElement = document.querySelector('.header .balance-amount');
-            const currentBalance = parseFloat(balanceElement.textContent.replace('$', ''));
-            
-            // Check if user has enough balance
-            const hasEnoughBalance = currentBalance >= price;
-            
+            // Initialize purchase details
+            currentPurchase = {
+                id: listingId,
+                title: title,
+                price: price,
+                mathAnswer: null,
+                paymentMethod: null, // Initialize payment method as null
+                proofUrl: null
+            };
+
+            // Show verification first
             details.innerHTML = `
                 <p>Item: ${title}</p>
                 <p>Price: $${price}</p>
-                <p>Your Balance: $${currentBalance.toFixed(2)}</p>
-                <div class="payment-methods">
-                    <button class="payment-option ${!hasEnoughBalance ? 'disabled' : ''}" 
-                            onclick="${hasEnoughBalance ? 'selectPaymentOption(\'balance\')' : 'alert(\'Insufficient balance\')'}"
-                            ${!hasEnoughBalance ? 'title="Insufficient balance"' : ''}>
-                        <i class="fas fa-wallet"></i> Use Balance
-                    </button>
-                    <button class="payment-option" onclick="selectPaymentOption('cashapp')">
-                        <i class="fas fa-dollar-sign"></i> Cash App
-                    </button>
-                    <button class="payment-option" onclick="selectPaymentOption('paypal')">
-                        <i class="fab fa-paypal"></i> PayPal
-                    </button>
-                    <button class="payment-option" onclick="selectPaymentOption('crypto')">
-                        <i class="fab fa-bitcoin"></i> Crypto
-                    </button>
+                <div id="verification-container">
+                    <p>Complete verification to proceed with purchase:</p>
+                    <div id="math-verification"></div>
                 </div>
-                <div id="payment-info" style="display: none;">
-                    <div class="payment-address-container">
-                        <p>Send payment to:</p>
-                        <div class="payment-address"></div>
-                        <button class="copy-btn" onclick="copyPaymentAddress()">Copy Address</button>
-                    </div>
-                    <div class="proof-upload">
-                        <p>Upload Payment Proof:</p>
-                        <input type="file" id="payment-proof" accept="image/*" onchange="previewProof(this)">
-                        <div id="proof-preview" class="proof-preview"></div>
-                    </div>
-                    <button class="submit-payment-btn" onclick="handlePaymentSubmission()">Submit Payment</button>
-                </div>`;
+            `;
             
-            // Show modal with animation
             modal.style.display = 'flex';
             requestAnimationFrame(() => {
                 modal.classList.add('show');
             });
             
-            // Store purchase details
-            currentPurchase = {
-                id: listingId,
-                title: title,
-                price: price
-            };
+            showMathVerification();
         }
 
         // Add payment addresses
@@ -551,26 +490,25 @@
         };
 
         window.selectPaymentOption = function(method) {
+            currentPurchase.paymentMethod = method;
+            
             const paymentInfo = document.getElementById('payment-info');
             const verificationContainer = document.getElementById('verification-container');
             
-            // Store selected payment method
-            currentPurchase.paymentMethod = method;
+            verificationContainer.style.display = 'none';
             
             if (method === 'balance') {
-                // For balance, show only verification
-                paymentInfo.style.display = 'none';
-                showMathVerification();
+                // For balance, proceed directly to submission
+                handlePaymentSubmission();
             } else {
                 // For other methods, show payment info
-                verificationContainer.style.display = 'none';
                 paymentInfo.innerHTML = `
                     <div class="payment-address-container">
                         <p>Send payment to:</p>
                         <div class="payment-address">${method === 'crypto' ? 'Select a cryptocurrency to see the address' : paymentAddresses[method]}</div>
                         ${method === 'crypto' ? `
                             <div id="crypto-select-container">
-                                <select id="crypto-select">
+                                <select id="crypto-select" onchange="updateCryptoAddress()">
                                     <option value="">Select cryptocurrency...</option>
                                     <option value="btc">Bitcoin (BTC)</option>
                                     <option value="eth">Ethereum (ETH)</option>
@@ -578,7 +516,7 @@
                                 </select>
                             </div>
                         ` : ''}
-                        <button class="copy-btn">
+                        <button class="copy-btn" onclick="copyPaymentAddress()">
                             <i class="fas fa-copy"></i> Copy Address
                         </button>
                     </div>
@@ -590,34 +528,6 @@
                     <button class="submit-payment-btn" onclick="handlePaymentSubmission()">Submit Payment</button>
                 `;
                 paymentInfo.style.display = 'block';
-                
-                // Set up crypto select handler if needed
-                if (method === 'crypto') {
-                    document.getElementById('crypto-select').onchange = function() {
-                        const selectedCrypto = this.value;
-                        if (selectedCrypto) {
-                            document.querySelector('.payment-address').innerHTML = paymentAddresses.crypto[selectedCrypto];
-                        }
-                    };
-                }
-                
-                // Set up copy button handler
-                const copyBtn = document.querySelector('.copy-btn');
-                copyBtn.onclick = function() {
-                    if (method === 'crypto') {
-                        const select = document.getElementById('crypto-select');
-                        const selectedCrypto = select.value;
-                        
-                        if (!selectedCrypto) {
-                            showAlert('Please select a cryptocurrency first', 'error');
-                            return;
-                        }
-                        
-                        copyToClipboard(paymentAddresses.crypto[selectedCrypto], this);
-                    } else {
-                        copyToClipboard(paymentAddresses[method], this);
-                    }
-                };
             }
         }
 
@@ -632,119 +542,194 @@
         }
 
         window.showMathVerification = function() {
-            const verificationContainer = document.getElementById('verification-container');
+            const verificationContainer = document.getElementById('math-verification');
+            if (!verificationContainer) {
+                console.error('Verification container not found');
+                return;
+            }
             
-            // Generate random math problem
-            const num1 = Math.floor(Math.random() * 10);
-            const num2 = Math.floor(Math.random() * 10);
+            // Generate random numbers between 10 and 999 for first number
+            // and between 10 and 99 for second number
+            const num1 = Math.floor(Math.random() * 990) + 10; // 10 to 999
+            const num2 = Math.floor(Math.random() * 90) + 10;  // 10 to 99
             currentPurchase.mathAnswer = num1 + num2;
             
-            verificationContainer.style.display = 'block';
             verificationContainer.innerHTML = `
-                <p>Please solve this verification:</p>
                 <p id="math-question">What is ${num1} + ${num2}?</p>
                 <input type="number" id="math-answer" placeholder="Enter answer">
-                <button onclick="verifyAndCompletePurchase()">Verify & Complete Purchase</button>
+                <button onclick="verifyAnswer()">Verify</button>
             `;
+
+            // Auto-focus the input for better UX
+            document.getElementById('math-answer').focus();
         }
 
-        window.verifyAndCompletePurchase = async function() {
+        // Add verifyAnswer function back
+        window.verifyAnswer = async function() {
+            const userAnswer = parseInt(document.getElementById('math-answer').value);
+            
+            if (userAnswer !== currentPurchase.mathAnswer) {
+                showAlert('Incorrect answer. Please try again.', 'error');
+                // Clear the input and focus it for better UX
+                const mathInput = document.getElementById('math-answer');
+                mathInput.value = '';
+                mathInput.focus();
+                return;
+            }
+
+            try {
+                // Try to claim verification for this listing
+                const listingRef = db.collection('listings').doc(currentPurchase.id);
+                const username = localStorage.getItem('currentUser');
+
+                await db.runTransaction(async (transaction) => {
+                    const listingDoc = await transaction.get(listingRef);
+                    const listingData = listingDoc.data();
+                    
+                    // Check if listing is already claimed or disabled
+                    if (listingData.status === 'Disabled' || listingData.verifiedBuyer) {
+                        throw new Error('Someone else was faster to verify this listing');
+                    }
+
+                    // Set current user as verified buyer and disable the listing
+                    transaction.update(listingRef, {
+                        verifiedBuyer: username,
+                        verificationTime: firebase.firestore.FieldValue.serverTimestamp(),
+                        status: 'Disabled' // Disable the listing immediately
+                    });
+                });
+
+                // If verification successful, show payment methods
+                showAlert('Verification successful! Please select payment method.', 'success');
+                showPaymentMethods();
+
+                // Update the listing card in the UI to show as unavailable
+                const listingCard = document.querySelector(`[onclick*="${currentPurchase.id}"]`).closest('.listing-card');
+                if (listingCard) {
+                    const button = listingCard.querySelector('.listing-button');
+                    button.classList.add('locked');
+                    button.textContent = 'Unavailable';
+                    button.onclick = null;
+                }
+
+            } catch (error) {
+                console.error('Verification error:', error);
+                showAlert(error.message, 'error');
+                // Close modal if someone else was faster
+                const modal = document.getElementById('purchase-modal');
+                modal.classList.remove('show');
+                setTimeout(() => modal.style.display = 'none', 300);
+            }
+        }
+
+        // Add helper functions for crypto and copying
+        window.updateCryptoAddress = function() {
+            const select = document.getElementById('crypto-select');
+            const addressDiv = document.querySelector('.payment-address');
+            const selectedCrypto = select.value;
+            
+            if (selectedCrypto) {
+                addressDiv.textContent = paymentAddresses.crypto[selectedCrypto];
+            }
+        }
+
+        window.copyPaymentAddress = function() {
+            const method = currentPurchase.paymentMethod;
+            let addressToCopy;
+            
+            if (method === 'crypto') {
+                const select = document.getElementById('crypto-select');
+                const selectedCrypto = select.value;
+                
+                if (!selectedCrypto) {
+                    showAlert('Please select a cryptocurrency first', 'error');
+                    return;
+                }
+                addressToCopy = paymentAddresses.crypto[selectedCrypto];
+            } else {
+                addressToCopy = paymentAddresses[method];
+            }
+            
+            copyToClipboard(addressToCopy, document.querySelector('.copy-btn'));
+        }
+
+        // Add new function to handle final purchase submission
+        window.submitPurchase = async function() {
             const userAnswer = parseInt(document.getElementById('math-answer').value);
             
             if (userAnswer !== currentPurchase.mathAnswer) {
                 showAlert('Incorrect answer. Please try again.', 'error');
                 return;
             }
-            
+
             try {
-                // Check if listing is still available before proceeding
-                const listingDoc = await db.collection('listings').doc(currentPurchase.id).get();
-                const listingData = listingDoc.data();
-                
-                // If listing is already sold or has pending order, show error
-                if (listingData.status === 'Sold' || listingData.pendingOrder) {
-                    showAlert('This listing has already been sold.', 'error');
-                    const modal = document.getElementById('purchase-modal');
-                    modal.style.display = 'none';
-                    loadListings(); // Refresh listings to show updated status
-                    return;
-                }
-
-                // Immediately mark listing as pending to prevent other purchases
-                await db.collection('listings').doc(currentPurchase.id).update({
-                    pendingOrder: true,
-                    status: 'Disabled'
-                });
-
-                const username = localStorage.getItem('currentUser');
-                if (!username) throw new Error('Not logged in');
-                
-                // Get the payment proof file
-                const proofInput = document.getElementById('payment-proof');
-                const proofFile = proofInput && proofInput.files ? proofInput.files[0] : null;
-                
-                // Get user's avatar
-                const userDoc = await db.collection('users').doc(username).get();
-                const userData = userDoc.data();
-                const userAvatar = userData?.discordAvatarURL || null;
-
-                let proofUrl = null;
-                
-                // Upload proof if exists (for non-balance payments)
-                if (proofFile && currentPurchase.paymentMethod !== 'balance') {
-                    proofUrl = await uploadToLitterbox(proofFile);
-                }
-
-                // Create order with proper structure
+                // Create the order
                 const orderData = {
-                    accountDetails: {
-                        username: '',  // Will be filled by admin
-                        password: ''   // Will be filled by admin
-                    },
-                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                    completedAt: null,
+                    userId: localStorage.getItem('currentUser'),
                     listingId: currentPurchase.id,
                     listingTitle: currentPurchase.title,
-                    paymentMethod: currentPurchase.paymentMethod,
                     price: currentPurchase.price,
-                    status: 'Pending',
-                    userAvatar: userAvatar,
-                    userId: username,
-                    username: username
+                    paymentMethod: currentPurchase.paymentMethod,
+                    proofUrl: currentPurchase.proofUrl || null,
+                    status: currentPurchase.paymentMethod === 'balance' ? 'Processing' : 'Pending',
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
                 };
 
-                if (proofUrl) {
-                    orderData.proofUrl = proofUrl;
-                }
-
-                // Create the order in Firebase
+                // Add order to database
                 await db.collection('orders').add(orderData);
 
-                // Update listing with buyer info
-                await db.collection('listings').doc(currentPurchase.id).update({
-                    buyerId: username,
-                    buyerUsername: username
-                });
-                
+                // If using balance, deduct immediately
+                if (currentPurchase.paymentMethod === 'balance') {
+                    await db.collection('users').doc(orderData.userId).update({
+                        balance: firebase.firestore.FieldValue.increment(-currentPurchase.price)
+                    });
+                }
+
                 // Close modal and show success message
                 const modal = document.getElementById('purchase-modal');
-                modal.style.display = 'none';
-                showAlert('Order submitted! Please wait for admin approval.', 'success');
+                modal.classList.remove('show');
+                setTimeout(() => {
+                    modal.style.display = 'none';
+                }, 300);
+
+                showAlert('Purchase submitted successfully!', 'success');
                 
+                // Reload user profile to update balance display
+                loadUserProfile();
             } catch (error) {
-                console.error('Purchase error:', error);
-                showAlert('Error processing purchase: ' + error.message, 'error');
-                
-                // If there was an error, revert the listing status
-                try {
-                    await db.collection('listings').doc(currentPurchase.id).update({
-                        pendingOrder: false,
-                        status: 'Active'
-                    });
-                } catch (revertError) {
-                    console.error('Error reverting listing status:', revertError);
-                }
+                console.error('Error submitting purchase:', error);
+                showAlert('Error submitting purchase: ' + error.message, 'error');
             }
+        }
+
+        // Add new function to show payment methods after verification
+        function showPaymentMethods() {
+            const details = document.getElementById('purchase-details');
+            const balanceElement = document.querySelector('.header .balance-amount');
+            const currentBalance = parseFloat(balanceElement.textContent.replace('$', ''));
+            const hasEnoughBalance = currentBalance >= currentPurchase.price;
+            
+            details.innerHTML = `
+                <p>Item: ${currentPurchase.title}</p>
+                <p>Price: $${currentPurchase.price}</p>
+                <p>Your Balance: $${currentBalance.toFixed(2)}</p>
+                <div class="payment-methods">
+                    <button class="payment-option ${!hasEnoughBalance ? 'disabled' : ''}" 
+                        onclick="${hasEnoughBalance ? "selectPaymentOption('balance')" : "showAlert('Insufficient balance', 'error')"}"
+                        ${!hasEnoughBalance ? 'title="Insufficient balance"' : ''}>
+                        <i class="fas fa-wallet"></i> Use Balance
+                    </button>
+                    <button class="payment-option" onclick="selectPaymentOption('cashapp')">
+                        <i class="fas fa-dollar-sign"></i> Cash App
+                    </button>
+                    <button class="payment-option" onclick="selectPaymentOption('paypal')">
+                        <i class="fab fa-paypal"></i> PayPal
+                    </button>
+                    <button class="payment-option" onclick="selectPaymentOption('crypto')">
+                        <i class="fab fa-bitcoin"></i> Crypto
+                    </button>
+                </div>
+                <div id="payment-info" style="display: none;"></div>`;
         }
 
         // Add new function to show payment options
@@ -766,13 +751,13 @@
         }
 
         // Close modal when clicking X
-        document.querySelector('.close-modal').onclick = function() {
+        document.querySelector('.close-modal').addEventListener('click', function() {
             const modal = document.getElementById('purchase-modal');
             modal.classList.remove('show');
             setTimeout(() => {
                 modal.style.display = 'none';
             }, 300);
-        }
+        });
 
         // Add this function to handle image preview
         window.previewProof = function(input) {
@@ -1035,7 +1020,7 @@
                                 </div>
                                 <h3>SECURE YOUR ACCOUNT</h3>
                                 <p>Don't lose access to your purchase!</p>
-                                <a href="/security.html" class="security-btn">
+                                <a href="/secure/" class="security-btn">
                                     <i class="fas fa-lock"></i>
                                     How to Secure Your Account
                                 </a>
@@ -1062,73 +1047,96 @@
             }, 300);
         });
 
-        // Add these new JavaScript functions
-        window.handlePaymentSubmission = async function() {
-            // Only check for proof if NOT using balance
-            if (currentPurchase.paymentMethod !== 'balance') {
-                const proofInput = document.getElementById('payment-proof');
-                
-                if (!proofInput || !proofInput.files || !proofInput.files[0]) {
-                    showAlert('Please upload payment proof', 'error');
-                    return;
-                }
+        // Add this function before handlePaymentSubmission
+        async function uploadToLitterbox(file) {
+            const formData = new FormData();
+            formData.append('reqtype', 'fileupload');
+            formData.append('time', '72h'); // Files will be available for 72 hours
+            formData.append('fileToUpload', file);
+
+            const response = await fetch('https://litterbox.catbox.moe/resources/internals/api.php', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to upload proof image');
             }
 
-            // Hide payment info and show verification
-            document.getElementById('payment-info').style.display = 'none';
-            showMathVerification();
+            const imageUrl = await response.text();
+            return imageUrl.trim();
         }
 
-        // Update the submitPurchase function
-        window.submitPurchase = async function() {
+        // Update the handlePaymentSubmission function
+        window.handlePaymentSubmission = async function() {
             try {
+                // Get user data first
                 const username = localStorage.getItem('currentUser');
-                if (!username) throw new Error('Not logged in');
+                const userDoc = await db.collection('users').doc(username).get();
                 
-                let proofUrl = null;
-                
-                // Only handle proof upload for non-balance payments
-                if (currentPurchase.paymentMethod !== 'balance') {
-                    const proofInput = document.getElementById('payment-proof');
-                    const proofFile = proofInput && proofInput.files ? proofInput.files[0] : null;
-                    
-                    if (proofFile) {
-                        proofUrl = await uploadToLitterbox(proofFile);
-                    }
+                if (!userDoc.exists) {
+                    showAlert('Error: User data not found', 'error');
+                    return;
                 }
 
-                // Create order with proper structure
+                const userData = userDoc.data();
+
+                // Only check for proof if NOT using balance
+                if (currentPurchase.paymentMethod !== 'balance') {
+                    const proofInput = document.getElementById('payment-proof');
+                    
+                    if (!proofInput || !proofInput.files || !proofInput.files[0]) {
+                        showAlert('Please upload payment proof', 'error');
+                        return;
+                    }
+
+                    // Upload proof to litterbox
+                    const proofUrl = await uploadToLitterbox(proofInput.files[0]);
+                    currentPurchase.proofUrl = proofUrl;
+                }
+
+                // Create the order with user information formatted for admin panel
                 const orderData = {
-                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    userId: username,
+                    username: userData.username,
+                    userAvatar: userData.discordAvatarURL || 'https://cdn.discordapp.com/embed/avatars/0.png',
+                    discordId: userData.discordId,
+                    discordUsername: userData.discordUsername,
                     listingId: currentPurchase.id,
                     listingTitle: currentPurchase.title,
-                    paymentMethod: currentPurchase.paymentMethod,
                     price: currentPurchase.price,
-                    status: 'Pending',
-                    userId: username,
-                    username: username,
-                    proofUrl: proofUrl  // Will be null for balance payments
+                    paymentMethod: currentPurchase.paymentMethod,
+                    proofUrl: currentPurchase.proofUrl || null,
+                    status: currentPurchase.paymentMethod === 'balance' ? 'Processing' : 'Pending',
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    ip: userData.ip,
+                    quantity: 1 // Added for admin panel display
                 };
 
-                // Create the order in Firebase
-                await db.collection('orders').add(orderData);
+                // Add order to database
+                const orderRef = await db.collection('orders').add(orderData);
 
-                // Update listing status
-                await db.collection('listings').doc(currentPurchase.id).update({
-                    pendingOrder: true,
-                    status: 'Disabled',
-                    buyerId: username,
-                    buyerUsername: username
-                });
-                
+                // If using balance, deduct immediately
+                if (currentPurchase.paymentMethod === 'balance') {
+                    await db.collection('users').doc(username).update({
+                        balance: firebase.firestore.FieldValue.increment(-currentPurchase.price)
+                    });
+                }
+
                 // Close modal and show success message
                 const modal = document.getElementById('purchase-modal');
-                modal.style.display = 'none';
-                showAlert('Order submitted! Please wait for admin approval.', 'success');
+                modal.classList.remove('show');
+                setTimeout(() => {
+                    modal.style.display = 'none';
+                }, 300);
+
+                showAlert('Purchase submitted successfully!', 'success');
                 
+                // Reload user profile to update balance display
+                loadUserProfile();
             } catch (error) {
-                console.error('Purchase error:', error);
-                showAlert('Error processing purchase: ' + error.message, 'error');
+                console.error('Error:', error);
+                showAlert('Error processing payment: ' + error.message, 'error');
             }
         }
 
@@ -1137,6 +1145,56 @@
         }
         // Add IP ban check
         checkIPBan();
+
+        // Add real-time listener for listing status changes
+        function initializeListingListeners() {
+            const listingsGrid = document.getElementById('listings-grid');
+            
+            db.collection('listings').onSnapshot((snapshot) => {
+                snapshot.docChanges().forEach((change) => {
+                    const listing = { id: change.doc.id, ...change.doc.data() };
+                    const listingCard = document.querySelector(`[onclick*="${listing.id}"]`)?.closest('.listing-card');
+                    
+                    if (listingCard) {
+                        const button = listingCard.querySelector('.listing-button');
+                        
+                        if (listing.status === 'Disabled' || listing.verifiedBuyer) {
+                            button.classList.add('locked');
+                            button.textContent = 'Unavailable';
+                            button.onclick = null;
+                        }
+                    }
+                });
+            });
+        }
+
+        // Initialize listeners when document loads
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeListingListeners();
+            // ... other initialization code ...
+        });
+
+        // Update the verification check function
+        function checkVerificationAnswer(answer, correctAnswer) {
+            const verificationContainer = document.getElementById('verification-container');
+            const existingError = verificationContainer.querySelector('.error-message');
+            
+            if (existingError) {
+                existingError.remove();
+            }
+
+            if (answer !== correctAnswer) {
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'error-message';
+                errorDiv.innerHTML = `
+                    <i class="fas fa-exclamation-circle"></i>
+                    <span>Incorrect answer. Please try again.</span>
+                `;
+                verificationContainer.appendChild(errorDiv);
+                return false;
+            }
+            return true;
+        }
     </script>
     <div id="purchase-modal" class="modal">
         <div class="modal-content">
