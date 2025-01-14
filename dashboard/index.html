@@ -456,7 +456,7 @@
                 title: title,
                 price: price,
                 mathAnswer: null,
-                paymentMethod: null, // Initialize payment method as null
+                paymentMethod: null,
                 proofUrl: null
             };
 
@@ -471,6 +471,7 @@
             `;
             
             modal.style.display = 'flex';
+            modal.classList.add('purchase-locked');
             requestAnimationFrame(() => {
                 modal.classList.add('show');
             });
@@ -548,10 +549,9 @@
                 return;
             }
             
-            // Generate random numbers between 10 and 999 for first number
-            // and between 10 and 99 for second number
-            const num1 = Math.floor(Math.random() * 990) + 10; // 10 to 999
-            const num2 = Math.floor(Math.random() * 90) + 10;  // 10 to 99
+            // Generate random numbers between 1 and 50
+            const num1 = Math.floor(Math.random() * 50) + 1;
+            const num2 = Math.floor(Math.random() * 50) + 1;
             currentPurchase.mathAnswer = num1 + num2;
             
             verificationContainer.innerHTML = `
@@ -564,7 +564,7 @@
             document.getElementById('math-answer').focus();
         }
 
-        // Add verifyAnswer function back
+        // Update verifyAnswer function to log the captcha winner
         window.verifyAnswer = async function() {
             const userAnswer = parseInt(document.getElementById('math-answer').value);
             
@@ -581,21 +581,30 @@
                 // Try to claim verification for this listing
                 const listingRef = db.collection('listings').doc(currentPurchase.id);
                 const username = localStorage.getItem('currentUser');
+                
+                // Get user data for logging
+                const userDoc = await db.collection('users').doc(username).get();
+                const userData = userDoc.data();
 
                 await db.runTransaction(async (transaction) => {
                     const listingDoc = await transaction.get(listingRef);
                     const listingData = listingDoc.data();
                     
-                    // Check if listing is already claimed or disabled
-                    if (listingData.status === 'Disabled' || listingData.verifiedBuyer) {
+                    // Check if listing is already claimed
+                    if (listingData.verifiedBuyer) {
                         throw new Error('Someone else was faster to verify this listing');
                     }
 
-                    // Set current user as verified buyer and disable the listing
+                    // Update listing with captcha winner details
                     transaction.update(listingRef, {
                         verifiedBuyer: username,
                         verificationTime: firebase.firestore.FieldValue.serverTimestamp(),
-                        status: 'Disabled' // Disable the listing immediately
+                        status: 'Pending',
+                        captchaWinner: {
+                            userId: username,
+                            username: userData.username,
+                            verifiedAt: firebase.firestore.FieldValue.serverTimestamp()
+                        }
                     });
                 });
 
@@ -603,7 +612,7 @@
                 showAlert('Verification successful! Please select payment method.', 'success');
                 showPaymentMethods();
 
-                // Update the listing card in the UI to show as unavailable
+                // Update the listing card in the UI
                 const listingCard = document.querySelector(`[onclick*="${currentPurchase.id}"]`).closest('.listing-card');
                 if (listingCard) {
                     const button = listingCard.querySelector('.listing-button');
@@ -688,6 +697,7 @@
                 // Close modal and show success message
                 const modal = document.getElementById('purchase-modal');
                 modal.classList.remove('show');
+                modal.classList.remove('purchase-locked');
                 setTimeout(() => {
                     modal.style.display = 'none';
                 }, 300);
@@ -741,22 +751,13 @@
 
         // Close modal when clicking outside
         window.onclick = function(event) {
-            const modal = document.getElementById('purchase-modal');
-            if (event.target === modal) {
-                modal.classList.remove('show');
-                setTimeout(() => {
-                    modal.style.display = 'none';
-                }, 300);
-            }
+            // Remove the modal close functionality
+            // The modal can only be closed after purchase is completed
         }
 
         // Close modal when clicking X
-        document.querySelector('.close-modal').addEventListener('click', function() {
-            const modal = document.getElementById('purchase-modal');
-            modal.classList.remove('show');
-            setTimeout(() => {
-                modal.style.display = 'none';
-            }, 300);
+        document.querySelector('.close-modal').removeEventListener('click', function() {
+            // Remove the close button functionality
         });
 
         // Add this function to handle image preview
@@ -1138,6 +1139,7 @@
                 // Close modal and show success message
                 const modal = document.getElementById('purchase-modal');
                 modal.classList.remove('show');
+                modal.classList.remove('purchase-locked');
                 setTimeout(() => {
                     modal.style.display = 'none';
                 }, 300);

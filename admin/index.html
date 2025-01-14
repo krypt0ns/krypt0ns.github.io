@@ -1686,11 +1686,20 @@
 
                     // Remove pending status from listing
                     batch.update(db.collection('listings').doc(orderData.listingId), {
-                        pendingOrder: false
+                        pendingOrder: false,
+                        status: 'Active', // Re-activate the listing
+                        verifiedBuyer: null // Clear the verified buyer
                     });
 
+                    // If payment method was balance, refund the user
+                    if (orderData.paymentMethod === 'balance') {
+                        batch.update(db.collection('users').doc(orderData.userId), {
+                            balance: firebase.firestore.FieldValue.increment(orderData.price)
+                        });
+                    }
+
                     await batch.commit();
-                    showAlert('Order rejected successfully', 'success');
+                    showAlert('Order rejected and balance refunded successfully', 'success');
                 } catch (error) {
                     console.error('Error rejecting order:', error);
                     showAlert('Error rejecting order: ' + error.message, 'error');
@@ -1911,16 +1920,17 @@
                 const listingDoc = await db.collection('listings').doc(listingId).get();
                 const listing = listingDoc.data();
                 
-                // Get buyer information if available
+                // Get captcha winner information
                 let buyerInfo = 'Not available';
-                if (listing.buyerId) {
-                    const buyerDoc = await db.collection('users').doc(listing.buyerId).get();
-                    const buyer = buyerDoc.data();
+                if (listing.captchaWinner) {
                     buyerInfo = `
-                        <div style="display: flex; align-items: center; gap: 0.5rem;">
-                            <img src="${buyer.discordAvatarURL}" alt="${buyer.username}" 
-                                 style="width: 32px; height: 32px; border-radius: 50%;">
-                            <span>${buyer.username}</span>
+                        <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <span>Captcha Winner: ${listing.captchaWinner.username}</span>
+                            </div>
+                            <div style="font-size: 0.9em; color: #666;">
+                                Verified at: ${listing.captchaWinner.verifiedAt?.toDate().toLocaleString() || 'N/A'}
+                            </div>
                         </div>
                     `;
                 }
@@ -1929,6 +1939,9 @@
                     <div class="payment-details-content">
                         <div class="details-header">
                             <h3>Listing Details</h3>
+                            <div class="buyer-info">
+                                <strong>Buyer:</strong> ${buyerInfo}
+                            </div>
                             <div class="alert-close">
                                 <i class="fas fa-times"></i>
                             </div>
@@ -1953,10 +1966,6 @@
                             <div class="detail-row">
                                 <span class="detail-label">Sold Date:</span>
                                 <span class="detail-value">${listing.soldAt ? new Date(listing.soldAt.toDate()).toLocaleString() : 'N/A'}</span>
-                            </div>
-                            <div class="detail-row">
-                                <span class="detail-label">Buyer:</span>
-                                <span class="detail-value">${buyerInfo}</span>
                             </div>
                             <div class="detail-row">
                                 <span class="detail-label">Description:</span>
@@ -2026,8 +2035,8 @@
                     if (e.target === modal) closeModal();
                 };
             } catch (error) {
-                console.error('Error getting listing details:', error);
-                showAlert('Error getting listing details: ' + error.message, 'error');
+                console.error('Error viewing listing details:', error);
+                showAlert('Error loading listing details', 'error');
             }
         }
 

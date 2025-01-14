@@ -1789,3 +1789,13 @@
                 transform: translateY(0);
             }
         }
+
+        /* Update modal styles to prevent clicking outside */
+        .modal.purchase-locked {
+            pointer-events: all;
+            cursor: default;
+        }
+
+        .modal.purchase-locked .close-modal {
+            display: none;
+        }
