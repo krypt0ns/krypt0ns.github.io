@@ -1220,11 +1220,8 @@
                     const listing = doc.data();
                     
                     if (listing?.countdown?.active) {
-                        // Get server time
-                        const timeSnapshot = await db.collection('time').doc('now').get();
-                        const serverNow = timeSnapshot.data().timestamp.toMillis();
-                        const endTime = listing.countdown.endTime.toMillis();
-                        const timeLeft = endTime - serverNow;
+                        // Calculate time left using server timestamp
+                        const timeLeft = listing.countdown.endTime.toMillis() - Date.now();
                         
                         if (timeLeft <= 0) {
                             if (element.classList.contains('countdown-timer')) {
@@ -1235,6 +1232,11 @@
                                 button.textContent = 'Available Now';
                                 button.classList.remove('disabled');
                             }
+                            
+                            // Update listing status when countdown ends
+                            await db.collection('listings').doc(listingId).update({
+                                'countdown.active': false
+                            });
                         } else {
                             const timeString = formatTimeRemaining(timeLeft);
                             if (element.classList.contains('countdown-timer')) {
@@ -1253,25 +1255,22 @@
             });
         }
 
-        // Add server time sync function
-        async function syncServerTime() {
-            try {
-                // Create or update a timestamp document
-                await db.collection('time').doc('now').set({
-                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
-                });
-            } catch (error) {
-                console.error('Error syncing server time:', error);
+        // Update the formatTimeRemaining function for more precise timing
+        function formatTimeRemaining(milliseconds) {
+            const minutes = Math.floor(milliseconds / 60000);
+            const seconds = Math.floor((milliseconds % 60000) / 1000);
+            const ms = Math.floor((milliseconds % 1000) / 10); // Get centiseconds (1/100th of a second)
+            
+            if (minutes > 0) {
+                return `${minutes}m ${seconds.toString().padStart(2, '0')}s`;
             }
+            return `${seconds}s ${ms.toString().padStart(2, '0')}`;
         }
 
-        // Update initialization
+        // Update initialization to refresh more frequently
         document.addEventListener('DOMContentLoaded', () => {
-            // Start server time sync
-            setInterval(syncServerTime, 1000);
-            
-            // Update countdowns more frequently
-            setInterval(updateCountdownDisplays, 100);
+            // Update countdowns very frequently (every 10ms for smooth countdown)
+            setInterval(updateCountdownDisplays, 10);
             
             // ... rest of your initialization code ...
         });
