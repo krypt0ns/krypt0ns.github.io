@@ -241,13 +241,13 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 0;
+            padding: 80px 0 0 0;
             z-index: 2;
         }
 
         @media only screen and (max-width: 768px) {
             .main-content {
-                padding: 80px 1rem 0;
+                padding: 80px 1rem;
             }
         }
 
@@ -255,23 +255,57 @@
         .listings-container {
             position: relative;
             width: 100%;
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
-            padding: 80px 1rem 2rem;
-            min-height: calc(100vh - 80px);
+            padding: 0 2rem;
             display: flex;
             justify-content: center;
             align-items: center;
+            min-height: calc(100vh - 80px);
         }
 
         /* Listings Grid */
         .listings-grid {
             display: grid;
-            grid-template-columns: repeat(3, 300px);
-            gap: 1.5rem;
+            grid-template-columns: repeat(3, minmax(300px, 1fr));
+            gap: 2rem;
             justify-content: center;
-            align-items: start;
+            align-items: center;
             margin: 0 auto;
+            padding: 1rem;
+            width: 100%;
+            max-width: 1400px;
+        }
+
+        /* Update responsive breakpoints for better spacing */
+        @media screen and (max-width: 1400px) {
+            .listings-grid {
+                grid-template-columns: repeat(3, minmax(280px, 1fr));
+                gap: 1.5rem;
+            }
+        }
+
+        @media screen and (max-width: 1200px) {
+            .listings-grid {
+                grid-template-columns: repeat(2, minmax(280px, 1fr));
+                gap: 1.5rem;
+            }
+        }
+
+        @media screen and (max-width: 768px) {
+            .listings-grid {
+                grid-template-columns: repeat(1, 1fr);
+                gap: 1rem;
+                padding: 0.5rem;
+            }
+            
+            .main-content {
+                padding: 80px 1rem;
+            }
+            
+            .listings-container {
+                padding: 0 1rem;
+            }
         }
 
         /* Large tablets and small desktops */
@@ -1055,13 +1089,34 @@
             cursor: not-allowed;
             opacity: 0.7;
             position: relative;
-            pointer-events: none;
+        }
+
+        .listing-button.locked::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: inherit;
         }
 
         .listing-button.locked:hover {
             transform: none;
             box-shadow: none;
             cursor: not-allowed;
+        }
+
+        /* Add a pulsing animation for locked buttons */
+        @keyframes lockedPulse {
+            0% { opacity: 0.7; }
+            50% { opacity: 0.5; }
+            100% { opacity: 0.7; }
+        }
+
+        .listing-button.locked {
+            animation: lockedPulse 2s infinite ease-in-out;
         }
 
         .custom-alert {
@@ -1754,4 +1809,14 @@
                 opacity: 1;
                 transform: translateY(0);
             }
+        }
+
+        /* Update modal styles to prevent clicking outside */
+        .modal.purchase-locked {
+            pointer-events: all;
+            cursor: default;
+        }
+
+        .modal.purchase-locked .close-modal {
+            display: none;
         }

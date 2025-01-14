@@ -958,3 +958,49 @@
         background: rgba(255, 255, 255, 0.1);
     }
 
+    .drop-btn {
+        background: linear-gradient(135deg, #ed8936 0%, #dd6b20 100%);
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        transition: all 0.3s ease;
+        margin-right: 0.5rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .drop-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(237, 137, 54, 0.2);
+    }
+
+    .drop-btn i {
+        font-size: 0.9rem;
+    }
+
+    .dropped-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 1rem;
+        background: rgba(72, 187, 120, 0.1);
+        color: #48bb78;
+        border-radius: 6px;
+        font-size: 0.9rem;
+        margin-right: 0.5rem;
+    }
+
+    .dropped-badge i {
+        font-size: 0.8rem;
+    }
+
+    /* Update action buttons container spacing */
+    .admin-table td .action-btn {
+        margin-right: 0.5rem;
+    }
+
+    .admin-table td .action-btn:last-child {
+        margin-right: 0;
+    }
+
