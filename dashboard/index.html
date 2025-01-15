@@ -205,9 +205,10 @@
                 snapshot.forEach((doc) => {
                     const listing = { id: doc.id, ...doc.data() };
                     
-                    // Skip disabled, sold, or listings with verified buyers
+                    // Skip disabled, sold, verified, or listings with verified buyers
                     if (listing.status === 'Disabled' || 
                         listing.status === 'Sold' || 
+                        listing.verifiedBuyer ||
                         (listing.verifiedBuyer && listing.verifiedBuyer !== localStorage.getItem('currentUser'))) {
                         return;
                     }
@@ -364,28 +365,13 @@
 
         // Add this function before showPurchaseModal
         async function canPurchase(listingId) {
-            try {
-                const listingDoc = await db.collection('listings').doc(listingId).get();
-                const listingData = listingDoc.data();
-                
-                // Check if listing is disabled or has a verified buyer
-                if (listingData.status === 'Disabled' || listingData.verifiedBuyer) {
-                    return false;
-                }
-                
-                // Check other conditions (release time, countdown, etc.)
-                const now = Date.now();
-                if (listingData.releaseTime > now ||
-                    (listingData.countdown?.active && listingData.countdown.endTime > now)) {
-                    return false;
-                }
-
-                return true;
-            } catch (error) {
-                console.error('Error checking purchase availability:', error);
-                showAlert('Error checking purchase availability', 'error');
-                return false;
-            }
+            const listingDoc = await db.collection('listings').doc(listingId).get();
+            const listingData = listingDoc.data();
+            
+            return listingDoc.exists && 
+                   listingData.status === 'Active' && 
+                   !listingData.verifiedBuyer && 
+                   !listingData.purchaseInProgress;
         }
 
         // Add this function to show alerts
@@ -1420,6 +1406,129 @@
             if (window.listingStatusUnsubscribe) {
                 window.listingStatusUnsubscribe();
             }
+        });
+
+        // Update the initiatePurchase function
+        async function initiatePurchase(listingId, title, price) {
+            try {
+                const currentUser = localStorage.getItem('currentUser');
+                if (!currentUser) {
+                    showAlert('Please log in to make a purchase', 'error');
+                    return;
+                }
+
+                // Get the listing document
+                const listingDoc = await db.collection('listings').doc(listingId).get();
+                const listingData = listingDoc.data();
+
+                if (!listingDoc.exists || !listingData) {
+                    showAlert('Listing not found', 'error');
+                    return;
+                }
+
+                // Check if listing is already being purchased
+                if (listingData.verifiedBuyer || listingData.purchaseInProgress) {
+                    showAlert('This item is no longer available', 'error');
+                    return;
+                }
+
+                // Mark listing as being purchased
+                await db.collection('listings').doc(listingId).update({
+                    purchaseInProgress: true,
+                    purchaseStartTime: firebase.firestore.FieldValue.serverTimestamp(),
+                    potentialBuyer: currentUser
+                });
+
+                // Start checking listing status
+                startListingStatusCheck(listingId);
+
+                // Initialize purchase modal
+                const modal = document.getElementById('purchase-modal');
+                const details = document.getElementById('purchase-details');
+                
+                // Initialize purchase details
+                currentPurchase = {
+                    id: listingId,
+                    title: title,
+                    price: price,
+                    mathAnswer: null,
+                    wordAnswer: null,
+                    paymentMethod: null,
+                    proofUrl: null
+                };
+
+                // Show verification first
+                details.innerHTML = `
+                    <p>Item: ${title}</p>
+                    <p>Price: $${price}</p>
+                    <div id="verification-container">
+                        <p>Complete verification to proceed with purchase:</p>
+                        <div id="math-verification"></div>
+                    </div>
+                `;
+                showMathVerification();
+                
+                modal.style.display = 'flex';
+                modal.classList.add('purchase-locked');
+                requestAnimationFrame(() => {
+                    modal.classList.add('show');
+                });
+
+                // Set a timeout to remove purchase lock if verification isn't completed
+                setTimeout(async () => {
+                    const updatedDoc = await db.collection('listings').doc(listingId).get();
+                    const updatedData = updatedDoc.data();
+                    
+                    if (updatedData.purchaseInProgress && updatedData.potentialBuyer === currentUser && !updatedData.verifiedBuyer) {
+                        await db.collection('listings').doc(listingId).update({
+                            purchaseInProgress: false,
+                            potentialBuyer: null,
+                            purchaseStartTime: null
+                        });
+                    }
+                }, 300000); // 5 minutes timeout
+                
+            } catch (error) {
+                console.error('Error initiating purchase:', error);
+                showAlert('Error initiating purchase: ' + error.message, 'error');
+            }
+        }
+
+        // Update the modal close handler
+        document.querySelector('.close-modal').addEventListener('click', async function() {
+            const modal = document.getElementById('purchase-modal');
+            if (currentPurchase && currentPurchase.id) {
+                try {
+                    const listingDoc = await db.collection('listings').doc(currentPurchase.id).get();
+                    const listingData = listingDoc.data();
+                    const currentUser = localStorage.getItem('currentUser');
+
+                    // Only remove the lock if this user started the purchase and it hasn't been verified yet
+                    if (listingData.potentialBuyer === currentUser && !listingData.verifiedBuyer) {
+                        await db.collection('listings').doc(currentPurchase.id).update({
+                            purchaseInProgress: false,
+                            potentialBuyer: null,
+                            purchaseStartTime: null
+                        });
+                    }
+                } catch (error) {
+                    console.error('Error cleaning up purchase:', error);
+                }
+            }
+
+            // Clear intervals and listeners
+            if (window.statusCheckInterval) {
+                clearInterval(window.statusCheckInterval);
+            }
+            if (window.listingStatusUnsubscribe) {
+                window.listingStatusUnsubscribe();
+            }
+
+            modal.classList.remove('show');
+            setTimeout(() => {
+                modal.style.display = 'none';
+                modal.classList.remove('purchase-locked');
+            }, 300);
         });
     </script>
     <div id="purchase-modal" class="modal">
