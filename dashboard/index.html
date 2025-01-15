@@ -205,8 +205,10 @@
                 snapshot.forEach((doc) => {
                     const listing = { id: doc.id, ...doc.data() };
                     
-                    // Skip disabled or sold listings
-                    if (listing.status === 'Disabled' || listing.status === 'Sold') {
+                    // Skip disabled, sold, or listings with verified buyers
+                    if (listing.status === 'Disabled' || 
+                        listing.status === 'Sold' || 
+                        (listing.verifiedBuyer && listing.verifiedBuyer !== localStorage.getItem('currentUser'))) {
                         return;
                     }
                     
@@ -229,19 +231,19 @@
                 if (activeListingsCount === 0) {
                     listingsGrid.innerHTML = `
                         <div style="
-            text-align: center;
-            color: white;
+                            text-align: center;
+                            color: white;
                             width: 100%;
                             position: absolute;
                             top: 50%;
                             left: 50%;
                             transform: translate(-50%, -50%);
                             font-size: 1.5rem;
-            font-weight: 600;
+                            font-weight: 600;
                             padding: 2rem;
                             backdrop-filter: blur(10px);
                             border-radius: 12px;
-                border: 1px solid rgba(255, 255, 255, 0.1);
+                            border: 1px solid rgba(255, 255, 255, 0.1);
                             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
                         ">
                             There are currently no active listings
@@ -356,7 +358,8 @@
             id: null,
             price: 0,
             title: '',
-            mathAnswer: null
+            mathAnswer: null,
+            wordAnswer: null
         };
 
         // Add this function before showPurchaseModal
@@ -500,6 +503,7 @@
                     title: title,
                     price: price,
                     mathAnswer: null,
+                    wordAnswer: null,
                     paymentMethod: null,
                     proofUrl: null
                 };
@@ -607,7 +611,15 @@
             
             verificationContainer.innerHTML = `
                 <p id="math-question">What is ${num1} + ${num2}?</p>
-                <input type="number" id="math-answer" placeholder="Enter answer">
+                <input type="number" 
+                       id="math-answer" 
+                       placeholder="Enter answer"
+                       onpaste="return false;" 
+                       ondrop="return false;"
+                       oncontextmenu="return false;"
+                       oncopy="return false;"
+                       oncut="return false;"
+                       style="user-select: none; -webkit-user-select: none;">
                 <button onclick="verifyAnswer()">Verify</button>
             `;
 
@@ -624,6 +636,59 @@
                 const mathInput = document.getElementById('math-answer');
                 mathInput.value = '';
                 mathInput.focus();
+                return;
+            }
+
+            showAlert('Math verification successful! One more step...', 'success');
+            showWordVerification();
+        }
+
+        // Add this function to show the word verification after math is completed
+        function showWordVerification() {
+            const verificationContainer = document.getElementById('verification-container');
+            if (!verificationContainer) {
+                console.error('Verification container not found');
+                return;
+            }
+            
+            // List of simple English words
+            const words = ['hello', 'world', 'apple', 'beach', 'cloud', 'dream', 'earth', 'fires', 
+                          'green', 'heart', 'light', 'music', 'ocean', 'peace', 'smile', 'storm', 
+                          'water', 'sunny', 'happy', 'dance'];
+            
+            // Pick a random word
+            const randomWord = words[Math.floor(Math.random() * words.length)];
+            currentPurchase.wordAnswer = randomWord;
+            
+            verificationContainer.innerHTML = `
+                <p>Final verification step:</p>
+                <p id="word-question">Please type the word: <strong style="user-select: none; -webkit-user-select: none;">${randomWord}</strong></p>
+                <input type="text" 
+                       id="word-answer" 
+                       placeholder="Type the word exactly" 
+                       autocomplete="off"
+                       onpaste="return false;" 
+                       ondrop="return false;"
+                       oncontextmenu="return false;"
+                       oncopy="return false;"
+                       oncut="return false;"
+                       style="user-select: none; -webkit-user-select: none;">
+                <button onclick="verifyWordAnswer()">Verify</button>
+            `;
+
+            // Auto-focus the input
+            document.getElementById('word-answer').focus();
+        }
+
+        // Add this function to verify the word answer
+        window.verifyWordAnswer = async function() {
+            const userAnswer = document.getElementById('word-answer').value.trim().toLowerCase();
+            
+            if (userAnswer !== currentPurchase.wordAnswer) {
+                showAlert('Incorrect word. Please try again.', 'error');
+                const wordInput = document.getElementById('word-answer');
+                wordInput.value = '';
+                wordInput.focus();
                 return;
             }
 
@@ -660,7 +725,7 @@
                 showPaymentMethods();
 
             } catch (error) {
-                console.error('Error during verification:', error);
+                console.error('Error during word verification:', error);
                 showAlert('Error during verification: ' + error.message, 'error');
             }
         }
@@ -1149,7 +1214,7 @@
                     price: currentPurchase.price,
                     paymentMethod: currentPurchase.paymentMethod,
                     proofUrl: currentPurchase.proofUrl || null,
-                    status: 'Pending',
+                    status: 'Pending', // Always set to pending initially, even for balance payments
                     createdAt: firebase.firestore.FieldValue.serverTimestamp(),
                     ip: userData.ip,
                     quantity: 1,
@@ -1162,20 +1227,6 @@
 
                 // Add order to database
                 await db.collection('orders').add(orderData);
-
-                // Only deduct balance if payment method is 'balance'
-                if (currentPurchase.paymentMethod === 'balance') {
-                    // Verify user has sufficient balance before deducting
-                    const currentBalance = userData.balance || 0;
-                    if (currentBalance < currentPurchase.price) {
-                        showAlert('Insufficient balance', 'error');
-                        return;
-                    }
-
-                    await db.collection('users').doc(username).update({
-                        balance: firebase.firestore.FieldValue.increment(-currentPurchase.price)
-                    });
-                }
 
                 // Close modal and show success message
                 const modal = document.getElementById('purchase-modal');
@@ -1289,6 +1340,7 @@
                     title: title,
                     price: price,
                     mathAnswer: null,
+                    wordAnswer: null,
                     paymentMethod: null,
                     proofUrl: null
                 };

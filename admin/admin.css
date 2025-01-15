@@ -1004,3 +1004,27 @@
         margin-right: 0;
     }
 
+    /* Add these styles to your CSS file */
+    .pagination-btn {
+        background: rgba(107, 70, 193, 0.1);
+        border: 1px solid rgba(107, 70, 193, 0.2);
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .pagination-btn:hover:not([disabled]) {
+        background: rgba(107, 70, 193, 0.2);
+        transform: translateY(-2px);
+    }
+
+    .pagination-btn:disabled {
+        cursor: not-allowed;
+    }
+
+    .pagination-btn i {
+        font-size: 0.9rem;
+    }
+

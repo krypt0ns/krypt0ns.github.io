@@ -1820,3 +1820,36 @@
         .modal.purchase-locked .close-modal {
             display: none;
         }
+
+        /* Add these styles for the word verification input */
+        #word-answer {
+            width: 100%;
+            padding: 0.75rem;
+            margin: 1rem 0;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            color: white;
+            font-size: 1rem;
+        }
+
+        #word-question {
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
+        }
+
+        #word-question strong {
+            color: #6b46c1;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        /* Add this to prevent text selection globally in the verification container */
+        #verification-container {
+            -webkit-touch-callout: none; /* iOS Safari */
+            -webkit-user-select: none;   /* Safari */
+            -khtml-user-select: none;    /* Konqueror HTML */
+            -moz-user-select: none;      /* Firefox */
+            -ms-user-select: none;       /* Internet Explorer/Edge */
+            user-select: none;           /* Non-prefixed version */
+        }

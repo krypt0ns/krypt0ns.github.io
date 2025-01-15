@@ -621,6 +621,10 @@
         let allUsers = [];
         let userSearchTerm = '';
 
+        // Add these variables at the top with your other global variables
+        let currentPage = 1;
+        const usersPerPage = 10;
+
         // Update the initializeUsersListener function
         function initializeUsersListener() {
             const tableBody = document.querySelector('#users-section .admin-table tbody');
@@ -628,9 +632,22 @@
             
             if (!tableBody || !searchInput) return;
 
+            // Add pagination controls to the users section
+            const paginationContainer = document.createElement('div');
+            paginationContainer.className = 'pagination-controls';
+            paginationContainer.style.cssText = `
+                margin-top: 1rem;
+                display: flex;
+                justify-content: center;
+                gap: 0.5rem;
+                align-items: center;
+            `;
+            document.querySelector('#users-section').appendChild(paginationContainer);
+
             // Add search event listener
             searchInput.addEventListener('input', (e) => {
                 userSearchTerm = e.target.value.toLowerCase();
+                currentPage = 1; // Reset to first page on search
                 renderUsers();
             });
 
@@ -647,19 +664,29 @@
             });
         }
 
-        // Add the renderUsers function
+        // Update the renderUsers function
         function renderUsers() {
             const tableBody = document.querySelector('#users-section .admin-table tbody');
-            if (!tableBody) return;
+            const paginationContainer = document.querySelector('.pagination-controls');
+            if (!tableBody || !paginationContainer) return;
             
-            tableBody.innerHTML = '';
-            
+            // Filter users based on search term
             const filteredUsers = allUsers.filter(user => {
                 return (user.username || '').toLowerCase().includes(userSearchTerm) ||
                        (user.discordUsername || '').toLowerCase().includes(userSearchTerm);
             });
 
-            filteredUsers.forEach(user => {
+            // Calculate pagination
+            const totalPages = Math.ceil(filteredUsers.length / usersPerPage);
+            const startIndex = (currentPage - 1) * usersPerPage;
+            const endIndex = startIndex + usersPerPage;
+            const usersToShow = filteredUsers.slice(startIndex, endIndex);
+
+            // Clear table
+            tableBody.innerHTML = '';
+
+            // Render users for current page
+            usersToShow.forEach(user => {
                 const row = `
                     <tr>
                         <td>
@@ -689,6 +716,50 @@
                 `;
                 tableBody.innerHTML += row;
             });
+
+            // Update pagination controls
+            paginationContainer.innerHTML = `
+                <button class="pagination-btn" 
+                        onclick="changePage(1)" 
+                        ${currentPage === 1 ? 'disabled' : ''}
+                        style="opacity: ${currentPage === 1 ? '0.5' : '1'}">
+                    <i class="fas fa-angle-double-left"></i>
+                </button>
+                <button class="pagination-btn" 
+                        onclick="changePage(${currentPage - 1})" 
+                        ${currentPage === 1 ? 'disabled' : ''}
+                        style="opacity: ${currentPage === 1 ? '0.5' : '1'}">
+                    <i class="fas fa-angle-left"></i>
+                </button>
+                <span style="color: white; margin: 0 1rem;">
+                    Page ${currentPage} of ${totalPages}
+                </span>
+                <button class="pagination-btn" 
+                        onclick="changePage(${currentPage + 1})" 
+                        ${currentPage === totalPages ? 'disabled' : ''}
+                        style="opacity: ${currentPage === totalPages ? '0.5' : '1'}">
+                    <i class="fas fa-angle-right"></i>
+                </button>
+                <button class="pagination-btn" 
+                        onclick="changePage(${totalPages})" 
+                        ${currentPage === totalPages ? 'disabled' : ''}
+                        style="opacity: ${currentPage === totalPages ? '0.5' : '1'}">
+                    <i class="fas fa-angle-double-right"></i>
+                </button>
+            `;
+        }
+
+        // Add the changePage function
+        function changePage(newPage) {
+            const totalPages = Math.ceil(allUsers.filter(user => 
+                (user.username || '').toLowerCase().includes(userSearchTerm) ||
+                (user.discordUsername || '').toLowerCase().includes(userSearchTerm)
+            ).length / usersPerPage);
+
+            if (newPage >= 1 && newPage <= totalPages) {
+                currentPage = newPage;
+                renderUsers();
+            }
         }
 
         // Add the viewUserDetails function
@@ -1428,23 +1499,53 @@
             });
         }
 
-        // Add this to your orders section initialization
+        // Add these pagination variables at the top with your other global variables
+        let currentOrdersPage = 1;
+        let currentPaymentsPage = 1;
+        const itemsPerPage = 10;
+
+        // Update the initializeOrdersListener function
         function initializeOrdersListener() {
             const tableBody = document.querySelector('#orders-section tbody');
             if (!tableBody) return;
             
+            // Add pagination controls
+            const paginationContainer = document.createElement('div');
+            paginationContainer.className = 'pagination-controls';
+            paginationContainer.style.cssText = `
+                margin-top: 1rem;
+                display: flex;
+                justify-content: center;
+                gap: 0.5rem;
+                align-items: center;
+            `;
+            document.querySelector('#orders-section').appendChild(paginationContainer);
+            
             db.collection('orders')
                 .orderBy('createdAt', 'desc')
                 .onSnapshot((snapshot) => {
+                    const allOrders = [];
+                    snapshot.forEach((doc) => {
+                        allOrders.push({
+                            id: doc.id,
+                            ...doc.data()
+                        });
+                    });
+                    
+                    // Calculate pagination
+                    const totalPages = Math.ceil(allOrders.length / itemsPerPage);
+                    const startIndex = (currentOrdersPage - 1) * itemsPerPage;
+                    const endIndex = startIndex + itemsPerPage;
+                    const ordersToShow = allOrders.slice(startIndex, endIndex);
+                    
                     tableBody.innerHTML = '';
                     
-                    snapshot.forEach((doc) => {
-                        const order = doc.data();
+                    ordersToShow.forEach((order) => {
                         const timestamp = order.createdAt?.toDate() || new Date();
                         
                         const row = `
                             <tr>
-                                <td>#${doc.id.slice(-6).toUpperCase()}</td>
+                                <td>#${order.id.slice(-6).toUpperCase()}</td>
                                 <td>
                                     <div style="display: flex; align-items: center; gap: 10px;">
                                         <img src="${order.userAvatar || 'https://cdn.discordapp.com/embed/avatars/0.png'}" 
@@ -1461,15 +1562,15 @@
                                     </span>
                                 </td>
                                 <td>
-                                    <button class="action-btn info-btn" onclick="showOrderInfo('${doc.id}')" 
+                                    <button class="action-btn info-btn" onclick="showOrderInfo('${order.id}')" 
                                             style="background: rgba(66, 153, 225, 0.1); color: #4299e1; margin-right: 0.5rem;">
                                         <i class="fas fa-question-circle"></i>
                                     </button>
                                     ${order.status === 'Pending' ? `
-                                        <button class="action-btn edit-btn" onclick="approveOrder('${doc.id}')">
+                                        <button class="action-btn edit-btn" onclick="approveOrder('${order.id}')">
                                             <i class="fas fa-check"></i>
                                         </button>
-                                        <button class="action-btn delete-btn" onclick="rejectOrder('${doc.id}')">
+                                        <button class="action-btn delete-btn" onclick="rejectOrder('${order.id}')">
                                             <i class="fas fa-times"></i>
                                         </button>
                                     ` : ''}
@@ -1478,143 +1579,201 @@
                         `;
                         tableBody.innerHTML += row;
                     });
+
+                    // Update pagination controls
+                    paginationContainer.innerHTML = `
+                        <button class="pagination-btn" 
+                                onclick="changeOrdersPage(1)" 
+                                ${currentOrdersPage === 1 ? 'disabled' : ''}
+                                style="opacity: ${currentOrdersPage === 1 ? '0.5' : '1'}">
+                            <i class="fas fa-angle-double-left"></i>
+                        </button>
+                        <button class="pagination-btn" 
+                                onclick="changeOrdersPage(${currentOrdersPage - 1})" 
+                                ${currentOrdersPage === 1 ? 'disabled' : ''}
+                                style="opacity: ${currentOrdersPage === 1 ? '0.5' : '1'}">
+                            <i class="fas fa-angle-left"></i>
+                        </button>
+                        <span style="color: white; margin: 0 1rem;">
+                            Page ${currentOrdersPage} of ${totalPages}
+                        </span>
+                        <button class="pagination-btn" 
+                                onclick="changeOrdersPage(${currentOrdersPage + 1})" 
+                                ${currentOrdersPage === totalPages ? 'disabled' : ''}
+                                style="opacity: ${currentOrdersPage === totalPages ? '0.5' : '1'}">
+                            <i class="fas fa-angle-right"></i>
+                        </button>
+                        <button class="pagination-btn" 
+                                onclick="changeOrdersPage(${totalPages})" 
+                                ${currentOrdersPage === totalPages ? 'disabled' : ''}
+                                style="opacity: ${currentOrdersPage === totalPages ? '0.5' : '1'}">
+                            <i class="fas fa-angle-double-right"></i>
+                        </button>
+                    `;
                 });
         }
 
-        // Add these functions near the top of your script section
-        function showModal(content) {
-            // Create modal if it doesn't exist
-            let modal = document.getElementById('admin-modal');
-            if (!modal) {
-                modal = document.createElement('div');
-                modal.id = 'admin-modal';
-                modal.className = 'modal';
-                document.body.appendChild(modal);
-            }
+        // Add the changeOrdersPage function
+        function changeOrdersPage(newPage) {
+            currentOrdersPage = newPage;
+            initializeOrdersListener();
+        }
 
-            modal.innerHTML = `
-                <div class="modal-content">
-                    <span class="close-modal" onclick="closeModal()">&times;</span>
-                    ${content}
-                </div>
+        // Update the initializePaymentsListener function
+        function initializePaymentsListener() {
+            const tableBody = document.querySelector('#payments-section .admin-table tbody');
+            const searchInput = document.getElementById('payment-search');
+            const statusSelect = document.getElementById('status-filter');
+            
+            if (!tableBody) return;
+
+            // Add pagination controls
+            const paginationContainer = document.createElement('div');
+            paginationContainer.className = 'pagination-controls';
+            paginationContainer.style.cssText = `
+                margin-top: 1rem;
+                display: flex;
+                justify-content: center;
+                gap: 0.5rem;
+                align-items: center;
             `;
+            document.querySelector('#payments-section').appendChild(paginationContainer);
 
-            modal.style.display = 'flex';
-            setTimeout(() => modal.classList.add('show'), 10);
-        }
+            // Add event listeners for search and filter
+            searchInput.addEventListener('input', () => {
+                currentPaymentsPage = 1; // Reset to first page on search
+                renderPayments();
+            });
 
-        function closeModal() {
-            const modal = document.getElementById('admin-modal');
-            if (modal) {
-                modal.classList.remove('show');
-                setTimeout(() => {
-                    modal.style.display = 'none';
-                }, 300);
-            }
-        }
+            statusSelect.addEventListener('change', () => {
+                currentPaymentsPage = 1; // Reset to first page on filter change
+                renderPayments();
+            });
 
-        // Update the showOrderInfo function
-        async function showOrderInfo(orderId) {
-            try {
-                const orderDoc = await db.collection('orders').doc(orderId).get();
-                const order = orderDoc.data();
-                
-                if (!orderDoc.exists || !order) {
-                    showAlert('Order not found', 'error');
-                    return;
-                }
-
-                const timestamp = order.createdAt?.toDate() || new Date();
-                const detailsHTML = `
-                    <div class="order-details-content">
-                        <div class="order-details-header">
-                            <h3>Order Details</h3>
-                            <button class="alert-close">×</button>
-                        </div>
-                        <div class="order-details-body">
-                            <div class="order-detail-row">
-                                <span class="order-detail-label">Order ID:</span>
-                                <span class="order-detail-value">#${order.orderNumber || orderId.slice(-6).toUpperCase()}</span>
-                            </div>
-                            <div class="order-detail-row">
-                                <span class="order-detail-label">User:</span>
-                                <div class="order-user-info">
-                                    <img src="${order.userAvatar}" alt="User Avatar" class="order-user-avatar">
-                                    <div class="user-details">
-                                        <span>${order.username}</span>
-                                        <span class="discord-tag">${order.discordUsername}</span>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="order-detail-row">
-                                <span class="order-detail-label">Item:</span>
-                                <span class="order-detail-value">${order.listingTitle}</span>
-                            </div>
-                            <div class="order-detail-row">
-                                <span class="order-detail-label">Price:</span>
-                                <span class="order-detail-value">$${order.price}</span>
-                            </div>
-                            <div class="order-detail-row">
-                                <span class="order-detail-label">Status:</span>
-                                <span class="status-badge ${order.status.toLowerCase()}">${order.status}</span>
-                            </div>
-                            <div class="order-detail-row">
-                                <span class="order-detail-label">Payment Method:</span>
-                                <span class="order-detail-value">${order.paymentMethod || 'N/A'}</span>
-                            </div>
-                            <div class="order-detail-row">
-                                <span class="order-detail-label">Date:</span>
-                                <span class="order-detail-value">${timestamp.toLocaleDateString()} ${timestamp.toLocaleTimeString()}</span>
-                            </div>
-                            ${order.proofUrl ? `
-                                <div class="proof-section">
-                                    <span class="order-detail-label">Payment Proof:</span>
-                                    <img src="${order.proofUrl}" alt="Payment Proof" class="order-proof-image">
-                                </div>
-                            ` : ''}
-                            <div class="action-buttons" style="margin-top: 1rem; display: flex; gap: 0.5rem; justify-content: flex-end;">
-                                ${order.status === 'Pending' ? `
-                                    <button class="action-btn edit-btn" onclick="approveOrder('${orderId}')">
-                                        <i class="fas fa-check"></i> Approve
-                                    </button>
-                                    <button class="action-btn delete-btn" onclick="rejectOrder('${orderId}')">
-                                        <i class="fas fa-times"></i> Reject
-                                    </button>
-                                ` : ''}
-                            </div>
-                        </div>
-                    </div>
-                `;
-
-                // Create and show modal
-                const modal = document.createElement('div');
-                modal.className = 'order-modal';
-                modal.innerHTML = detailsHTML;
-                document.body.appendChild(modal);
-
-                // Show with animation
-                requestAnimationFrame(() => {
-                    modal.style.opacity = '1';
+            db.collection('payments')
+                .orderBy('timestamp', 'desc')
+                .onSnapshot(async (snapshot) => {
+                    allPayments = [];
+                    for (const doc of snapshot.docs) {
+                        const payment = doc.data();
+                        const userDoc = await db.collection('users').doc(payment.userId).get();
+                        const userData = userDoc.data();
+                        
+                        allPayments.push({
+                            id: doc.id,
+                            ...payment,
+                            userData
+                        });
+                    }
+                    renderPayments();
                 });
-
-                // Close handlers
-                const closeBtn = modal.querySelector('.alert-close');
-                const closeModal = () => {
-                    modal.style.opacity = '0';
-                    setTimeout(() => modal.remove(), 300);
-                };
-
-                closeBtn.onclick = closeModal;
-                modal.onclick = (e) => {
-                    if (e.target === modal) closeModal();
-                };
-
-            } catch (error) {
-                console.error('Error showing order info:', error);
-                showAlert('Error loading order details: ' + error.message, 'error');
-            }
         }
 
+        // Update the renderPayments function
+        function renderPayments() {
+            const tableBody = document.querySelector('#payments-section .admin-table tbody');
+            const paginationContainer = document.querySelector('#payments-section .pagination-controls');
+            const searchTerm = document.getElementById('payment-search').value.toLowerCase();
+            const statusFilter = document.getElementById('status-filter').value;
+            
+            if (!tableBody || !paginationContainer) return;
+            
+            // Filter payments
+            const filteredPayments = allPayments.filter(payment => {
+                const matchesSearch = payment.userData?.username?.toLowerCase().includes(searchTerm) ||
+                                    payment.id.toLowerCase().includes(searchTerm);
+                const matchesStatus = statusFilter === 'all' || payment.status === statusFilter;
+                return matchesSearch && matchesStatus;
+            });
+
+            // Calculate pagination
+            const totalPages = Math.ceil(filteredPayments.length / itemsPerPage);
+            const startIndex = (currentPaymentsPage - 1) * itemsPerPage;
+            const endIndex = startIndex + itemsPerPage;
+            const paymentsToShow = filteredPayments.slice(startIndex, endIndex);
+
+            // Clear and render table
+            tableBody.innerHTML = '';
+            paymentsToShow.forEach(payment => {
+                const timestamp = payment.timestamp?.toDate() || new Date();
+                const formattedDate = timestamp.toLocaleDateString() + ' ' + timestamp.toLocaleTimeString();
+                
+                const row = `
+                    <tr>
+                        <td>#${payment.id.slice(-6).toUpperCase()}</td>
+                        <td>
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <img src="${payment.userData?.discordAvatarURL || 'https://cdn.discordapp.com/embed/avatars/0.png'}" 
+                                     alt="${payment.userData?.username}" 
+                                     style="width: 32px; height: 32px; border-radius: 50%;">
+                                ${payment.userData?.username || 'Unknown User'}
+                            </div>
+                        </td>
+                        <td>$${payment.amount.toFixed(2)}</td>
+                        <td>${payment.paymentMethod}</td>
+                        <td>
+                            <span class="status-badge ${payment.status.toLowerCase()}">
+                                ${payment.status}
+                            </span>
+                        </td>
+                        <td>${formattedDate}</td>
+                        <td>
+                            <button class="action-btn edit-btn" onclick="viewPaymentDetails('${payment.id}')">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            ${payment.status === 'Pending' ? `
+                                <button class="action-btn edit-btn" onclick="updatePaymentStatus('${payment.id}', 'Completed')">
+                                    <i class="fas fa-check"></i>
+                                </button>
+                                <button class="action-btn delete-btn" onclick="updatePaymentStatus('${payment.id}', 'Rejected')">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            ` : ''}
+                        </td>
+                    </tr>
+                `;
+                tableBody.innerHTML += row;
+            });
+
+            // Update pagination controls
+            paginationContainer.innerHTML = `
+                <button class="pagination-btn" 
+                        onclick="changePaymentsPage(1)" 
+                        ${currentPaymentsPage === 1 ? 'disabled' : ''}
+                        style="opacity: ${currentPaymentsPage === 1 ? '0.5' : '1'}">
+                    <i class="fas fa-angle-double-left"></i>
+                </button>
+                <button class="pagination-btn" 
+                        onclick="changePaymentsPage(${currentPaymentsPage - 1})" 
+                        ${currentPaymentsPage === 1 ? 'disabled' : ''}
+                        style="opacity: ${currentPaymentsPage === 1 ? '0.5' : '1'}">
+                    <i class="fas fa-angle-left"></i>
+                </button>
+                <span style="color: white; margin: 0 1rem;">
+                    Page ${currentPaymentsPage} of ${totalPages}
+                </span>
+                <button class="pagination-btn" 
+                        onclick="changePaymentsPage(${currentPaymentsPage + 1})" 
+                        ${currentPaymentsPage === totalPages ? 'disabled' : ''}
+                        style="opacity: ${currentPaymentsPage === totalPages ? '0.5' : '1'}">
+                    <i class="fas fa-angle-right"></i>
+                </button>
+                <button class="pagination-btn" 
+                        onclick="changePaymentsPage(${totalPages})" 
+                        ${currentPaymentsPage === totalPages ? 'disabled' : ''}
+                        style="opacity: ${currentPaymentsPage === totalPages ? '0.5' : '1'}">
+                    <i class="fas fa-angle-double-right"></i>
+                </button>
+            `;
+        }
+
+        // Add the changePaymentsPage function
+        function changePaymentsPage(newPage) {
+            currentPaymentsPage = newPage;
+            renderPayments();
+        }
+
+        // Update the approveOrder function to handle balance deduction
         async function approveOrder(orderId) {
             try {
                 const orderRef = db.collection('orders').doc(orderId);
@@ -1632,29 +1791,30 @@
 
                 const batch = db.batch();
 
+                // If payment method is balance, deduct the balance now
+                if (orderData.paymentMethod === 'balance') {
+                    const userRef = db.collection('users').doc(orderData.userId);
+                    const userDoc = await userRef.get();
+                    const userData = userDoc.data();
+
+                    // Check if user has sufficient balance
+                    if (!userData || userData.balance < orderData.price) {
+                        showAlert('User has insufficient balance', 'error');
+                        return;
+                    }
+
+                    // Deduct balance
+                    batch.update(userRef, {
+                        balance: firebase.firestore.FieldValue.increment(-orderData.price)
+                    });
+                }
+
                 // Update order status and include account details
                 batch.update(orderRef, {
                     status: 'Completed',
                     completedAt: firebase.firestore.FieldValue.serverTimestamp(),
                     accountDetails: listingData.accountDetails || null
                 });
-
-                // Update listing with final buyer info and sold status
-                batch.update(db.collection('listings').doc(orderData.listingId), {
-                    status: 'Sold',
-                    pendingOrder: false,
-                    buyerId: orderData.userId,
-                    buyerUsername: orderData.username,
-                    buyerAvatar: orderData.userAvatar,
-                    soldAt: firebase.firestore.FieldValue.serverTimestamp()
-                });
-
-                // Only deduct balance if payment method was 'balance'
-                if (orderData.paymentMethod === 'balance') {
-                    batch.update(db.collection('users').doc(orderData.userId), {
-                        balance: firebase.firestore.FieldValue.increment(-orderData.price)
-                    });
-                }
 
                 await batch.commit();
                 showAlert('Order approved successfully', 'success');
@@ -1665,6 +1825,7 @@
             }
         }
 
+        // Update the rejectOrder function to remove the balance refund
         async function rejectOrder(orderId) {
             const confirmed = await showConfirm(
                 'Reject Order',
@@ -1688,19 +1849,11 @@
                     // Remove pending status from listing
                     batch.update(db.collection('listings').doc(orderData.listingId), {
                         pendingOrder: false,
-                        status: 'Active', // Re-activate the listing
                         verifiedBuyer: null // Clear the verified buyer
                     });
 
-                    // If payment method was balance, refund the user
-                    if (orderData.paymentMethod === 'balance') {
-                        batch.update(db.collection('users').doc(orderData.userId), {
-                            balance: firebase.firestore.FieldValue.increment(orderData.price)
-                        });
-                    }
-
                     await batch.commit();
-                    showAlert('Order rejected and balance refunded successfully', 'success');
+                    showAlert('Order rejected successfully', 'success');
                 } catch (error) {
                     console.error('Error rejecting order:', error);
                     showAlert('Error rejecting order: ' + error.message, 'error');
