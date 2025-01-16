@@ -12,11 +12,9 @@
     <link rel="stylesheet" href="admin.css">
     <script type="module">
         import { checkIPBan } from '../auth.js';
-        import { initializeTimeSync, getServerTime } from '../time-sync.js';
         
         document.addEventListener('DOMContentLoaded', async () => {
             await checkIPBan();
-            await initializeTimeSync(db); // Initialize time synchronization
         });
     </script>
 </head>
@@ -536,20 +534,6 @@
                 const matchesStatus = listingStatusFilter === 'all' || listing.status === listingStatusFilter;
                 return matchesSearch && matchesStatus;
             });
-
-            if (filteredListings.length === 0) {
-                tableBody.innerHTML = `
-                    <tr>
-                        <td colspan="4" style="text-align: center; padding: 2rem;">
-                            <div style="color: #ffffff80; font-size: 1.1rem;">
-                                <i class="fas fa-box-open" style="font-size: 2rem; margin-bottom: 0.5rem; display: block;"></i>
-                                No listings found${listingSearchTerm ? ' matching your search' : ''}.
-                            </div>
-                        </td>
-                    </tr>
-                `;
-                return;
-            }
 
             filteredListings.forEach(listing => {
                 const row = `
@@ -2223,20 +2207,19 @@
         // Function to start countdown for a listing
         async function startCountdown(listingId, duration) {
             try {
-                const serverTime = getServerTime();
-                const endTime = serverTime + (duration * 60 * 1000);
-
+                const now = Date.now();
                 await db.collection('listings').doc(listingId).update({
                     countdown: {
                         active: true,
-                        startTime: serverTime,
-                        endTime: endTime,
+                        startTime: now,
+                        endTime: now + (parseInt(duration) * 60000), // Convert minutes to milliseconds
                         duration: parseInt(duration)
                     }
                 });
+                showAlert('Countdown started successfully', 'success');
             } catch (error) {
                 console.error('Error starting countdown:', error);
-                showAlert('Error starting countdown: ' + error.message, 'error');
+                showAlert('Error starting countdown', 'error');
             }
         }
 
@@ -2300,8 +2283,7 @@
 
         // Function to update countdown displays in admin panel
         function updateCountdownDisplays() {
-            const now = getServerTime();
-            
+            const now = Date.now();
             document.querySelectorAll('.countdown-status').forEach(status => {
                 const listingCard = status.closest('.listing-card');
                 const listingId = listingCard.id.replace('listing-', '');
