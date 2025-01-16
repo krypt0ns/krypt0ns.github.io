@@ -153,11 +153,10 @@
         const db = firebase.firestore();
 
         // Function to create a listing card with countdown
-        function createListingCard(listing, index) {
-            const now = Date.now();
-            const hasCountdown = listing.countdown?.active && listing.countdown.endTime > now;
+        function createListingCard(listing, index, serverTime) {
+            const hasCountdown = listing.countdown?.active && listing.countdown.endTime > serverTime;
             const isLocked = listing.isLocked;
-            const hasDropTime = listing.dropScheduled && listing.dropTime > now;
+            const hasDropTime = listing.dropScheduled && listing.dropTime > serverTime;
             
             return `
                 <div class="listing-card" style="animation-delay: ${index * 0.1}s;" data-listing-id="${listing.id}">
@@ -166,7 +165,7 @@
                             <img src="${listing.imageUrl}" alt="${listing.title}" class="listing-image active">
                             ${hasDropTime ? `
                                 <div class="drop-timer" data-drop-time="${listing.dropTime}">
-                                    Drops in ${formatTime(listing.dropTime - now)}
+                                    Drops in ${formatTime(listing.dropTime - serverTime)}
                                 </div>
                             ` : ''}
                         </div>
@@ -178,7 +177,7 @@
                             onclick="showPurchaseModal('${listing.id}', '${listing.title}', ${listing.price})"
                             ${isLocked || hasCountdown ? 'disabled' : ''}>
                         ${isLocked ? 'Not Available Yet' : 
-                          hasCountdown ? `Unlocks in ${formatTime(listing.countdown.endTime - now)}` : 
+                          hasCountdown ? `Unlocks in ${formatTime(listing.countdown.endTime - serverTime)}` : 
                           'Purchase Now'}
                     </button>
                 </div>
@@ -204,59 +203,27 @@
         function loadListings() {
             const listingsGrid = document.getElementById('listings-grid');
             
-            db.collection('listings').onSnapshot((snapshot) => {
-                listingsGrid.innerHTML = '';
-                let activeListingsCount = 0;
-                
-                snapshot.forEach((doc) => {
-                    const listing = { id: doc.id, ...doc.data() };
+            // Get server timestamp first
+            firebase.firestore.Timestamp.now().toMillis().then(serverTime => {
+                db.collection('listings').onSnapshot((snapshot) => {
+                    listingsGrid.innerHTML = '';
+                    let activeListingsCount = 0;
                     
-                    // Skip disabled, sold, verified, or listings with verified buyers
-                    if (listing.status === 'Disabled' || 
-                        listing.status === 'Sold' || 
-                        listing.verifiedBuyer ||
-                        (listing.verifiedBuyer && listing.verifiedBuyer !== localStorage.getItem('currentUser'))) {
-                        return;
-                    }
-                    
-                    activeListingsCount++;
-                    listingsGrid.innerHTML += createListingCard(listing, activeListingsCount);
+                    snapshot.forEach((doc) => {
+                        const listing = { id: doc.id, ...doc.data() };
+                        
+                        // Use server time instead of Date.now()
+                        if (listing.status === 'Disabled' || 
+                            listing.status === 'Sold' || 
+                            (listing.verifiedBuyer && listing.verifiedBuyer !== currentUser)) {
+                            return;
+                        }
+                        
+                        // Create listing card using server time
+                        listingsGrid.innerHTML += createListingCard(listing, activeListingsCount, serverTime);
+                        activeListingsCount++;
+                    });
                 });
-                
-                // Add classes based on number of active listings
-                listingsGrid.className = 'listings-grid';
-                if (activeListingsCount === 1) {
-                    listingsGrid.classList.add('single-listing');
-                } else if (activeListingsCount === 2) {
-                    listingsGrid.classList.add('two-listings');
-                }
-                
-                // Start countdown timers
-                startCountdownTimers();
-                
-                // Show message if no active listings
-                if (activeListingsCount === 0) {
-                    listingsGrid.innerHTML = `
-                        <div style="
-                            text-align: center;
-                            color: white;
-                            width: 100%;
-                            position: absolute;
-                            top: 50%;
-                            left: 50%;
-                            transform: translate(-50%, -50%);
-                            font-size: 1.5rem;
-                            font-weight: 600;
-                            padding: 2rem;
-                            backdrop-filter: blur(10px);
-                            border-radius: 12px;
-                            border: 1px solid rgba(255, 255, 255, 0.1);
-                            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-                        ">
-                            There are currently no active listings
-                        </div>
-                    `;
-                }
             });
         }
 
@@ -266,14 +233,15 @@
                 clearInterval(window.countdownInterval);
             }
             
-            window.countdownInterval = setInterval(() => {
-                const now = Date.now();
+            window.countdownInterval = setInterval(async () => {
+                // Get current server time
+                const serverTime = await firebase.firestore.Timestamp.now().toMillis();
                 let needsRefresh = false;
                 
                 // Check drop timers
                 document.querySelectorAll('[data-drop-time]').forEach(element => {
                     const dropTime = parseInt(element.dataset.dropTime);
-                    const timeLeft = dropTime - now;
+                    const timeLeft = dropTime - serverTime;
                     
                     if (timeLeft <= 0) {
                         needsRefresh = true;
@@ -283,29 +251,10 @@
                     }
                 });
 
-                // Check release timers
-                document.querySelectorAll('[data-release-time]').forEach(element => {
-                    const releaseTime = parseInt(element.dataset.releaseTime);
-                    const timeLeft = releaseTime - now;
-                    
-                    if (timeLeft <= 0) {
-                        needsRefresh = true;
-                    } else {
-                        const timeString = formatTime(timeLeft);
-                        if (element.classList.contains('countdown-timer')) {
-                            element.textContent = `Releases in: ${timeString}`;
-                        }
-                        const button = element.closest('.listing-card').querySelector('.listing-button');
-                        if (button) {
-                            button.textContent = `Releases in ${timeString}`;
-                        }
-                    }
-                });
-
                 // Check countdown timers
                 document.querySelectorAll('[data-end-time]').forEach(element => {
                     const endTime = parseInt(element.dataset.endTime);
-                    const timeLeft = endTime - now;
+                    const timeLeft = endTime - serverTime;
                     
                     if (timeLeft <= 0) {
                         needsRefresh = true;
@@ -322,7 +271,7 @@
                 });
                 
                 if (needsRefresh) {
-                    loadListings(); // Refresh listings when any timer ends
+                    loadListings();
                 }
             }, 1000);
         }

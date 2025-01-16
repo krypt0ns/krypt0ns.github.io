@@ -2207,19 +2207,20 @@
         // Function to start countdown for a listing
         async function startCountdown(listingId, duration) {
             try {
-                const now = Date.now();
+                const serverTime = await firebase.firestore.Timestamp.now().toMillis();
+                const endTime = serverTime + (duration * 60 * 1000); // Convert minutes to milliseconds
+
                 await db.collection('listings').doc(listingId).update({
                     countdown: {
                         active: true,
-                        startTime: now,
-                        endTime: now + (parseInt(duration) * 60000), // Convert minutes to milliseconds
+                        startTime: serverTime,
+                        endTime: endTime,
                         duration: parseInt(duration)
                     }
                 });
-                showAlert('Countdown started successfully', 'success');
             } catch (error) {
                 console.error('Error starting countdown:', error);
-                showAlert('Error starting countdown', 'error');
+                showAlert('Error starting countdown: ' + error.message, 'error');
             }
         }
 
@@ -2282,8 +2283,9 @@
         }
 
         // Function to update countdown displays in admin panel
-        function updateCountdownDisplays() {
-            const now = Date.now();
+        async function updateCountdownDisplays() {
+            const serverTime = await firebase.firestore.Timestamp.now().toMillis();
+            
             document.querySelectorAll('.countdown-status').forEach(status => {
                 const listingCard = status.closest('.listing-card');
                 const listingId = listingCard.id.replace('listing-', '');
@@ -2291,7 +2293,7 @@
                 db.collection('listings').doc(listingId).get().then(doc => {
                     const listing = doc.data();
                     if (listing.countdown?.active) {
-                        const timeLeft = listing.countdown.endTime - now;
+                        const timeLeft = listing.countdown.endTime - serverTime;
                         if (timeLeft > 0) {
                             status.textContent = `Countdown active - Time remaining: ${formatTimeRemaining(timeLeft)}`;
                         } else {
