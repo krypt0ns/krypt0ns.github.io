@@ -2207,7 +2207,7 @@
         // Function to start countdown for a listing
         async function startCountdown(listingId, duration) {
             try {
-                const serverTime = await firebase.firestore.Timestamp.now().toMillis();
+                const serverTime = firebase.firestore.Timestamp.now().toMillis();
                 const endTime = serverTime + (duration * 60 * 1000); // Convert minutes to milliseconds
 
                 await db.collection('listings').doc(listingId).update({
@@ -2283,8 +2283,8 @@
         }
 
         // Function to update countdown displays in admin panel
-        async function updateCountdownDisplays() {
-            const serverTime = await firebase.firestore.Timestamp.now().toMillis();
+        function updateCountdownDisplays() {
+            const serverTime = firebase.firestore.Timestamp.now().toMillis();
             
             document.querySelectorAll('.countdown-status').forEach(status => {
                 const listingCard = status.closest('.listing-card');
