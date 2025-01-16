@@ -317,6 +317,10 @@
                 <i class="fas fa-info-circle"></i>
                 After creating the listing, use the "Drop Now" button to make it available to all users simultaneously.
             </div>
+            <div class="form-group">
+                <input type="datetime-local" id="listing-drop-time" required placeholder=" ">
+                <label>Drop Time</label>
+            </div>
             <div style="display: flex; gap: 1rem;">
                 <button class="action-btn edit-btn" onclick="handleListingSubmit()">Create Listing</button>
                 <button class="action-btn cancel" onclick="showListingsTable()">Cancel</button>
@@ -384,6 +388,7 @@
                 price: document.getElementById('listing-price').value,
                 description: document.getElementById('listing-description').value,
                 image: document.getElementById('listing-image').files[0],
+                dropTime: new Date(document.getElementById('listing-drop-time').value).getTime(),
                 accountDetails: {
                     username: document.getElementById('account-username').value.trim(),
                     password: document.getElementById('account-password').value.trim()
@@ -400,16 +405,15 @@
                 formData.imageUrl = imageUrl;
                 delete formData.image;
                 
-                // Create listing with initial locked state
                 await db.collection('listings').add({
                     ...formData,
                     status: 'Active',
-                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                    isLocked: true, // New field to track drop status
-                    dropTime: null // Will be set when dropped
+                    isLocked: true,
+                    dropScheduled: true,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
                 });
 
-                showAlert('Listing created successfully! Use the "Drop Now" button to make it available.', 'success');
+                showAlert('Listing created successfully! It will automatically drop at the scheduled time.', 'success');
                 showListingsTable();
             } catch (error) {
                 console.error('Error:', error);
