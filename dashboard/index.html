@@ -311,14 +311,46 @@
                     .then(() => db.collection('_utility').doc('serverTime').get());
                 
                 const serverTimestamp = serverTimestampDoc.data().timestamp;
-                let needsRefresh = false;
                 
                 // Update all drop timers
-                document.querySelectorAll('[data-drop-time]').forEach(element => {
+                document.querySelectorAll('[data-drop-time]').forEach(async element => {
                     const dropTimeMillis = parseInt(element.dataset.dropTime);
+                    const listingId = element.closest('.listing-card').dataset.listingId;
                     
                     if (dropTimeMillis <= serverTimestamp.toMillis()) {
-                        needsRefresh = true;
+                        // Stop showing the sync message
+                        element.innerHTML = 'Dropping...';
+                        
+                        // Show drop animation
+                        showDropAnimation(listingId);
+                        
+                        // Update the listing status
+                        try {
+                            await db.collection('listings').doc(listingId).update({
+                                isLocked: false,
+                                dropScheduled: false,
+                                status: 'Active',
+                                dropTime: serverTimestamp,
+                                actualDropTime: serverTimestamp
+                            });
+
+                            // Update the UI without reloading
+                            const card = element.closest('.listing-card');
+                            const button = card.querySelector('.listing-button');
+                            button.classList.remove('locked');
+                            button.disabled = false;
+                            button.textContent = 'Purchase Now';
+                            
+                            // Remove the timer element
+                            element.remove();
+                            
+                            // Clear the interval for this specific timer
+                            if (window.countdownInterval) {
+                                clearInterval(window.countdownInterval);
+                            }
+                        } catch (error) {
+                            console.error('Error updating listing status:', error);
+                        }
                     } else {
                         const timeString = formatTimeFromTimestamp(
                             new firebase.firestore.Timestamp(
@@ -327,13 +359,9 @@
                             ),
                             serverTimestamp
                         );
-                        element.textContent = `Drops in ${timeString}`;
+                        element.innerHTML = `<i class="fas fa-clock"></i> Drops in ${timeString}`;
                     }
                 });
-
-                if (needsRefresh) {
-                    loadListings();
-                }
             } catch (error) {
                 console.error('Error updating timers:', error);
             }
@@ -1598,10 +1626,22 @@
             `;
             listingCard.appendChild(overlay);
 
-            // Remove overlay after animation
+            // Remove overlay and update UI after animation
             setTimeout(() => {
                 overlay.remove();
                 listingCard.classList.add('dropped');
+                
+                // Update the button state
+                const button = listingCard.querySelector('.listing-button');
+                button.classList.remove('locked');
+                button.disabled = false;
+                button.textContent = 'Purchase Now';
+                
+                // Remove the timer if it exists
+                const timer = listingCard.querySelector('.drop-timer');
+                if (timer) {
+                    timer.remove();
+                }
             }, 3000);
         }
 
