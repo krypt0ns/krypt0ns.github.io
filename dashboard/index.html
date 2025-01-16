@@ -1621,28 +1621,40 @@
                     <svg viewBox="25 25 50 50">
                         <circle cx="50" cy="50" r="20"></circle>
                     </svg>
-                    <p>Dropping listing...</p>
+                    <div class="drop-status">
+                        <p class="sync-text">Synchronizing drop...</p>
+                        <p class="drop-text" style="display: none;">Dropping listing...</p>
+                    </div>
                 </div>
             `;
             listingCard.appendChild(overlay);
 
-            // Remove overlay and update UI after animation
+            // First phase - synchronization (1 second)
             setTimeout(() => {
-                overlay.remove();
-                listingCard.classList.add('dropped');
+                const syncText = overlay.querySelector('.sync-text');
+                const dropText = overlay.querySelector('.drop-text');
                 
-                // Update the button state
-                const button = listingCard.querySelector('.listing-button');
-                button.classList.remove('locked');
-                button.disabled = false;
-                button.textContent = 'Purchase Now';
+                syncText.style.display = 'none';
+                dropText.style.display = 'block';
                 
-                // Remove the timer if it exists
-                const timer = listingCard.querySelector('.drop-timer');
-                if (timer) {
-                    timer.remove();
-                }
-            }, 3000);
+                // Second phase - dropping animation (2 seconds)
+                setTimeout(() => {
+                    overlay.remove();
+                    listingCard.classList.add('dropped');
+                    
+                    // Update the button state
+                    const button = listingCard.querySelector('.listing-button');
+                    button.classList.remove('locked');
+                    button.disabled = false;
+                    button.textContent = 'Purchase Now';
+                    
+                    // Remove the timer if it exists
+                    const timer = listingCard.querySelector('.drop-timer');
+                    if (timer) {
+                        timer.remove();
+                    }
+                }, 2000);
+            }, 1000);
         }
 
         // Add this function to check for scheduled drops
@@ -1693,8 +1705,8 @@
         }
 
         // Add CSS for the drop animation
-        const style = document.createElement('style');
-        style.textContent = `
+        const dropStyles = document.createElement('style');
+        dropStyles.textContent = `
             .drop-overlay {
                 position: absolute;
                 top: 0;
@@ -1707,6 +1719,7 @@
                 align-items: center;
                 z-index: 1000;
                 border-radius: inherit;
+                backdrop-filter: blur(5px);
             }
 
             .drop-loader {
@@ -1729,10 +1742,29 @@
                 animation: dash 1.5s ease-in-out infinite;
             }
 
-            .drop-loader p {
-                color: white;
+            .drop-status {
                 margin-top: 1rem;
+            }
+
+            .drop-status p {
+                color: white;
                 font-weight: 500;
+                margin: 0;
+                opacity: 0;
+                animation: fadeIn 0.3s ease-out forwards;
+            }
+
+            .sync-text {
+                color: #64B5F6 !important;
+            }
+
+            .drop-text {
+                color: #81C784 !important;
+            }
+
+            @keyframes fadeIn {
+                from { opacity: 0; transform: translateY(10px); }
+                to { opacity: 1; transform: translateY(0); }
             }
 
             @keyframes rotate {
@@ -1754,7 +1786,7 @@
                 }
             }
         `;
-        document.head.appendChild(style);
+        document.head.appendChild(dropStyles);
 
         // Initialize the drop scheduler when the page loads
         document.addEventListener('DOMContentLoaded', () => {
