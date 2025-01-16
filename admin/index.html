@@ -537,6 +537,20 @@
                 return matchesSearch && matchesStatus;
             });
 
+            if (filteredListings.length === 0) {
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="4" style="text-align: center; padding: 2rem;">
+                            <div style="color: #ffffff80; font-size: 1.1rem;">
+                                <i class="fas fa-box-open" style="font-size: 2rem; margin-bottom: 0.5rem; display: block;"></i>
+                                No listings found${listingSearchTerm ? ' matching your search' : ''}.
+                            </div>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
             filteredListings.forEach(listing => {
                 const row = `
                     <tr>
