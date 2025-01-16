@@ -11,6 +11,7 @@
     <link rel="stylesheet" href="dashboard.css">   
     <script type="module">
         import { checkIPBan } from '../auth.js';
+        import { initializeTimeSync, getServerTime } from '../time-sync.js';
         
         // Initialize Firebase first (you already have this)
         // Then check for IP ban
@@ -154,7 +155,7 @@
 
         // Function to create a listing card with countdown
         function createListingCard(listing, index) {
-            const now = Date.now();
+            const now = getServerTime();
             const hasCountdown = listing.countdown?.active && listing.countdown.endTime > now;
             const isLocked = listing.isLocked;
             const hasDropTime = listing.dropScheduled && listing.dropTime > now;
@@ -299,10 +300,12 @@
         }
 
         // Initialize everything when the page loads
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
+            await initializeTimeSync(db);
             loadListings();
             loadUserProfile();
             startCountdownTimers();
+            initializeDropScheduler();
         });
 
         // New authentication checks
@@ -1533,7 +1536,7 @@
                 .onSnapshot((snapshot) => {
                     snapshot.forEach((doc) => {
                         const listing = doc.data();
-                        const now = Date.now();
+                        const now = getServerTime();
                         
                         if (listing.dropTime && listing.dropTime <= now) {
                             // Show drop animation
@@ -1621,9 +1624,12 @@
         document.head.appendChild(style);
 
         // Initialize the drop scheduler when the page loads
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
+            await initializeTimeSync(db);
+            loadListings();
+            loadUserProfile();
+            startCountdownTimers();
             initializeDropScheduler();
-            // ... existing initialization code ...
         });
     </script>
     <div id="purchase-modal" class="modal">
