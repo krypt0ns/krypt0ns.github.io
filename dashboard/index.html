@@ -153,10 +153,11 @@
         const db = firebase.firestore();
 
         // Function to create a listing card with countdown
-        function createListingCard(listing, index, serverTime) {
-            const hasCountdown = listing.countdown?.active && listing.countdown.endTime > serverTime;
+        function createListingCard(listing, index) {
+            const now = Date.now();
+            const hasCountdown = listing.countdown?.active && listing.countdown.endTime > now;
             const isLocked = listing.isLocked;
-            const hasDropTime = listing.dropScheduled && listing.dropTime > serverTime;
+            const hasDropTime = listing.dropScheduled && listing.dropTime > now;
             
             return `
                 <div class="listing-card" style="animation-delay: ${index * 0.1}s;" data-listing-id="${listing.id}">
@@ -165,7 +166,7 @@
                             <img src="${listing.imageUrl}" alt="${listing.title}" class="listing-image active">
                             ${hasDropTime ? `
                                 <div class="drop-timer" data-drop-time="${listing.dropTime}">
-                                    Drops in ${formatTime(listing.dropTime - serverTime)}
+                                    Drops in ${formatTime(listing.dropTime - now)}
                                 </div>
                             ` : ''}
                         </div>
@@ -177,7 +178,7 @@
                             onclick="showPurchaseModal('${listing.id}', '${listing.title}', ${listing.price})"
                             ${isLocked || hasCountdown ? 'disabled' : ''}>
                         ${isLocked ? 'Not Available Yet' : 
-                          hasCountdown ? `Unlocks in ${formatTime(listing.countdown.endTime - serverTime)}` : 
+                          hasCountdown ? `Unlocks in ${formatTime(listing.countdown.endTime - now)}` : 
                           'Purchase Now'}
                     </button>
                 </div>
@@ -203,26 +204,26 @@
         function loadListings() {
             const listingsGrid = document.getElementById('listings-grid');
             
-            // Get server timestamp first
-            firebase.firestore.Timestamp.now().toMillis().then(serverTime => {
-                db.collection('listings').onSnapshot((snapshot) => {
-                    listingsGrid.innerHTML = '';
-                    let activeListingsCount = 0;
+            // Get server timestamp directly
+            const serverTime = firebase.firestore.Timestamp.now().toMillis();
+            
+            db.collection('listings').onSnapshot((snapshot) => {
+                listingsGrid.innerHTML = '';
+                let activeListingsCount = 0;
+                
+                snapshot.forEach((doc) => {
+                    const listing = { id: doc.id, ...doc.data() };
                     
-                    snapshot.forEach((doc) => {
-                        const listing = { id: doc.id, ...doc.data() };
-                        
-                        // Use server time instead of Date.now()
-                        if (listing.status === 'Disabled' || 
-                            listing.status === 'Sold' || 
-                            (listing.verifiedBuyer && listing.verifiedBuyer !== currentUser)) {
-                            return;
-                        }
-                        
-                        // Create listing card using server time
-                        listingsGrid.innerHTML += createListingCard(listing, activeListingsCount, serverTime);
-                        activeListingsCount++;
-                    });
+                    // Use server time instead of Date.now()
+                    if (listing.status === 'Disabled' || 
+                        listing.status === 'Sold' || 
+                        (listing.verifiedBuyer && listing.verifiedBuyer !== currentUser)) {
+                        return;
+                    }
+                    
+                    // Create listing card using server time
+                    listingsGrid.innerHTML += createListingCard(listing, activeListingsCount, serverTime);
+                    activeListingsCount++;
                 });
             });
         }
@@ -233,9 +234,9 @@
                 clearInterval(window.countdownInterval);
             }
             
-            window.countdownInterval = setInterval(async () => {
+            window.countdownInterval = setInterval(() => {
                 // Get current server time
-                const serverTime = await firebase.firestore.Timestamp.now().toMillis();
+                const serverTime = firebase.firestore.Timestamp.now().toMillis();
                 let needsRefresh = false;
                 
                 // Check drop timers
