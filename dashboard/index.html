@@ -157,12 +157,18 @@
             const now = Date.now();
             const hasCountdown = listing.countdown?.active && listing.countdown.endTime > now;
             const isLocked = listing.isLocked;
+            const hasDropTime = listing.dropScheduled && listing.dropTime > now;
             
             return `
-                <div class="listing-card" style="animation-delay: ${index * 0.1}s;">
+                <div class="listing-card" style="animation-delay: ${index * 0.1}s;" data-listing-id="${listing.id}">
                     <div class="slideshow-container">
                         <div class="slides">
                             <img src="${listing.imageUrl}" alt="${listing.title}" class="listing-image active">
+                            ${hasDropTime ? `
+                                <div class="drop-timer" data-drop-time="${listing.dropTime}">
+                                    Drops in ${formatTime(listing.dropTime - now)}
+                                </div>
+                            ` : ''}
                         </div>
                     </div>
                     <h2 class="listing-title">${listing.title}</h2>
@@ -264,6 +270,19 @@
                 const now = Date.now();
                 let needsRefresh = false;
                 
+                // Check drop timers
+                document.querySelectorAll('[data-drop-time]').forEach(element => {
+                    const dropTime = parseInt(element.dataset.dropTime);
+                    const timeLeft = dropTime - now;
+                    
+                    if (timeLeft <= 0) {
+                        needsRefresh = true;
+                    } else {
+                        const timeString = formatTime(timeLeft);
+                        element.textContent = `Drops in ${timeString}`;
+                    }
+                });
+
                 // Check release timers
                 document.querySelectorAll('[data-release-time]').forEach(element => {
                     const releaseTime = parseInt(element.dataset.releaseTime);
@@ -1529,6 +1548,132 @@
                 modal.style.display = 'none';
                 modal.classList.remove('purchase-locked');
             }, 300);
+        });
+
+        // Add this function to handle the drop animation
+        function showDropAnimation(listingId) {
+            const listingCard = document.querySelector(`[data-listing-id="${listingId}"]`);
+            if (!listingCard) return;
+
+            // Add loading overlay
+            const overlay = document.createElement('div');
+            overlay.className = 'drop-overlay';
+            overlay.innerHTML = `
+                <div class="drop-loader">
+                    <svg viewBox="25 25 50 50">
+                        <circle cx="50" cy="50" r="20"></circle>
+                    </svg>
+                    <p>Dropping listing...</p>
+                </div>
+            `;
+            listingCard.appendChild(overlay);
+
+            // Remove overlay after animation
+            setTimeout(() => {
+                overlay.remove();
+                listingCard.classList.add('dropped');
+            }, 3000);
+        }
+
+        // Add this function to check for scheduled drops
+        function initializeDropScheduler() {
+            db.collection('listings')
+                .where('dropScheduled', '==', true)
+                .where('isLocked', '==', true)
+                .onSnapshot((snapshot) => {
+                    snapshot.forEach((doc) => {
+                        const listing = doc.data();
+                        const now = Date.now();
+                        
+                        if (listing.dropTime && listing.dropTime <= now) {
+                            // Show drop animation
+                            showDropAnimation(doc.id);
+                            
+                            // Update listing after animation
+                            setTimeout(async () => {
+                                try {
+                                    await db.collection('listings').doc(doc.id).update({
+                                        isLocked: false,
+                                        dropScheduled: false,
+                                        dropTime: firebase.firestore.FieldValue.serverTimestamp()
+                                    });
+                                } catch (error) {
+                                    console.error('Error dropping listing:', error);
+                                }
+                            }, 3000);
+                        }
+                    });
+                });
+        }
+
+        // Add CSS for the drop animation
+        const style = document.createElement('style');
+        style.textContent = `
+            .drop-overlay {
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0, 0, 0, 0.8);
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                z-index: 1000;
+                border-radius: inherit;
+            }
+
+            .drop-loader {
+                text-align: center;
+            }
+
+            .drop-loader svg {
+                width: 50px;
+                height: 50px;
+                transform-origin: center;
+                animation: rotate 2s linear infinite;
+            }
+
+            .drop-loader circle {
+                fill: none;
+                stroke: #fff;
+                stroke-width: 4;
+                stroke-dasharray: 89, 200;
+                stroke-dashoffset: -10;
+                animation: dash 1.5s ease-in-out infinite;
+            }
+
+            .drop-loader p {
+                color: white;
+                margin-top: 1rem;
+                font-weight: 500;
+            }
+
+            @keyframes rotate {
+                100% { transform: rotate(360deg); }
+            }
+
+            @keyframes dash {
+                0% {
+                    stroke-dasharray: 1, 200;
+                    stroke-dashoffset: 0;
+                }
+                50% {
+                    stroke-dasharray: 89, 200;
+                    stroke-dashoffset: -35;
+                }
+                100% {
+                    stroke-dasharray: 89, 200;
+                    stroke-dashoffset: -124;
+                }
+            }
+        `;
+        document.head.appendChild(style);
+
+        // Initialize the drop scheduler when the page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeDropScheduler();
+            // ... existing initialization code ...
         });
     </script>
     <div id="purchase-modal" class="modal">
