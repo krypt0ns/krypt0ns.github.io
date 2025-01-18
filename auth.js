@@ -12,11 +12,10 @@ const firebaseConfig = {
 // Initialize Firebase if not already initialized
 let firebaseApp;
 try {
-    firebaseApp = firebase.app();
-} catch {
     firebaseApp = firebase.initializeApp(firebaseConfig);
+} catch {
+    console.error('Firebase already initialized');
 }
-const db = firebase.firestore();
 
 // Validate stored credentials
 export async function validateStoredCredentials() {

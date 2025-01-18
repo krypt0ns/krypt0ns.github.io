@@ -7,13 +7,19 @@ async function loadDiscountCodes() {
         const tableBody = document.getElementById('discount-codes-table');
         tableBody.innerHTML = '';
 
-        discountSnapshot.forEach(doc => {
+        for (const doc of discountSnapshot.docs) {
             const discount = doc.data();
-            const row = document.createElement('tr');
             
+            // Get usage count from discountUsages collection
+            const usageCount = await db.collection('discountUsages')
+                .where('discountCode', '==', discount.code)
+                .get()
+                .then(snapshot => snapshot.size);
+
             const expiryDate = discount.validUntil?.toDate() || new Date();
             const isExpired = expiryDate < new Date();
             
+            const row = document.createElement('tr');
             row.innerHTML = `
                 <td>${discount.code}</td>
                 <td>${discount.percentage}%</td>
@@ -23,7 +29,7 @@ async function loadDiscountCodes() {
                         ${isExpired ? 'Expired' : 'Active'}
                     </span>
                 </td>
-                <td>${discount.currentUses || 0}</td>
+                <td>${usageCount} / ${discount.maxUses}</td>
                 <td>${discount.maxUses}</td>
                 <td>${expiryDate.toLocaleDateString()} ${expiryDate.toLocaleTimeString()}</td>
                 <td>
@@ -39,7 +45,7 @@ async function loadDiscountCodes() {
             `;
             
             tableBody.appendChild(row);
-        });
+        }
     } catch (error) {
         console.error('Error loading discount codes:', error);
         showAlert('Error loading discount codes', 'error');

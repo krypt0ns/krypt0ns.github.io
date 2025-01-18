@@ -1,5 +1,41 @@
-// Just get the Firestore instance
-const db = firebase.firestore();
+// Get existing Firebase app or initialize new one
+let app;
+let db;
+
+try {
+    app = firebase.app();
+    db = firebase.firestore();
+} catch (error) {
+    // Only initialize if no Firebase app exists
+    const firebaseConfig = {
+        apiKey: "AIzaSyDvG4059xSr2jToP9xDz-8dlxbumuRzdUE",
+        authDomain: "sdfkj238j98sdlkmzlknslaksdjfkl.firebaseapp.com",
+        projectId: "sdfkj238j98sdlkmzlknslaksdjfkl",
+        storageBucket: "sdfkj238j98sdlkmzlknslaksdjfkl.firebasestorage.app",
+        messagingSenderId: "778178162130",
+        appId: "1:778178162130:web:a9513f09e404813aa2ec0b",
+        measurementId: "G-WP6QR49WZ3"
+    };
+
+    app = firebase.initializeApp(firebaseConfig);
+    db = firebase.firestore();
+}
+
+// Initialize currentPurchase object
+let currentPurchase = {
+    id: null,
+    price: 0,
+    title: '',
+    duration: null,
+    paymentMethod: null,
+    proofUrl: null
+};
+
+// Add view state tracking
+let currentView = 'pricing'; // 'pricing', 'payment', 'details'
+
+// Add navigation history tracking
+let navigationHistory = ['pricing'];
 
 // Add showAlert function
 function showAlert(message, type = 'info') {
@@ -40,30 +76,30 @@ function showAlert(message, type = 'info') {
 }
 
 // Product page specific functions
-let currentPurchase = {
-    id: null,
-    price: 0,
-    title: '',
-    duration: null,
-    paymentMethod: null,
-    proofUrl: null
-};
-
 let currentDiscount = {
     code: null,
     percentage: 0
 };
 
 function showPaymentMethods() {
+    navigationHistory.push('payment');
+    currentView = 'payment';
     const username = localStorage.getItem('currentUser');
     if (!username) {
         window.location.href = '/login/';
         return;
     }
 
+    // Get modal elements with error handling
     const modal = document.querySelector('.modal');
     const details = document.getElementById('purchase-details');
     
+    // Check if elements exist
+    if (!modal || !details) {
+        console.error('Modal elements not found');
+        return;
+    }
+
     // Show pricing options first if no plan is selected
     if (!currentPurchase.duration) {
         details.innerHTML = `
@@ -125,17 +161,31 @@ function showPaymentMethods() {
             </div>
         `;
 
+        // Safely show modal
         modal.style.display = 'flex';
-        requestAnimationFrame(() => modal.classList.add('show'));
+        // Use requestAnimationFrame to ensure display change has taken effect
+        requestAnimationFrame(() => {
+            modal.classList.add('show');
+        });
         return;
     }
 
     // If plan is selected, show payment methods
     db.collection('users').doc(username).get().then(doc => {
+        if (!doc.exists) {
+            console.error('User document not found');
+            return;
+        }
+
         const userData = doc.data();
         const userBalance = userData.balance || 0;
         
         const modalContent = document.querySelector('.modal-content');
+        if (!modalContent) {
+            console.error('Modal content element not found');
+            return;
+        }
+        
         modalContent.classList.add('payment-view');
         
         details.innerHTML = `
@@ -193,14 +243,21 @@ function showPaymentMethods() {
                 </div>
             </div>
         `;
-    });
 
-    // Show the discount section after pricing selection
-    document.querySelector('.discount-section').style.display = 'block';
+        // Show the discount section if it exists
+        const discountSection = document.querySelector('.discount-section');
+        if (discountSection) {
+            discountSection.style.display = 'block';
+        }
+    }).catch(error => {
+        console.error('Error fetching user data:', error);
+        showAlert('Error loading payment methods. Please try again.', 'error');
+    });
 }
 
 // Add new function to handle plan selection
 function selectPlan(duration, price) {
+    navigationHistory.push('payment');
     currentPurchase.duration = duration;
     currentPurchase.price = price;
     currentPurchase.title = `Fortnite DMA Cheat - ${duration.charAt(0).toUpperCase() + duration.slice(1)}`;
@@ -211,11 +268,19 @@ function selectPlan(duration, price) {
     });
     
     // Add selected class to clicked card
-    document.querySelector(`[data-duration="${duration}"]`).classList.add('selected');
+    const selectedCard = document.querySelector(`[data-duration="${duration}"]`);
+    if (selectedCard) {
+        selectedCard.classList.add('selected');
+    }
     
-    // Show payment methods after a short delay
+    // Show payment methods after a short delay with error handling
     setTimeout(() => {
-        showPaymentMethods();
+        try {
+            showPaymentMethods();
+        } catch (error) {
+            console.error('Error showing payment methods:', error);
+            showAlert('Error loading payment options. Please try again.', 'error');
+        }
     }, 300);
 }
 
@@ -266,64 +331,241 @@ function selectPricing(duration, price) {
 }
 
 async function selectPaymentOption(method) {
-    if (method === 'balance') {
-        processBalancePayment();
-        return;
+    currentPurchase.paymentMethod = method;
+    
+    // Remove active class from all payment options
+    document.querySelectorAll('.payment-option').forEach(opt => {
+        opt.classList.remove('active');
+    });
+    
+    // Add active class to selected option
+    const selectedOption = document.querySelector(`.payment-option[onclick*="${method}"]`);
+    if (selectedOption) {
+        selectedOption.classList.add('active');
     }
-
-    // Hide the discount section
-    const discountSection = document.querySelector('.discount-section');
-    if (discountSection) {
-        discountSection.style.display = 'none';
+    
+    // Add continue button if it doesn't exist
+    let continueBtn = document.querySelector('.continue-payment-btn');
+    if (!continueBtn) {
+        continueBtn = document.createElement('button');
+        continueBtn.className = 'continue-payment-btn';
+        continueBtn.innerHTML = `
+            <i class="fas fa-arrow-right"></i>
+            Continue to Payment
+        `;
+        continueBtn.onclick = () => showPaymentDetails(method);
+        
+        // Insert after payment methods
+        const paymentMethods = document.querySelector('.payment-methods');
+        paymentMethods.insertAdjacentElement('afterend', continueBtn);
     }
+}
 
-    const paymentInfo = document.getElementById('payment-info');
-    paymentInfo.style.display = 'block';
-    paymentInfo.innerHTML = `
-        <div class="payment-details">
-            <h3>
-                <i class="${
-                    method === 'cashapp' ? 'fas fa-dollar-sign' : 
-                    method === 'paypal' ? 'fab fa-paypal' : 
-                    method === 'crypto' ? 'fab fa-bitcoin' : 
-                    'fas fa-money-bill-wave'
-                }"></i>
-                ${method.charAt(0).toUpperCase() + method.slice(1)} Payment
-            </h3>
-            <div class="selected-plan">
-                <p>Selected Plan: ${currentPurchase.title}</p>
-                <p class="price-display">
+// Add new function to show payment details
+function showPaymentDetails(method) {
+    navigationHistory.push('details');
+    // Hide previous elements
+    const paymentMethods = document.querySelector('.payment-methods');
+    const continueBtn = document.querySelector('.continue-payment-btn');
+    if (paymentMethods) paymentMethods.style.display = 'none';
+    if (continueBtn) continueBtn.style.display = 'none';
+
+    // Calculate fees and discounts
+    const fees = {
+        cashapp: 0.05,
+        paypal: 0.07,
+        crypto: 0,
+        balance: 0
+    };
+
+    const feeRate = fees[method];
+    const originalPrice = currentPurchase.price;
+    const discountAmount = currentDiscount.code ? (originalPrice * currentDiscount.percentage/100) : 0;
+    const subtotalAfterDiscount = originalPrice - discountAmount;
+    const feeAmount = subtotalAfterDiscount * feeRate;
+    const totalPrice = subtotalAfterDiscount + feeAmount;
+
+    // Get payment info based on method
+    const paymentInfo = {
+        cashapp: {
+            address: '$gu2u',
+            instructions: 'Only when <a href="https://discordapp.com/users/1308104217998921799" style="color: #6b46c1; text-decoration: none;">@lite</a> is online'
+        },
+        paypal: {
+            address: 'PayPal.me/ledallaaa',
+            instructions: 'Send as Friends & Family. Do not include any notes.'
+        },
+        crypto: {
+            btc: "bc1qs3x0dj4pzhxtq0e26x7uhdehuhlqqsvvx4843f",
+            eth: "0x2C71Ee68A9Ec269377FCb49f04Ebf97c1241bBda",
+            ltc: "LbXhE3tmkyiPNHwnojfLh9jB7u3XBhGRJK",
+            instructions: 'Select your preferred cryptocurrency below.'
+        }
+    };
+
+    const details = document.getElementById('purchase-details');
+    details.innerHTML = `
+        <div class="payment-details-container">
+            <div class="order-summary">
+                <h3>Order Summary</h3>
+                <div class="price-breakdown">
+                    <div class="price-row">
+                        <span>Subtotal:</span>
+                        <span>$${originalPrice.toFixed(2)}</span>
+                    </div>
                     ${currentDiscount.code ? `
-                        <span class="original-price">$${currentPurchase.price}</span>
-                        <span class="final-price">$${(currentPurchase.price * (1 - currentDiscount.percentage/100)).toFixed(2)}</span>
-                    ` : `
-                        <span class="final-price">$${currentPurchase.price}</span>
-                    `}
-                </p>
-                ${currentDiscount.code ? `
-                    <p class="discount-applied">
-                        <i class="fas fa-tag"></i>
-                        ${currentDiscount.percentage}% discount applied
-                    </p>
-                ` : ''}
+                        <div class="price-row discount">
+                            <span>Discount (${currentDiscount.percentage}%):</span>
+                            <span>-$${discountAmount.toFixed(2)}</span>
+                        </div>
+                    ` : ''}
+                    <div class="price-row">
+                        <span>Fee (${(feeRate * 100)}%):</span>
+                        <span>$${feeAmount.toFixed(2)}</span>
+                    </div>
+                    <div class="price-row total">
+                        <span>Total:</span>
+                        <span>$${totalPrice.toFixed(2)}</span>
+                    </div>
+                </div>
             </div>
+
+            <div class="payment-instructions">
+                <h3>Payment Details</h3>
+                ${method === 'crypto' ? `
+                    <select id="crypto-select" class="crypto-select">
+                        <option value="">Select cryptocurrency...</option>
+                        <option value="btc">Bitcoin (BTC)</option>
+                        <option value="eth">Ethereum (ETH)</option>
+                        <option value="ltc">Litecoin (LTC)</option>
+                    </select>
+                    <div id="crypto-address" class="payment-address"></div>
+                ` : `
+                    <div class="payment-address">
+                        ${paymentInfo[method].address}
+                        <button onclick="copyToClipboard('${paymentInfo[method].address}')" class="copy-btn">
+                            <i class="fas fa-copy"></i> Copy
+                        </button>
+                    </div>
+                `}
+                <p class="instructions-text">${paymentInfo[method].instructions}</p>
+            </div>
+
             <div class="proof-upload">
-                <div class="proof-upload-icon">
-                    <i class="fas fa-cloud-upload-alt upload-icon"></i>
-                    <span>Upload</span>
-                </div>
-                <div class="proof-upload-content">
-                    <p>Upload your payment proof here</p>
-                    <p>Supported formats: PNG, JPG, JPEG</p>
-                    <input type="file" id="payment-proof" accept="image/*">
-                </div>
+                <input type="file" id="payment-proof" accept="image/*" required placeholder="Upload Payment Proof">
             </div>
-            <button onclick="handlePaymentSubmission()" class="submit-btn">
-                <i class="fas fa-check-circle"></i>
-                Submit Payment
-            </button>
+
+            <div class="action-buttons">
+                <button onclick="handlePaymentSubmission()" class="submit-btn">
+                    <i class="fas fa-check"></i>
+                    Submit Payment
+                </button>
+            </div>
         </div>
     `;
+
+    // Add crypto select handler if crypto payment
+    if (method === 'crypto') {
+        document.getElementById('crypto-select').addEventListener('change', function(e) {
+            const selectedCrypto = e.target.value;
+            const addressDiv = document.getElementById('crypto-address');
+            if (selectedCrypto) {
+                addressDiv.innerHTML = `
+                    ${paymentInfo.crypto[selectedCrypto]}
+                    <button onclick="copyToClipboard('${paymentInfo.crypto[selectedCrypto]}')" class="copy-btn">
+                        <i class="fas fa-copy"></i> Copy
+                    </button>
+                `;
+            }
+        });
+    }
+}
+
+// Add helper functions
+function backToPaymentMethods() {
+    // Remove current page from history
+    navigationHistory.pop();
+    
+    // Get the previous page
+    const previousPage = navigationHistory[navigationHistory.length - 1];
+    
+    // Handle navigation based on previous page
+    switch (previousPage) {
+        case 'pricing':
+            const details = document.getElementById('purchase-details');
+            details.style.opacity = '0';
+            
+            setTimeout(() => {
+                showPricingOptions();
+                details.style.opacity = '1';
+            }, 200);
+            break;
+            
+        case 'payment':
+            const paymentMethods = document.querySelector('.payment-methods');
+            const continueBtn = document.querySelector('.continue-payment-btn');
+            const discountSection = document.querySelector('.discount-section');
+            const paymentDetails = document.getElementById('purchase-details');
+            
+            // Fade out current view
+            paymentDetails.style.opacity = '0';
+            
+            setTimeout(() => {
+                // Clear payment details
+                paymentDetails.innerHTML = '';
+                
+                // Show original elements
+                if (paymentMethods) {
+                    paymentMethods.style.display = 'grid';
+                    paymentMethods.style.opacity = '1';
+                }
+                if (discountSection) {
+                    discountSection.style.display = 'block';
+                    discountSection.style.opacity = '1';
+                }
+                if (continueBtn) {
+                    continueBtn.style.display = 'flex';
+                    continueBtn.style.opacity = '1';
+                }
+            }, 200);
+            break;
+            
+        default:
+            // If somehow we don't have a valid previous page, go back to pricing
+            navigationHistory = ['pricing'];
+            showPricingOptions();
+            break;
+    }
+}
+
+function backToPaymentConfirmation() {
+    selectPaymentOption(currentPurchase.paymentMethod);
+}
+
+function updateCryptoAddress() {
+    const select = document.getElementById('crypto-select');
+    const addressDiv = document.getElementById('crypto-address');
+    const selectedCrypto = select.value;
+    
+    if (selectedCrypto) {
+        const address = paymentAddresses.crypto[selectedCrypto];
+        addressDiv.innerHTML = `
+            ${address}
+            <button onclick="copyToClipboard('${address}')" class="copy-btn">
+                <i class="fas fa-copy"></i> Copy
+            </button>
+        `;
+    } else {
+        addressDiv.innerHTML = '';
+    }
+}
+
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(() => {
+        showAlert('Address copied to clipboard!', 'success');
+    }).catch(() => {
+        showAlert('Failed to copy address', 'error');
+    });
 }
 
 async function processBalancePayment() {
@@ -654,26 +896,63 @@ async function applyDiscountCode() {
         // Query Firebase for the discount code
         const discountSnapshot = await db.collection('discountCodes')
             .where('code', '==', discountCode)
-            .where('active', '==', true)
             .get();
 
         if (discountSnapshot.empty) {
-            showDiscountMessage('Invalid or expired discount code', 'error');
+            showDiscountMessage('Invalid discount code', 'error');
             currentDiscount = { code: null, percentage: 0 };
-        } else {
-            const discountData = discountSnapshot.docs[0].data();
-            currentDiscount = {
-                code: discountCode,
-                percentage: discountData.percentage
-            };
-            
-            // Update the displayed price
-            updatePriceWithDiscount();
-            showDiscountMessage(`Discount applied: ${discountData.percentage}% off!`, 'success');
+            return;
         }
+
+        const discountDoc = discountSnapshot.docs[0];
+        const discount = discountDoc.data();
+        const now = new Date();
+
+        // Check if code is expired
+        if (discount.validUntil?.toDate() < now) {
+            showDiscountMessage('This discount code has expired', 'error');
+            currentDiscount = { code: null, percentage: 0 };
+            return;
+        }
+
+        // Check if max uses reached
+        if (discount.currentUses >= discount.maxUses) {
+            showDiscountMessage('This discount code has reached its maximum uses', 'error');
+            currentDiscount = { code: null, percentage: 0 };
+            return;
+        }
+
+        // Increment the usage count in Firebase
+        await db.collection('discountCodes').doc(discountDoc.id).update({
+            currentUses: firebase.firestore.FieldValue.increment(1)
+        });
+
+        // Log the usage in discountUsages collection
+        await db.collection('discountUsages').add({
+            discountId: discountDoc.id,
+            discountCode: discountCode,
+            userId: localStorage.getItem('currentUser'),
+            usedAt: firebase.firestore.FieldValue.serverTimestamp(),
+            percentage: discount.percentage,
+            maxUses: discount.maxUses,
+            currentUses: discount.currentUses + 1
+        });
+
+        // Update current discount
+        currentDiscount = {
+            code: discountCode,
+            percentage: discount.percentage,
+            docId: discountDoc.id
+        };
+            
+        // Update the displayed price
+        updatePriceWithDiscount();
+        showDiscountMessage(`${discount.percentage}% discount applied!`, 'success');
+
     } catch (error) {
         console.error('Error applying discount:', error);
         showDiscountMessage('Error applying discount code', 'error');
+        currentDiscount = { code: null, percentage: 0 };
     } finally {
         // Reset button state
         applyButton.disabled = false;
@@ -720,3 +999,149 @@ function updatePriceWithDiscount() {
 
 // Make the new function globally available
 window.applyDiscountCode = applyDiscountCode; 
+
+// Make sure modal close functionality is properly initialized
+document.addEventListener('DOMContentLoaded', () => {
+    const closeModal = document.querySelector('.close-modal');
+    if (closeModal) {
+        closeModal.addEventListener('click', () => {
+            const modal = document.querySelector('.modal');
+            if (modal) {
+                modal.classList.remove('show');
+                setTimeout(() => {
+                    modal.style.display = 'none';
+                }, 300);
+            }
+        });
+    }
+}); 
+
+function selectPayment(option) {
+    // ... existing code ...
+    
+    // Remove active class from all options
+    document.querySelectorAll('.payment-option').forEach(opt => {
+        opt.classList.remove('active');
+    });
+    
+    // Add active class to selected option
+    document.querySelector(`[data-payment="${option}"]`).classList.add('active');
+    
+    // Show continue button
+    const continueBtn = document.querySelector('.continue-btn');
+    if (!continueBtn) {
+        const btn = document.createElement('button');
+        btn.className = 'continue-btn';
+        btn.innerHTML = 'Continue';
+        btn.onclick = () => {
+            // Handle continue action here
+            processPayment(option);
+        };
+        document.querySelector('.payment-options').insertAdjacentElement('afterend', btn);
+    }
+    
+    // ... existing code ...
+}
+
+function processPayment(paymentOption) {
+    // Handle the payment processing based on selected option
+    console.log(`Processing payment with ${paymentOption}`);
+    // Add your payment processing logic here
+} 
+
+// Add new function to show pricing options
+function showPricingOptions() {
+    const details = document.getElementById('purchase-details');
+    
+    details.innerHTML = `
+        <h3>Choose Your Plan</h3>
+        <p class="modal-subtitle">Select the perfect duration for your needs</p>
+        
+        <div class="pricing-grid">
+            <div class="pricing-card" data-duration="day" onclick="selectPlan('day', 6)">
+                <div class="duration">24 Hours</div>
+                <div class="price">$6<span class="price-suffix">/day</span></div>
+                <ul class="features">
+                    <li>Full Access</li>
+                    <li>24/7 Support</li>
+                    <li>Testing Plan</li>
+                </ul>
+            </div>
+            <!-- ... rest of pricing cards ... -->
+        </div>
+    `;
+
+    // Reset any existing selections
+    currentPurchase.duration = null;
+    currentPurchase.price = 0;
+    currentPurchase.paymentMethod = null;
+} 
+
+// Add this function to validate and apply discount codes
+async function validateDiscountCode(code) {
+    try {
+        // Get the discount code document
+        const discountSnapshot = await db.collection('discountCodes')
+            .where('code', '==', code.toUpperCase())
+            .get();
+
+        if (discountSnapshot.empty) {
+            return { valid: false, message: 'Invalid discount code' };
+        }
+
+        const discountDoc = discountSnapshot.docs[0];
+        const discount = discountDoc.data();
+        const now = new Date();
+
+        // Check if code is expired
+        if (discount.validUntil?.toDate() < now) {
+            return { valid: false, message: 'Discount code has expired' };
+        }
+
+        // Check if max uses reached
+        if (discount.currentUses >= discount.maxUses) {
+            return { valid: false, message: 'Discount code has reached maximum uses' };
+        }
+
+        // Update usage count
+        await db.collection('discountCodes').doc(discountDoc.id).update({
+            currentUses: firebase.firestore.FieldValue.increment(1)
+        });
+
+        // Log the usage
+        await db.collection('discountUsages').add({
+            discountId: discountDoc.id,
+            discountCode: code.toUpperCase(),
+            userId: localStorage.getItem('currentUser'),
+            usedAt: firebase.firestore.FieldValue.serverTimestamp(),
+            percentage: discount.percentage
+        });
+
+        return {
+            valid: true,
+            percentage: discount.percentage,
+            message: `${discount.percentage}% discount applied!`
+        };
+    } catch (error) {
+        console.error('Error validating discount:', error);
+        return { valid: false, message: 'Error validating discount code' };
+    }
+}
+
+// Update the existing purchase flow to handle discounts
+async function handlePurchase() {
+    // ... existing purchase code ...
+
+    // If there's a discount code applied
+    const discountCode = document.getElementById('discount-code')?.value;
+    if (discountCode) {
+        const discountResult = await validateDiscountCode(discountCode);
+        if (discountResult.valid) {
+            // Apply discount to price
+            const discountAmount = (price * discountResult.percentage) / 100;
+            price -= discountAmount;
+        }
+    }
+
+    // ... continue with purchase process ...
+} 
