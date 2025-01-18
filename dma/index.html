@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Krypton | Product</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <link rel="stylesheet" href="product.css">
+</head>
+<body>
+    <div id="particles-js"></div>
+    
+    <div class="background-shapes">
+        <div class="shape shape-1"></div>
+        <div class="shape shape-2"></div>
+        <div class="shape shape-3"></div>
+    </div>
+
+    <header class="header">
+        <div class="header-content">
+            <div class="brand">
+                <div class="hamburger-menu" onclick="toggleMenu()">
+                    <i class="fas fa-bars"></i>
+                </div>
+                <div class="discord-pfp">
+                    <img src="https://cdn.discordapp.com/embed/avatars/0.png" alt="Profile Picture">
+                </div>
+            </div>
+            <div class="balance">
+                <i class="fas fa-wallet"></i>
+                <span class="balance-amount">$0.00</span>
+            </div>
+        </div>
+        <div class="menu-dropdown">
+            <div class="menu-item" onclick="window.location.href='/balance/'">
+                <i class="fas fa-wallet"></i>
+                <span>Add balance</span>
+            </div>
+            <div class="menu-item" onclick="window.location.href='/dashboard/'">
+                <i class="fas fa-home"></i>
+                <span>Dashboard</span>
+            </div>
+        </div>
+    </header>
+
+    <main class="product-showcase">
+        <div class="product-container">
+            <div class="product-gallery">
+                <div class="main-image">
+                    <img src="dma.gif" alt="DMA Cheat Demo">
+                </div>
+            </div>
+            <div class="product-info">
+                <h1 class="product-title">Fortnite DMA Cheat</h1>
+                <div class="product-price">
+                    <span class="price-prefix">Starting at</span>
+                    <span class="price-amount">$6</span>
+                </div>
+                <p class="product-description">
+                    Enhance your gaming experience with krypton DMA Cheat.
+                </p>
+                <div class="product-features">
+                    <h2>Features</h2>
+                    <ul>
+                        <li><i class="fas fa-check"></i> Aimbot</li>
+                        <li><i class="fas fa-check"></i> Visuals</li>
+                        <li><i class="fas fa-check"></i> Radar</li>
+                    </ul>
+                </div>
+                <div class="product-actions">
+                    <button class="purchase-btn" onclick="showPaymentMethods()">
+                        <i class="fas fa-shopping-cart"></i>
+                        Purchase Now
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div class="modal">
+        <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            <h2>Purchase Item</h2>
+            <div id="purchase-details"></div>
+            <div id="payment-info" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyDvG4059xSr2jToP9xDz-8dlxbumuRzdUE",
+            authDomain: "sdfkj238j98sdlkmzlknslaksdjfkl.firebaseapp.com",
+            projectId: "sdfkj238j98sdlkmzlknslaksdjfkl",
+            storageBucket: "sdfkj238j98sdlkmzlknslaksdjfkl.applestorage.com",
+            messagingSenderId: "778178162130",
+            appId: "1:778178162130:web:a9513f09e404813aa2ec0b",
+            measurementId: "G-WP6QR49WZ3"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // Initialize particles
+        particlesJS('particles-js', {
+            particles: {
+                number: { value: 80, density: { enable: true, value_area: 800 } },
+                color: { value: '#ffffff' },
+                shape: { type: 'circle' },
+                opacity: {
+                    value: 0.2,
+                    random: true,
+                    animation: { enable: true, speed: 1, minimumValue: 0.1, sync: false }
+                },
+                size: {
+                    value: 3,
+                    random: true,
+                    animation: { enable: true, speed: 2, minimumValue: 0.1, sync: false }
+                },
+                line_linked: {
+                    enable: true,
+                    distance: 150,
+                    color: '#ffffff',
+                    opacity: 0.1,
+                    width: 1
+                },
+                move: {
+                    enable: true,
+                    speed: 1,
+                    direction: 'none',
+                    random: true,
+                    straight: false,
+                    outModes: { default: 'bounce' },
+                    attract: { enable: false, rotateX: 600, rotateY: 1200 }
+                }
+            },
+            interactivity: {
+                detectsOn: 'canvas',
+                events: {
+                    onHover: { enable: true, mode: 'repulse' },
+                    onClick: { enable: true, mode: 'push' },
+                    resize: true
+                },
+                modes: {
+                    repulse: { distance: 100, duration: 0.4 },
+                    push: { particles_nb: 4 }
+                }
+            },
+            retina_detect: true
+        });
+
+        // Load user data
+        async function loadUserProfile() {
+            const username = localStorage.getItem('currentUser');
+            if (!username) {
+                window.location.href = '/login/';
+                return;
+            }
+
+            try {
+                const userDoc = await db.collection('users').doc(username).get();
+                if (userDoc.exists) {
+                    const userData = userDoc.data();
+                    if (userData.discordAvatarURL) {
+                        document.querySelector('.discord-pfp img').src = userData.discordAvatarURL;
+                    }
+                    document.querySelector('.balance-amount').textContent = 
+                        `$${userData.balance ? userData.balance.toFixed(2) : '0.00'}`;
+                }
+            } catch (error) {
+                console.error('Error loading user profile:', error);
+            }
+        }
+
+        // Make toggleMenu globally available
+        window.toggleMenu = function() {
+            const dropdown = document.querySelector('.menu-dropdown');
+            dropdown.classList.toggle('active');
+        }
+
+        // Close menu when clicking outside
+        document.addEventListener('click', function(event) {
+            const dropdown = document.querySelector('.menu-dropdown');
+            const hamburger = document.querySelector('.hamburger-menu');
+            if (!hamburger.contains(event.target) && !dropdown.contains(event.target)) {
+                dropdown.classList.remove('active');
+            }
+        });
+
+        // Initialize everything when the page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            loadUserProfile();
+        });
+
+        // Import auth functions
+        import { validateStoredCredentials } from './dashboard/auth.js';
+
+        // Check authentication on load
+        document.addEventListener('DOMContentLoaded', async () => {
+            const isValid = await validateStoredCredentials();
+            if (!isValid) {
+                window.location.href = '/login/';
+                return;
+            }
+        });
+
+        // Monitor authentication changes
+        window.addEventListener('storage', async (e) => {
+            if (e.key === 'currentUser' || e.key === 'userPassword') {
+                const isValid = await validateStoredCredentials();
+                if (!isValid) {
+                    window.location.href = '/login/';
+                    return;
+                }
+            }
+        });
+    </script>
+
+    <script src="product.js"></script>
+
+    <script>
+        // Function to initiate purchase from button click
+        function initiatePurchaseFromButton() {
+            // Set current purchase details from the page
+            currentPurchase.id = 'your-product-id'; // Set this to your actual product ID
+            currentPurchase.title = document.querySelector('.product-title').textContent;
+            currentPurchase.price = parseFloat(document.querySelector('.price-amount').textContent.replace('$', ''));
+            
+            // Call the initiatePurchase function
+            initiatePurchase();
+        }
+
+        // Add event listener for Enter key on verification inputs
+        document.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                const mathAnswer = document.getElementById('math-answer');
+                const wordAnswer = document.getElementById('word-answer');
+                
+                if (document.activeElement === mathAnswer) {
+                    verifyAnswer();
+                } else if (document.activeElement === wordAnswer) {
+                    verifyWordAnswer();
+                }
+            }
+        });
+    </script>
+</body>
+</html> 
