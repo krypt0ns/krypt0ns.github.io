@@ -9,6 +9,26 @@
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
     <link rel="stylesheet" href="dashboard.css">   
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyDvG4059xSr2jToP9xDz-8dlxbumuRzdUE",
+            authDomain: "sdfkj238j98sdlkmzlknslaksdjfkl.firebaseapp.com", 
+            projectId: "sdfkj238j98sdlkmzlknslaksdjfkl",
+            storageBucket: "sdfkj238j98sdlkmzlknslaksdjfkl.firebasestorage.app",
+            messagingSenderId: "778178162130",
+            appId: "1:778178162130:web:a9513f09e404813aa2ec0b",
+            measurementId: "G-WP6QR49WZ3"
+        };
+
+        // Initialize Firebase only if it hasn't been initialized yet
+        let app;
+        try {
+            app = firebase.app();
+        } catch (error) {
+            app = firebase.initializeApp(firebaseConfig);
+        }
+        const db = firebase.firestore();
+    </script>
     <script type="module">
         import { checkIPBan } from '../auth.js';
         
@@ -137,20 +157,6 @@
                 dropdown.classList.remove('active');
             }
         });
-
-        // Initialize Firebase
-        const firebaseConfig = {
-            apiKey: "AIzaSyDvG4059xSr2jToP9xDz-8dlxbumuRzdUE",
-            authDomain: "sdfkj238j98sdlkmzlknslaksdjfkl.firebaseapp.com", 
-            projectId: "sdfkj238j98sdlkmzlknslaksdjfkl",
-            storageBucket: "sdfkj238j98sdlkmzlknslaksdjfkl.firebasestorage.app",
-            messagingSenderId: "778178162130",
-            appId: "1:778178162130:web:a9513f09e404813aa2ec0b",
-            measurementId: "G-WP6QR49WZ3"
-        };
-
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
 
         // Function to create a listing card with countdown
         function createListingCard(listing, index) {
