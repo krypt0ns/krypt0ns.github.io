@@ -1,4 +1,16 @@
-// Just get the Firestore instance
+// Initialize Firebase at the top of the file
+const firebaseConfig = {
+    apiKey: "AIzaSyDvG4059xSr2jToP9xDz-8dlxbumuRzdUE",
+    authDomain: "sdfkj238j98sdlkmzlknslaksdjfkl.firebaseapp.com",
+    projectId: "sdfkj238j98sdlkmzlknslaksdjfkl",
+    storageBucket: "sdfkj238j98sdlkmzlknslaksdjfkl.applestorage.com",
+    messagingSenderId: "778178162130",
+    appId: "1:778178162130:web:a9513f09e404813aa2ec0b",
+    measurementId: "G-WP6QR49WZ3"
+};
+
+// Initialize Firebase
+firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
 // Add showAlert function
