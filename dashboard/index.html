@@ -24,12 +24,14 @@
             transform: translateY(-10px);
             opacity: 0;
             transition: all 0.3s ease;
+            pointer-events: none;
         }
 
         .menu-dropdown.active {
             display: block;
             opacity: 1;
             transform: translateY(0);
+            pointer-events: all;
         }
     </style>
     <script>
@@ -62,7 +64,7 @@
         });
     </script>
     <script>
-        // Toggle menu dropdown
+        // Update the toggleMenu function
         window.toggleMenu = function() {
             const dropdown = document.querySelector('.menu-dropdown');
             const hamburger = document.querySelector('.hamburger-menu');
@@ -79,24 +81,36 @@
             dropdown.classList.toggle('active');
         }
 
-        // Add window resize handler
-        window.addEventListener('resize', function() {
-            const dropdown = document.querySelector('.menu-dropdown');
-            if (dropdown.classList.contains('active')) {
-                const hamburger = document.querySelector('.hamburger-menu');
-                const hamburgerRect = hamburger.getBoundingClientRect();
-                dropdown.style.top = `${hamburgerRect.bottom + 10}px`;
-                dropdown.style.left = `${hamburgerRect.left}px`;
-            }
-        });
-
-        // Add click outside handler
-        document.addEventListener('click', function(event) {
+        // Add function to update dropdown position
+        function updateDropdownPosition() {
             const dropdown = document.querySelector('.menu-dropdown');
             const hamburger = document.querySelector('.hamburger-menu');
-            if (!hamburger.contains(event.target) && !dropdown.contains(event.target)) {
-                dropdown.classList.remove('active');
-            }
+            const hamburgerRect = hamburger.getBoundingClientRect();
+            
+            dropdown.style.position = 'fixed';
+            dropdown.style.top = `${hamburgerRect.bottom + 10}px`;
+            dropdown.style.left = `${hamburgerRect.left}px`;
+        }
+
+        // Update event listeners
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initial position update
+            updateDropdownPosition();
+            
+            // Update on resize
+            window.addEventListener('resize', updateDropdownPosition);
+            
+            // Update on scroll
+            window.addEventListener('scroll', updateDropdownPosition);
+            
+            // Close menu when clicking outside
+            document.addEventListener('click', function(event) {
+                const dropdown = document.querySelector('.menu-dropdown');
+                const hamburger = document.querySelector('.hamburger-menu');
+                if (!hamburger.contains(event.target) && !dropdown.contains(event.target)) {
+                    dropdown.classList.remove('active');
+                }
+            });
         });
     </script>
 </head>

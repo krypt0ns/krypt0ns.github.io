@@ -223,3 +223,78 @@ window.initializeDiscountsListener = function() {
         });
     }
 };
+
+function createOrderCard(order) {
+    // Calculate final price including discounts and fees
+    const originalPrice = order.originalPrice || order.price;
+    const discountAmount = order.appliedDiscount ? (originalPrice * order.appliedDiscount.percentage / 100) : 0;
+    const subtotalAfterDiscount = originalPrice - discountAmount;
+    
+    // Fee rates based on payment method
+    const feeRates = {
+        cashapp: 0.05, // 5%
+        paypal: 0.07,  // 7%
+        crypto: 0,     // 0%
+        balance: 0     // 0%
+    };
+    
+    const feeRate = feeRates[order.paymentMethod] || 0;
+    const feeAmount = subtotalAfterDiscount * feeRate;
+    const totalPrice = subtotalAfterDiscount + feeAmount;
+
+    return `
+        <div class="order-card ${order.status.toLowerCase()}" data-order-id="${order.id}">
+            <div class="order-header">
+                <div class="user-info">
+                    <img src="${order.userAvatar || 'https://cdn.discordapp.com/embed/avatars/0.png'}" alt="User Avatar">
+                    <span>${order.username}</span>
+                </div>
+                <div class="order-status ${order.status.toLowerCase()}">${order.status}</div>
+            </div>
+            <div class="order-details">
+                <div class="info-group">
+                    <label>Order ID:</label>
+                    <span>${order.orderNumber || order.id}</span>
+                </div>
+                <div class="info-group">
+                    <label>Discord:</label>
+                    <span>${order.discordUsername || 'N/A'}</span>
+                </div>
+                <div class="info-group">
+                    <label>Product:</label>
+                    <span>${order.listingTitle}</span>
+                </div>
+                <div class="info-group">
+                    <label>Price Details:</label>
+                    <div class="price-breakdown">
+                        <div>Original Price: $${originalPrice.toFixed(2)}</div>
+                        ${order.appliedDiscount ? `
+                            <div class="discount">Discount (${order.appliedDiscount.percentage}%): -$${discountAmount.toFixed(2)}</div>
+                        ` : ''}
+                        ${feeRate > 0 ? `
+                            <div>Fee (${(feeRate * 100)}%): +$${feeAmount.toFixed(2)}</div>
+                        ` : ''}
+                        <div class="total-price">Total: $${totalPrice.toFixed(2)}</div>
+                    </div>
+                </div>
+                <div class="info-group">
+                    <label>Payment Method:</label>
+                    <span>${order.paymentMethod}</span>
+                </div>
+                <div class="info-group">
+                    <label>Date:</label>
+                    <span>${formatDate(order.createdAt)}</span>
+                </div>
+                ${order.proofUrl ? `
+                    <div class="info-group">
+                        <label>Payment Proof:</label>
+                        <a href="${order.proofUrl}" target="_blank" class="proof-link">View Proof</a>
+                    </div>
+                ` : ''}
+            </div>
+            <div class="order-actions">
+                ${getActionButtons(order)}
+            </div>
+        </div>
+    `;
+}

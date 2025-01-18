@@ -488,19 +488,53 @@
             }
         }
 
-        // Make toggleMenu globally available
+        // Update the toggleMenu function
         window.toggleMenu = function() {
             const dropdown = document.querySelector('.menu-dropdown');
+            const hamburger = document.querySelector('.hamburger-menu');
+            
+            // Get hamburger position
+            const hamburgerRect = hamburger.getBoundingClientRect();
+            
+            // Position dropdown relative to hamburger
+            dropdown.style.position = 'fixed';
+            dropdown.style.top = `${hamburgerRect.bottom + 10}px`; // 10px gap
+            dropdown.style.left = `${hamburgerRect.left}px`;
+            
+            // Toggle active class
             dropdown.classList.toggle('active');
         }
 
-        // Close menu when clicking outside
-        document.addEventListener('click', function(event) {
+        // Add function to update dropdown position
+        function updateDropdownPosition() {
             const dropdown = document.querySelector('.menu-dropdown');
             const hamburger = document.querySelector('.hamburger-menu');
-            if (!hamburger.contains(event.target) && !dropdown.contains(event.target)) {
-                dropdown.classList.remove('active');
-            }
+            const hamburgerRect = hamburger.getBoundingClientRect();
+            
+            dropdown.style.position = 'fixed';
+            dropdown.style.top = `${hamburgerRect.bottom + 10}px`;
+            dropdown.style.left = `${hamburgerRect.left}px`;
+        }
+
+        // Update event listeners
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initial position update
+            updateDropdownPosition();
+            
+            // Update on resize
+            window.addEventListener('resize', updateDropdownPosition);
+            
+            // Update on scroll
+            window.addEventListener('scroll', updateDropdownPosition);
+            
+            // Close menu when clicking outside
+            document.addEventListener('click', function(event) {
+                const dropdown = document.querySelector('.menu-dropdown');
+                const hamburger = document.querySelector('.hamburger-menu');
+                if (!hamburger.contains(event.target) && !dropdown.contains(event.target)) {
+                    dropdown.classList.remove('active');
+                }
+            });
         });
 
         // Initialize everything when the page loads

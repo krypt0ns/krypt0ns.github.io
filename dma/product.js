@@ -331,6 +331,7 @@ function selectPricing(duration, price) {
 }
 
 async function selectPaymentOption(method) {
+    // Update the current purchase payment method
     currentPurchase.paymentMethod = method;
     
     // Remove active class from all payment options
@@ -344,21 +345,24 @@ async function selectPaymentOption(method) {
         selectedOption.classList.add('active');
     }
     
-    // Add continue button if it doesn't exist
-    let continueBtn = document.querySelector('.continue-payment-btn');
-    if (!continueBtn) {
-        continueBtn = document.createElement('button');
-        continueBtn.className = 'continue-payment-btn';
-        continueBtn.innerHTML = `
-            <i class="fas fa-arrow-right"></i>
-            Continue to Payment
-        `;
-        continueBtn.onclick = () => showPaymentDetails(method);
-        
-        // Insert after payment methods
-        const paymentMethods = document.querySelector('.payment-methods');
-        paymentMethods.insertAdjacentElement('afterend', continueBtn);
+    // Remove existing continue button if it exists
+    const existingBtn = document.querySelector('.continue-payment-btn');
+    if (existingBtn) {
+        existingBtn.remove();
     }
+    
+    // Add new continue button
+    const continueBtn = document.createElement('button');
+    continueBtn.className = 'continue-payment-btn';
+    continueBtn.innerHTML = `
+        <i class="fas fa-arrow-right"></i>
+        Continue to Payment
+    `;
+    continueBtn.onclick = () => showPaymentDetails(method);
+    
+    // Insert after payment methods
+    const paymentMethods = document.querySelector('.payment-methods');
+    paymentMethods.insertAdjacentElement('afterend', continueBtn);
 }
 
 // Add new function to show payment details
@@ -420,7 +424,7 @@ function showPaymentDetails(method) {
                         </div>
                     ` : ''}
                     <div class="price-row">
-                        <span>Fee (${(feeRate * 100)}%):</span>
+                        <span>Fee (${(feeRate * 100).toFixed(0)}%):</span>
                         <span>$${feeAmount.toFixed(2)}</span>
                     </div>
                     <div class="price-row total">
@@ -643,6 +647,23 @@ async function handlePaymentSubmission() {
             proofUrl = await uploadToLitterbox(proofInput.files[0]);
         }
 
+        // Calculate final price with discounts and fees
+        const originalPrice = currentPurchase.price;
+        const discountAmount = currentDiscount.code ? (originalPrice * currentDiscount.percentage / 100) : 0;
+        const subtotalAfterDiscount = originalPrice - discountAmount;
+        
+        // Fee rates based on payment method
+        const feeRates = {
+            cashapp: 0.05, // 5%
+            paypal: 0.07,  // 7%
+            crypto: 0,     // 0%
+            balance: 0     // 0%
+        };
+        
+        const feeRate = feeRates[currentPurchase.paymentMethod] || 0;
+        const feeAmount = subtotalAfterDiscount * feeRate;
+        const finalPrice = Number((subtotalAfterDiscount + feeAmount).toFixed(2)); // Format to 2 decimal places
+
         // Create the order
         const orderData = {
             userId: username,
@@ -652,7 +673,8 @@ async function handlePaymentSubmission() {
             discordUsername: userData.discordUsername,
             listingId: currentPurchase.id,
             listingTitle: currentPurchase.title,
-            price: currentPurchase.price,
+            originalPrice: Number(originalPrice.toFixed(2)), // Format original price
+            price: finalPrice, // Already formatted final price
             paymentMethod: currentPurchase.paymentMethod,
             proofUrl: proofUrl,
             status: 'Pending',
@@ -664,9 +686,14 @@ async function handlePaymentSubmission() {
             lastUpdated: firebase.firestore.FieldValue.serverTimestamp(),
             notes: '',
             orderNumber: Date.now().toString(36).toUpperCase(),
-            originalPrice: currentPurchase.originalPrice || currentPurchase.price,
-            finalPrice: currentPurchase.finalPrice || currentPurchase.price,
-            appliedDiscount: currentPurchase.appliedDiscount || null
+            appliedDiscount: currentDiscount.code ? {
+                code: currentDiscount.code,
+                percentage: currentDiscount.percentage
+            } : null,
+            fees: {
+                rate: feeRate,
+                amount: Number(feeAmount.toFixed(2)) // Format fee amount
+            }
         };
 
         await db.collection('orders').add(orderData);
@@ -1080,68 +1107,143 @@ function showPricingOptions() {
 // Add this function to validate and apply discount codes
 async function validateDiscountCode(code) {
     try {
-        // Get the discount code document
         const discountSnapshot = await db.collection('discountCodes')
             .where('code', '==', code.toUpperCase())
             .get();
 
         if (discountSnapshot.empty) {
-            return { valid: false, message: 'Invalid discount code' };
+            return null;
         }
 
-        const discountDoc = discountSnapshot.docs[0];
-        const discount = discountDoc.data();
+        const discount = discountSnapshot.docs[0].data();
         const now = new Date();
+        const validUntil = discount.validUntil.toDate();
 
         // Check if code is expired
-        if (discount.validUntil?.toDate() < now) {
-            return { valid: false, message: 'Discount code has expired' };
+        if (validUntil < now) {
+            return null;
         }
 
         // Check if max uses reached
-        if (discount.currentUses >= discount.maxUses) {
-            return { valid: false, message: 'Discount code has reached maximum uses' };
+        const usageCount = await db.collection('discountUsages')
+            .where('discountCode', '==', code.toUpperCase())
+            .get()
+            .then(snapshot => snapshot.size);
+
+        if (usageCount >= discount.maxUses) {
+            return null;
         }
 
-        // Update usage count
-        await db.collection('discountCodes').doc(discountDoc.id).update({
-            currentUses: firebase.firestore.FieldValue.increment(1)
-        });
-
-        // Log the usage
-        await db.collection('discountUsages').add({
-            discountId: discountDoc.id,
-            discountCode: code.toUpperCase(),
-            userId: localStorage.getItem('currentUser'),
-            usedAt: firebase.firestore.FieldValue.serverTimestamp(),
-            percentage: discount.percentage
-        });
-
         return {
-            valid: true,
-            percentage: discount.percentage,
-            message: `${discount.percentage}% discount applied!`
+            id: discountSnapshot.docs[0].id,
+            ...discount
         };
     } catch (error) {
-        console.error('Error validating discount:', error);
-        return { valid: false, message: 'Error validating discount code' };
+        console.error('Error validating discount code:', error);
+        return null;
     }
 }
 
-// Update the existing purchase flow to handle discounts
-async function handlePurchase() {
-    // ... existing purchase code ...
+// Add this function to calculate discounted price
+function calculateDiscountedPrice(originalPrice, discountPercentage) {
+    const discount = (originalPrice * discountPercentage) / 100;
+    return originalPrice - discount;
+}
 
-    // If there's a discount code applied
-    const discountCode = document.getElementById('discount-code')?.value;
-    if (discountCode) {
-        const discountResult = await validateDiscountCode(discountCode);
-        if (discountResult.valid) {
-            // Apply discount to price
-            const discountAmount = (price * discountResult.percentage) / 100;
-            price -= discountAmount;
+// Modify the createOrder function
+async function createOrder(listingId, paymentMethod, proofUrl = null) {
+    try {
+        const user = await getCurrentUser();
+        if (!user) {
+            showAlert('Please log in to make a purchase', 'error');
+            return;
         }
+
+        const listingDoc = await db.collection('listings').doc(listingId).get();
+        if (!listingDoc.exists) {
+            showAlert('Listing not found', 'error');
+            return;
+        }
+
+        const listing = listingDoc.data();
+        let finalPrice = listing.price;
+
+        // Get discount code if applied
+        const discountInput = document.getElementById('discount-code');
+        if (discountInput && discountInput.value) {
+            const discount = await validateDiscountCode(discountInput.value);
+            if (discount) {
+                finalPrice = calculateDiscountedPrice(listing.price, discount.percentage);
+                
+                // Record discount usage
+                await db.collection('discountUsages').add({
+                    discountCode: discount.code,
+                    userId: user.uid,
+                    usedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    orderId: null // Will update this after order creation
+                });
+            }
+        }
+
+        // Create the order with the final price
+        const orderRef = await db.collection('orders').add({
+            userId: user.uid,
+            username: user.username,
+            discordUsername: user.discordUsername,
+            userAvatar: user.avatar,
+            listingId: listingId,
+            listingTitle: listing.title,
+            price: finalPrice, // Use the discounted price
+            originalPrice: listing.price, // Store original price for reference
+            status: 'Pending',
+            paymentMethod: paymentMethod,
+            proofUrl: proofUrl,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        // Update the discount usage with the order ID if a discount was used
+        if (discountInput && discountInput.value) {
+            const discountUsageSnapshot = await db.collection('discountUsages')
+                .where('userId', '==', user.uid)
+                .where('orderId', '==', null)
+                .orderBy('usedAt', 'desc')
+                .limit(1)
+                .get();
+
+            if (!discountUsageSnapshot.empty) {
+                await discountUsageSnapshot.docs[0].ref.update({
+                    orderId: orderRef.id
+                });
+            }
+        }
+
+        showAlert('Order created successfully', 'success');
+        return orderRef.id;
+    } catch (error) {
+        console.error('Error creating order:', error);
+        showAlert('Error creating order: ' + error.message, 'error');
+        return null;
+    }
+}
+
+// Add this function to handle discount code input
+async function handleDiscountCode() {
+    const discountInput = document.getElementById('discount-code');
+    const priceElement = document.getElementById('listing-price');
+    const originalPrice = parseFloat(priceElement.dataset.originalPrice);
+
+    if (!discountInput.value) {
+        priceElement.textContent = `$${originalPrice.toFixed(2)}`;
+        return;
     }
 
-    // ... continue with purchase process ...
+    const discount = await validateDiscountCode(discountInput.value);
+    if (discount) {
+        const discountedPrice = calculateDiscountedPrice(originalPrice, discount.percentage);
+        priceElement.textContent = `$${discountedPrice.toFixed(2)} (${discount.percentage}% off)`;
+        showAlert(`Discount code applied: ${discount.percentage}% off`, 'success');
+    } else {
+        priceElement.textContent = `$${originalPrice.toFixed(2)}`;
+        showAlert('Invalid or expired discount code', 'error');
+    }
 } 
