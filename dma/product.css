@@ -91,6 +91,7 @@ body {
     display: flex;
     align-items: center;
     gap: 1rem;
+    position: relative;
 }
 
 .discord-pfp {
@@ -105,6 +106,10 @@ body {
     cursor: pointer;
     position: relative;
     transition: transform 0.2s;
+}
+
+.discord-pfp:hover {
+    transform: scale(1.05);
 }
 
 .discord-pfp img {
@@ -415,6 +420,8 @@ body {
 
 .hamburger-menu {
     cursor: pointer;
+    color: #fff;
+    font-size: 1.5rem;
     padding: 8px;
     border-radius: 8px;
     transition: background-color 0.3s ease;
@@ -1296,4 +1303,23 @@ input[type="file"]::-webkit-file-upload-button {
     justify-content: center;
     gap: 0.5rem;
     margin-top: 0.25rem;
+}
+
+/* Update media queries */
+@media only screen and (min-width: 1400px) {
+    .header-content {
+        max-width: 1400px;
+    }
+}
+
+@media only screen and (max-width: 1200px) {
+    .header-content {
+        max-width: 100%;
+    }
+}
+
+@media only screen and (max-width: 768px) {
+    .header-content {
+        padding: 0 1rem;
+    }
 }

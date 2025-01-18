@@ -313,6 +313,28 @@
         .price-row.discount span:last-child {
             color: #48bb78;
         }
+
+        .menu-dropdown {
+            position: fixed;
+            top: 70px; /* Will be dynamically updated */
+            left: 20px; /* Will be dynamically updated */
+            background: rgba(17, 17, 17, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 0.5rem;
+            display: none;
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+            transform: translateY(-10px);
+            opacity: 0;
+            transition: all 0.3s ease;
+        }
+
+        .menu-dropdown.active {
+            display: block;
+            opacity: 1;
+            transform: translateY(0);
+        }
     </style>
 </head>
 <body>
@@ -533,6 +555,43 @@
                 } else if (document.activeElement === wordAnswer) {
                     verifyWordAnswer();
                 }
+            }
+        });
+
+        // Toggle menu dropdown
+        window.toggleMenu = function() {
+            const dropdown = document.querySelector('.menu-dropdown');
+            const hamburger = document.querySelector('.hamburger-menu');
+            
+            // Get hamburger position
+            const hamburgerRect = hamburger.getBoundingClientRect();
+            
+            // Position dropdown relative to hamburger
+            dropdown.style.position = 'fixed';
+            dropdown.style.top = `${hamburgerRect.bottom + 10}px`; // 10px gap
+            dropdown.style.left = `${hamburgerRect.left}px`;
+            
+            // Toggle active class
+            dropdown.classList.toggle('active');
+        }
+
+        // Add window resize handler
+        window.addEventListener('resize', function() {
+            const dropdown = document.querySelector('.menu-dropdown');
+            if (dropdown.classList.contains('active')) {
+                const hamburger = document.querySelector('.hamburger-menu');
+                const hamburgerRect = hamburger.getBoundingClientRect();
+                dropdown.style.top = `${hamburgerRect.bottom + 10}px`;
+                dropdown.style.left = `${hamburgerRect.left}px`;
+            }
+        });
+
+        // Add click outside handler
+        document.addEventListener('click', function(event) {
+            const dropdown = document.querySelector('.menu-dropdown');
+            const hamburger = document.querySelector('.hamburger-menu');
+            if (!hamburger.contains(event.target) && !dropdown.contains(event.target)) {
+                dropdown.classList.remove('active');
             }
         });
     </script>
