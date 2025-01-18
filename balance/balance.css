@@ -520,3 +520,65 @@
                 max-width: 3000px;
             }
         }
+
+        /* Mobile Responsive Fixes */
+        @media screen and (max-width: 768px) {
+            .balance-container {
+                margin: 80px 1rem 2rem;
+                padding: 1rem;
+            }
+
+            .payment-methods {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+
+            .payment-option {
+                padding: 1rem;
+            }
+
+            /* Fix form elements */
+            .form-group input {
+                font-size: 16px;
+                padding: 0.75rem;
+            }
+
+            /* Adjust crypto address display */
+            .payment-address {
+                flex-direction: column;
+                gap: 0.5rem;
+                align-items: stretch;
+                word-break: break-all;
+            }
+
+            .copy-btn {
+                width: 100%;
+                justify-content: center;
+            }
+
+            /* Fix modal scrolling */
+            .modal-content {
+                width: 95%;
+                max-height: 90vh;
+                margin: 1rem;
+                padding: 1rem;
+                overflow-y: auto;
+            }
+
+            /* Improve touch targets */
+            .submit-btn,
+            .copy-btn,
+            .payment-option {
+                min-height: 44px;
+            }
+
+            /* Fix discount section */
+            .discount-input-group {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+
+            .discount-input-group button {
+                width: 100%;
+            }
+        }

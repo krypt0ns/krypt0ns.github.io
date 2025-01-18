@@ -1887,3 +1887,111 @@
                 transform: translateY(0);
             }
         }
+
+        /* Mobile-specific fixes */
+        @media screen and (max-width: 768px) {
+            /* Fix scrolling issues */
+            body {
+                position: relative;
+                min-height: -webkit-fill-available;
+                overflow-y: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            /* Adjust main content for mobile */
+            .main-content {
+                position: relative;
+                height: auto;
+                min-height: 100vh;
+                padding: 80px 1rem 2rem;
+                overflow-y: auto;
+            }
+
+            /* Fix header for mobile */
+            .header {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                z-index: 1000;
+                padding: 0.75rem;
+            }
+
+            /* Adjust brand positioning */
+            .brand {
+                margin-left: 0;
+                gap: 0.5rem;
+            }
+
+            .brand h1 {
+                font-size: 1.5rem;
+            }
+
+            /* Fix menu dropdown positioning */
+            .menu-dropdown {
+                position: fixed;
+                top: 70px !important;
+                right: 1rem;
+                left: auto !important;
+                width: auto;
+                min-width: 200px;
+                max-width: calc(100vw - 2rem);
+            }
+
+            /* Adjust listing cards */
+            .listing-card {
+                width: 100%;
+                max-width: none;
+                margin: 0;
+            }
+
+            /* Fix modal positioning */
+            .modal-content {
+                width: 95%;
+                max-height: 90vh;
+                margin: 1rem auto;
+                padding: 1rem;
+                overflow-y: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            /* Improve touch targets */
+            .menu-item,
+            .listing-button,
+            .modal-close {
+                min-height: 44px;
+                padding: 0.75rem 1rem;
+            }
+
+            /* Fix slideshow for mobile */
+            .slideshow-container {
+                height: 200px;
+                touch-action: pan-y pinch-zoom;
+            }
+
+            /* Adjust grid layout */
+            .listings-grid {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+                padding: 0.5rem;
+            }
+        }
+
+        /* Fix iOS-specific height issues */
+        @supports (-webkit-touch-callout: none) {
+            .main-content {
+                min-height: -webkit-fill-available;
+            }
+        }
+
+        /* Add better touch feedback */
+        @media (hover: none) {
+            .listing-card:active {
+                transform: scale(0.98);
+            }
+
+            .button:active,
+            .menu-item:active {
+                opacity: 0.7;
+            }
+        }

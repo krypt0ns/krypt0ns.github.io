@@ -29,6 +29,14 @@ export async function validateStoredCredentials() {
     try {
         const userDoc = await db.collection('users').doc(username).get();
         if (!userDoc.exists) {
+            const errorMsg = document.createElement('div');
+            errorMsg.className = 'error-message mobile-friendly';
+            errorMsg.innerHTML = `
+                <i class="fas fa-exclamation-circle"></i>
+                <span>Invalid credentials. Please log in again.</span>
+            `;
+            document.body.appendChild(errorMsg);
+            setTimeout(() => errorMsg.remove(), 3000);
             return false;
         }
 
@@ -36,6 +44,14 @@ export async function validateStoredCredentials() {
         return userData.password === password;
     } catch (error) {
         console.error('Error validating credentials:', error);
+        const errorMsg = document.createElement('div');
+        errorMsg.className = 'error-message mobile-friendly';
+        errorMsg.innerHTML = `
+            <i class="fas fa-exclamation-circle"></i>
+            <span>Error validating credentials. Please try again.</span>
+        `;
+        document.body.appendChild(errorMsg);
+        setTimeout(() => errorMsg.remove(), 3000);
         return false;
     }
 }
