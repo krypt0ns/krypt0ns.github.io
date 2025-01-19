@@ -134,26 +134,69 @@ function setupAuthListeners() {
 async function checkIPBan() {
     try {
         console.log('Checking IP ban...');
+        // Get current IP
         const response = await fetch('https://api.ipify.org?format=json');
         const data = await response.json();
         const currentIP = data.ip;
         console.log('Current IP:', currentIP);
 
+        // Check if IP is banned
         const banDoc = await getDoc(doc(db, 'ipbans', currentIP));
         if (banDoc.exists()) {
             const banData = banDoc.data();
             console.log('IP is banned:', banData);
+            // Clear any stored credentials
             localStorage.removeItem('currentUser');
             localStorage.removeItem('userPassword');
             
-            // Redirect to banned page with reason
-            window.location.href = '/banned/?reason=banned';
+            // Redirect to banned page
+            window.location.href = '/banned.html';
             return true; // IP is banned
         }
+
         console.log('IP is not banned');
         return false; // IP is not banned
     } catch (error) {
         console.error('Error checking IP ban:', error);
+        return false;
+    }
+}
+
+/**
+ * Checks if the current IP matches the stored IP for the user
+ * @returns {Promise<boolean>} True if IPs match, false otherwise
+ */
+async function checkIPMatch() {
+    try {
+        const response = await fetch('https://api.ipify.org?format=json');
+        const data = await response.json();
+        const currentIP = data.ip;
+        console.log('Current IP:', currentIP);
+
+        const username = localStorage.getItem('currentUser');
+        if (!username) {
+            redirectToLogin();
+            return false;
+        }
+
+        const userDoc = await getDoc(doc(db, 'users', username));
+        if (userDoc.exists()) {
+            const userData = userDoc.data();
+            // Remove or comment out this block to ignore IP mismatches
+            // if (userData.ip !== currentIP) {
+            //     console.log('IP mismatch detected');
+            //     // Clear any stored credentials
+            //     localStorage.removeItem('currentUser');
+            //     localStorage.removeItem('userPassword');
+                
+            //     // Redirect to banned page
+            //     window.location.href = '/banned.html';
+            //     return false; // IP mismatch
+            // }
+        }
+        return true; // IPs match or mismatch is ignored
+    } catch (error) {
+        console.error('Error checking IP match:', error);
         return false;
     }
 }
@@ -166,5 +209,6 @@ export {
     isAdmin,
     getCurrentUser,
     setupAuthListeners,
-    checkIPBan
+    checkIPBan,
+    checkIPMatch
 };
