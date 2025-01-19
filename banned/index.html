@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Access Denied</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #0f0f0f 0%, #1a1a1a 100%);
+            color: #fff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            position: relative;
+            overflow: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: absolute;
+            width: 200%;
+            height: 200%;
+            background: repeating-linear-gradient(
+                45deg,
+                rgba(255, 0, 0, 0.05) 0px,
+                rgba(255, 0, 0, 0.05) 10px,
+                transparent 10px,
+                transparent 20px
+            );
+            animation: backgroundMove 20s linear infinite;
+            z-index: 1;
+        }
+
+        @keyframes backgroundMove {
+            0% {
+                transform: translate(-50%, -50%) rotate(0deg);
+            }
+            100% {
+                transform: translate(-50%, -50%) rotate(360deg);
+            }
+        }
+
+        .container {
+            position: relative;
+            background: rgba(20, 20, 20, 0.95);
+            border: 1px solid rgba(255, 0, 0, 0.3);
+            padding: 3rem;
+            border-radius: 20px;
+            text-align: center;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 0 30px rgba(255, 0, 0, 0.2),
+                        0 0 60px rgba(255, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            z-index: 2;
+            animation: pulseContainer 2s ease-in-out infinite;
+        }
+
+        @keyframes pulseContainer {
+            0%, 100% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.02);
+            }
+        }
+
+        .icon {
+            font-size: 4rem;
+            color: #ff0000;
+            margin-bottom: 1.5rem;
+            animation: warningPulse 1.5s ease-in-out infinite;
+            text-shadow: 0 0 20px rgba(255, 0, 0, 0.5);
+        }
+
+        @keyframes warningPulse {
+            0%, 100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+            50% {
+                transform: scale(1.1);
+                opacity: 0.8;
+            }
+        }
+
+        h2 {
+            font-size: 2.5rem;
+            margin-bottom: 1.5rem;
+            font-weight: 600;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            background: linear-gradient(45deg, #ff0000, #ff6b6b);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        #message {
+            font-size: 1.2rem;
+            line-height: 1.6;
+            color: #cccccc;
+            margin-top: 1rem;
+            padding: 1rem;
+            border-top: 1px solid rgba(255, 0, 0, 0.2);
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 2rem;
+            }
+            
+            h2 {
+                font-size: 2rem;
+            }
+            
+            .icon {
+                font-size: 3rem;
+            }
+            
+            #message {
+                font-size: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <i class="fas fa-exclamation-triangle icon"></i>
+        <h2>Access Denied</h2>
+        <p id="message"></p>
+    </div>
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const reason = urlParams.get('reason');
+        const messageElement = document.getElementById('message');
+
+        if (reason === 'banned') {
+            messageElement.textContent = 'Your account has been banned.';
+        } else if (reason === 'sharing') {
+            messageElement.textContent = 'Account sharing is strictly PROHIBITED. You are not banned, this is a warning.';
+        } else {
+            messageElement.textContent = 'Access denied for unknown reasons.';
+        }
+    </script>
+</body>
+</html>

@@ -1,6 +1,6 @@
 // Firebase imports (if using modules)
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
-import { getFirestore, doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+import { getFirestore, doc, getDoc, collection } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
 
 // Firebase config (replace with your config)
 const firebaseConfig = {
@@ -133,58 +133,64 @@ function setupAuthListeners() {
 // Add this function to check IP bans
 async function checkIPBan() {
     try {
-        // Get current IP
+        console.log('Checking IP ban...');
         const response = await fetch('https://api.ipify.org?format=json');
         const data = await response.json();
         const currentIP = data.ip;
+        console.log('Current IP:', currentIP);
 
-        // Check if IP is banned
-        const banDoc = await db.collection('ipbans').doc(currentIP).get();
-        if (banDoc.exists) {
+        const banDoc = await getDoc(doc(db, 'ipbans', currentIP));
+        if (banDoc.exists()) {
             const banData = banDoc.data();
-            // Clear any stored credentials
+            console.log('IP is banned:', banData);
             localStorage.removeItem('currentUser');
             localStorage.removeItem('userPassword');
             
-            // Show ban message
-            document.body.innerHTML = `
-                <div style="
-                    position: fixed;
-                    top: 0;
-                    left: 0;
-                    width: 100%;
-                    height: 100%;
-                    background: #0f0f0f;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    color: white;
-                    font-family: Arial, sans-serif;
-                ">
-                    <div style="
-                        background: rgba(255, 0, 0, 0.1);
-                        border: 1px solid rgba(255, 0, 0, 0.2);
-                        padding: 2rem;
-                        border-radius: 12px;
-                        text-align: center;
-                        max-width: 80%;
-                    ">
-                        <i class="fas fa-ban" style="
-                            font-size: 3rem;
-                            color: #ff0000;
-                            margin-bottom: 1rem;
-                        "></i>
-                        <h2 style="margin-bottom: 1rem;">Access Denied</h2>
-                        <p style="margin-bottom: 1rem;">Your account has been banned.</p>
-                        ${banData.reason ? `<p style="color: #ff6b6b;">Reason: ${banData.reason}</p>` : ''}
-                    </div>
-                </div>
-            `;
+            // Redirect to banned page with reason
+            window.location.href = '/banned/?reason=banned';
             return true; // IP is banned
         }
+        console.log('IP is not banned');
         return false; // IP is not banned
     } catch (error) {
         console.error('Error checking IP ban:', error);
+        return false;
+    }
+}
+
+/**
+ * Checks if the current IP matches the stored IP for the user
+ * @returns {Promise<boolean>} True if IPs match, false otherwise
+ */
+async function checkIPMatch() {
+    try {
+        const response = await fetch('https://api.ipify.org?format=json');
+        const data = await response.json();
+        const currentIP = data.ip;
+        console.log('Current IP:', currentIP);
+
+        const username = localStorage.getItem('currentUser');
+        if (!username) {
+            redirectToLogin();
+            return false;
+        }
+
+        const userDoc = await getDoc(doc(db, 'users', username));
+        if (userDoc.exists()) {
+            const userData = userDoc.data();
+            if (userData.ip !== currentIP) {
+                console.log('IP mismatch detected');
+                localStorage.removeItem('currentUser');
+                localStorage.removeItem('userPassword');
+                
+                // Redirect to banned page with reason
+                window.location.href = '/banned/index.html?reason=sharing';
+                return false; // IP mismatch
+            }
+        }
+        return true; // IPs match
+    } catch (error) {
+        console.error('Error checking IP match:', error);
         return false;
     }
 }
@@ -196,5 +202,7 @@ export {
     logout,
     isAdmin,
     getCurrentUser,
-    setupAuthListeners
+    setupAuthListeners,
+    checkIPBan,
+    checkIPMatch
 };

@@ -47,20 +47,26 @@
 
         // Initialize Firebase only if it hasn't been initialized yet
         let app;
-        try {
-            app = firebase.app();
-        } catch (error) {
+        if (!firebase.apps.length) {
             app = firebase.initializeApp(firebaseConfig);
+        } else {
+            app = firebase.app(); // Use the already initialized app
         }
         const db = firebase.firestore();
     </script>
     <script type="module">
-        import { checkIPBan } from '../auth.js';
+        import { checkIPBan, checkIPMatch } from './auth.js'; // Ensure the correct path to auth.js
         
         // Initialize Firebase first (you already have this)
-        // Then check for IP ban
+        // Then check for IP ban and IP match
         document.addEventListener('DOMContentLoaded', async () => {
-            await checkIPBan();
+            const isBanned = await checkIPBan();
+            if (!isBanned) {
+                const isIPMatch = await checkIPMatch();
+                if (!isIPMatch) {
+                    return; // Stop further execution if IP does not match
+                }
+            }
         });
     </script>
     <script>
