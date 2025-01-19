@@ -55,18 +55,12 @@
         const db = firebase.firestore();
     </script>
     <script type="module">
-        import { checkIPBan, checkIPMatch } from './auth.js'; // Ensure the correct path to auth.js
+        import { checkIPBan } from './auth.js'; // Ensure the correct path to auth.js
         
         // Initialize Firebase first (you already have this)
-        // Then check for IP ban and IP match
+        // Then check for IP ban
         document.addEventListener('DOMContentLoaded', async () => {
             const isBanned = await checkIPBan();
-            if (!isBanned) {
-                const isIPMatch = await checkIPMatch();
-                if (!isIPMatch) {
-                    return; // Stop further execution if IP does not match
-                }
-            }
         });
     </script>
     <script>

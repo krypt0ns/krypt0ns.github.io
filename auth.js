@@ -158,43 +158,6 @@ async function checkIPBan() {
     }
 }
 
-/**
- * Checks if the current IP matches the stored IP for the user
- * @returns {Promise<boolean>} True if IPs match, false otherwise
- */
-async function checkIPMatch() {
-    try {
-        const response = await fetch('https://api.ipify.org?format=json');
-        const data = await response.json();
-        const currentIP = data.ip;
-        console.log('Current IP:', currentIP);
-
-        const username = localStorage.getItem('currentUser');
-        if (!username) {
-            redirectToLogin();
-            return false;
-        }
-
-        const userDoc = await getDoc(doc(db, 'users', username));
-        if (userDoc.exists()) {
-            const userData = userDoc.data();
-            if (userData.ip !== currentIP) {
-                console.log('IP mismatch detected');
-                localStorage.removeItem('currentUser');
-                localStorage.removeItem('userPassword');
-                
-                // Redirect to banned page with reason
-                window.location.href = '/banned/index.html?reason=sharing';
-                return false; // IP mismatch
-            }
-        }
-        return true; // IPs match
-    } catch (error) {
-        console.error('Error checking IP match:', error);
-        return false;
-    }
-}
-
 // Export functions
 export {
     validateStoredCredentials,
@@ -203,6 +166,5 @@ export {
     isAdmin,
     getCurrentUser,
     setupAuthListeners,
-    checkIPBan,
-    checkIPMatch
+    checkIPBan
 };
