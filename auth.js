@@ -228,7 +228,7 @@ async function checkIPBan() {
     }
 }
 
-// Export functions
+// Export all the functions that are used across files
 export {
     validateStoredCredentials,
     redirectToLogin,
@@ -237,5 +237,6 @@ export {
     getCurrentUser,
     setupAuthListeners,
     checkIPBan,
-    validateDomain
+    validateDomain,
+    handleFirestoreError
 };
