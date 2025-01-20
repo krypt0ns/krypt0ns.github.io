@@ -57,6 +57,34 @@ async function getAppCheckToken() {
     }
 }
 
+// Function to check if the IP is banned
+async function checkIPBan() {
+    try {
+        console.log('Checking IP ban...');
+        const response = await fetch('https://api.ipify.org?format=json');
+        const data = await response.json();
+        const currentIP = data.ip;
+        console.log('Current IP:', currentIP);
+
+        const banDoc = await getDoc(doc(db, 'ipbans', currentIP));
+        if (banDoc.exists()) {
+            const banData = banDoc.data();
+            console.log('IP is banned:', banData);
+            localStorage.removeItem('currentUser');
+            localStorage.removeItem('userPassword');
+            
+            // Redirect to banned page with reason
+            window.location.href = '/banned/?reason=banned';
+            return true; // IP is banned
+        }
+        console.log('IP is not banned');
+        return false; // IP is not banned
+    } catch (error) {
+        console.error('Error checking IP ban:', error);
+        return false;
+    }
+}
+
 // Example function to validate credentials against Firestore
 async function validateStoredCredentials() {
     const username = localStorage.getItem('currentUser');
@@ -96,70 +124,6 @@ function redirectToLogin() {
     
     // Redirect to login page
     window.location.href = '/login/';
-}
-
-// Function to log out the user
-function logout() {
-    localStorage.removeItem('currentUser');
-    localStorage.removeItem('userPassword');
-    redirectToLogin();
-}
-
-// Function to check if user is an admin
-async function isAdmin() {
-    const username = localStorage.getItem('currentUser');
-    if (!username) return false;
-
-    try {
-        const userDoc = await getDoc(doc(db, 'users', username));
-        const userData = userDoc.data();
-        return userData?.isAdmin === true;
-    } catch (error) {
-        console.error('Admin check error:', error);
-        return false;
-    }
-}
-
-// Function to get current user data
-async function getCurrentUser() {
-    const username = localStorage.getItem('currentUser');
-    if (!username) return null;
-
-    try {
-        const userDoc = await getDoc(doc(db, 'users', username));
-        return userDoc.exists() ? userDoc.data() : null;
-    } catch (error) {
-        console.error('Error getting user data:', error);
-        return null;
-    }
-}
-
-// Function to check IP bans (if you want to add IP ban functionality)
-async function checkIPBan() {
-    try {
-        console.log('Checking IP ban...');
-        const response = await fetch('https://api.ipify.org?format=json');
-        const data = await response.json();
-        const currentIP = data.ip;
-        console.log('Current IP:', currentIP);
-
-        const banDoc = await getDoc(doc(db, 'ipbans', currentIP));
-        if (banDoc.exists()) {
-            const banData = banDoc.data();
-            console.log('IP is banned:', banData);
-            localStorage.removeItem('currentUser');
-            localStorage.removeItem('userPassword');
-            
-            // Redirect to banned page with reason
-            window.location.href = '/banned/?reason=banned';
-            return true; // IP is banned
-        }
-        console.log('IP is not banned');
-        return false; // IP is not banned
-    } catch (error) {
-        console.error('Error checking IP ban:', error);
-        return false;
-    }
 }
 
 // Set up authentication listeners to check for session changes
