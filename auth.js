@@ -16,7 +16,7 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
-// Initialize Firestore with custom settings
+// Initialize Firestore
 const db = getFirestore(app);
 
 /**
