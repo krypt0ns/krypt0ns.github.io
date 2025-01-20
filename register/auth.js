@@ -1,6 +1,6 @@
-// Firebase imports (if using modules)
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
-import { getFirestore, doc, getDoc, collection } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+import { getFirestore, doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
 
 // Firebase config (replace with your config)
 const firebaseConfig = {
@@ -16,72 +16,71 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+const auth = getAuth(app);
 
-/**
- * Validates stored credentials against Firestore
- * @returns {Promise<boolean>} True if credentials are valid
- */
+// Authentication listener
+onAuthStateChanged(auth, (user) => {
+    if (user) {
+        console.log("User logged in:", user.email);
+        localStorage.setItem('currentUser', user.email);  // Store logged-in user
+    } else {
+        console.log("No user is logged in.");
+        localStorage.removeItem('currentUser');  // Remove user on logout
+    }
+});
+
+// Validate stored credentials
 async function validateStoredCredentials() {
-    const username = localStorage.getItem('currentUser');
-    const password = localStorage.getItem('userPassword');
+    const user = auth.currentUser;  // Get the current authenticated user
 
-    if (!username || !password) {
+    if (!user) {
         redirectToLogin();
         return false;
     }
 
     try {
-        const userDoc = await getDoc(doc(db, 'users', username));
+        const userDoc = await getDoc(doc(db, 'users', user.email));
         const userData = userDoc.data();
 
-        if (!userDoc.exists() || !userData || userData.password !== password) {
-            console.error('Invalid credentials');
+        if (!userDoc.exists() || !userData) {
+            console.error('Invalid user data in Firestore');
             redirectToLogin();
             return false;
         }
 
         return true;
     } catch (error) {
-        console.error('Auth error:', error);
+        console.error('Error validating user in Firestore:', error);
         redirectToLogin();
         return false;
     }
 }
 
-/**
- * Redirects to login page and handles cleanup
- */
+// Redirects to login page
 function redirectToLogin() {
-    // Clear credentials
     localStorage.removeItem('currentUser');
-    localStorage.removeItem('userPassword');
-    
-    // Save current URL for post-login redirect
-    localStorage.setItem('redirectAfterLogin', window.location.pathname);
-    
-    // Redirect to login page
     window.location.href = '/login/';
 }
 
-/**
- * Logs out the current user
- */
-function logout() {
-    localStorage.removeItem('currentUser');
-    localStorage.removeItem('userPassword');
-    redirectToLogin();
+// Sign-in function using email and password
+async function signInUser(email, password) {
+    try {
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+        console.log("Logged in as:", user.email);
+    } catch (error) {
+        console.error("Error during login:", error.code, error.message);
+        redirectToLogin();
+    }
 }
 
-/**
- * Checks if user has admin privileges
- * @returns {Promise<boolean>} True if user is admin
- */
+// Check if user has admin privileges
 async function isAdmin() {
-    const username = localStorage.getItem('currentUser');
-    if (!username) return false;
+    const user = auth.currentUser;
+    if (!user) return false;
 
     try {
-        const userDoc = await getDoc(doc(db, 'users', username));
+        const userDoc = await getDoc(doc(db, 'users', user.email));
         const userData = userDoc.data();
         return userData?.isAdmin === true;
     } catch (error) {
@@ -90,81 +89,9 @@ async function isAdmin() {
     }
 }
 
-/**
- * Gets current user data
- * @returns {Promise<Object|null>} User data or null if not logged in
- */
-async function getCurrentUser() {
-    const username = localStorage.getItem('currentUser');
-    if (!username) return null;
-
-    try {
-        const userDoc = await getDoc(doc(db, 'users', username));
-        return userDoc.exists() ? userDoc.data() : null;
-    } catch (error) {
-        console.error('Error getting user data:', error);
-        return null;
-    }
-}
-
-/**
- * Sets up authentication listeners
- */
-function setupAuthListeners() {
-    // Listen for storage changes (logout from other tabs)
-    window.addEventListener('storage', async (e) => {
-        if (e.key === 'currentUser' || e.key === 'userPassword') {
-            const isValid = await validateStoredCredentials();
-            if (!isValid) {
-                redirectToLogin();
-            }
-        }
-    });
-
-    // Periodic validation (optional, every 5 minutes)
-    setInterval(async () => {
-        const isValid = await validateStoredCredentials();
-        if (!isValid) {
-            redirectToLogin();
-        }
-    }, 5 * 60 * 1000);
-}
-
-// Add this function to check IP bans
-async function checkIPBan() {
-    try {
-        console.log('Checking IP ban...');
-        const response = await fetch('https://api.ipify.org?format=json');
-        const data = await response.json();
-        const currentIP = data.ip;
-        console.log('Current IP:', currentIP);
-
-        const banDoc = await getDoc(doc(db, 'ipbans', currentIP));
-        if (banDoc.exists()) {
-            const banData = banDoc.data();
-            console.log('IP is banned:', banData);
-            localStorage.removeItem('currentUser');
-            localStorage.removeItem('userPassword');
-            
-            // Redirect to banned page with reason
-            window.location.href = '/banned/?reason=banned';
-            return true; // IP is banned
-        }
-        console.log('IP is not banned');
-        return false; // IP is not banned
-    } catch (error) {
-        console.error('Error checking IP ban:', error);
-        return false;
-    }
-}
-
-// Export functions
 export {
     validateStoredCredentials,
     redirectToLogin,
-    logout,
-    isAdmin,
-    getCurrentUser,
-    setupAuthListeners,
-    checkIPBan
+    signInUser,
+    isAdmin
 };
