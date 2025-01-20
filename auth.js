@@ -1,6 +1,6 @@
 // Firebase imports (if using modules)
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
-import { getFirestore, doc, getDoc, collection } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+import { getFirestore, doc, getDoc, collection, connectFirestoreEmulator } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
 
 // Firebase config (replace with your config)
 const firebaseConfig = {
@@ -15,17 +15,19 @@ const firebaseConfig = {
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
+
+// Initialize Firestore with custom settings
+const firestoreSettings = {
+    experimentalForceLongPolling: true,
+    ssl: true,
+    host: 'firestore.googleapis.com',
+    ignoreUndefinedProperties: true
+};
+
 const db = getFirestore(app);
 
 // Add custom settings to ensure proper origin/referer
-db.settings({
-    experimentalForceLongPolling: true, // Helps with some browser compatibility
-    host: 'firestore.googleapis.com',
-    ssl: true,
-    headers: {
-        'Referer': 'https://www.krypt0n.net'
-    }
-});
+db.settings(firestoreSettings);
 
 /**
  * Enhanced error handling for Firestore operations
