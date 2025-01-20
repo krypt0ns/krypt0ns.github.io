@@ -18,8 +18,7 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 // Add custom settings to ensure proper origin/referer
-const firestore = getFirestore(app);
-firestore.settings({
+db.settings({
     experimentalForceLongPolling: true, // Helps with some browser compatibility
     host: 'firestore.googleapis.com',
     ssl: true,
