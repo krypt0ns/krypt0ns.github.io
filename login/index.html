@@ -5,22 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Krypton | Login</title>
     <link rel="stylesheet" href="login.css">
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-    <script type="module">
-        import { checkIPBan } from '../auth.js';
-        
-        document.addEventListener('DOMContentLoaded', async () => {
-            await checkIPBan();
-        });
-    </script>
 </head>
 <body>
-    <script>
-        // Add IP ban check
-        checkIPBan();
-    </script>
     <div id="particles-js"></div>
     
     <div class="background-shapes">
@@ -36,8 +22,8 @@
         </div>
         <form id="loginForm">
             <div class="form-group">
-                <input type="username" id="username" placeholder=" " required>
-                <label for="username">Username</label>
+                <input type="email" id="email" placeholder=" " required>
+                <label for="email">Email</label>
             </div>
             <div class="form-group">
                 <input type="password" id="password" placeholder=" " required>
@@ -102,121 +88,46 @@
     </script>
 
     <script type="module">
-        // Import Firebase functions
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-app.js";
-        import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore.js";
+        import { checkIPBan, signInUser } from '../auth.js';
 
-        // Firebase configuration
-        const firebaseConfig = {
-            apiKey: "AIzaSyDvG4059xSr2jToP9xDz-8dlxbumuRzdUE",
-            authDomain: "sdfkj238j98sdlkmzlknslaksdjfkl.firebaseapp.com",
-            projectId: "sdfkj238j98sdlkmzlknslaksdjfkl",
-            storageBucket: "sdfkj238j98sdlkmzlknslaksdjfkl.firebasestorage.app",
-            messagingSenderId: "778178162130",
-            appId: "1:778178162130:web:a9513f09e404813aa2ec0b",
-            measurementId: "G-WP6QR49WZ3"
-        };
-
-        // Initialize Firebase
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-
-        // Enhanced form handling with Firebase authentication
-        document.getElementById('loginForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            const username = document.getElementById('username').value;
-            const password = document.getElementById('password').value;
-            const button = this.querySelector('.login-button');
-            const originalText = button.textContent;
-            
+        // Wait for DOM to load
+        document.addEventListener('DOMContentLoaded', async () => {
             try {
-                // Start loading animation
-                button.style.transform = 'scale(0.95)';
-                button.innerHTML = `
-                    <span style="display: inline-block; animation: spin 1s linear infinite;">⚡</span>
-                    Logging in...
-                `;
-                document.querySelector('.login-container').style.opacity = '0.8';
-                
-                // Check user credentials in Firestore
-                const userRef = doc(db, "users", username);
-                const userDoc = await getDoc(userRef);
-
-                if (userDoc.exists()) {
-                    const userData = userDoc.data();
-                    
-                    // Check if account is banned
-                    if (userData.status === 'Banned') {
-                        throw new Error(`Account banned. ${userData.banReason ? `Reason: ${userData.banReason}` : ''}`);
-                    }
-                    
-                    if (userData.password === password) {
-                        // Successful login
-                        localStorage.setItem('currentUser', username);
-                        localStorage.setItem('userPassword', password);
-                        
-                        // Redirect to dashboard or home page
-                        window.location.href = '/dashboard/';
-                    } else {
-                        throw new Error('Invalid password');
-                    }
-                } else {
-                    throw new Error('User not found');
-                }
-                
+                await checkIPBan();
             } catch (error) {
-                console.error('Login error:', error);
-                
-                // Show error message
-                const errorMessage = document.createElement('div');
-                errorMessage.style.color = '#ff4d4d';
-                errorMessage.style.textAlign = 'center';
-                errorMessage.style.marginTop = '1rem';
-                errorMessage.textContent = error.message;
-                
-                const existingError = button.parentElement.querySelector('.error-message');
-                if (existingError) {
-                    existingError.remove();
-                }
-                
-                button.parentElement.appendChild(errorMessage);
-                
-                // Reset button state
-                button.style.transform = 'scale(1)';
-                button.textContent = originalText;
-                document.querySelector('.login-container').style.opacity = '1';
-                
-                // Animate error message
-                errorMessage.style.animation = 'shake 0.5s cubic-bezier(.36,.07,.19,.97) both';
-                
-            } finally {
-                // Reset loading state after 1.5 seconds if not redirected
-                setTimeout(() => {
-                    if (document.body.contains(button)) {
-                        button.style.transform = 'scale(1)';
-                        button.textContent = originalText;
-                        document.querySelector('.login-container').style.opacity = '1';
-                    }
-                }, 1500);
+                console.error('Error checking IP ban:', error);
             }
         });
 
-        // Add shake animation keyframes to existing styles
-        const style = document.createElement('style');
-        style.textContent = `
-            @keyframes shake {
-                10%, 90% { transform: translate3d(-1px, 0, 0); }
-                20%, 80% { transform: translate3d(2px, 0, 0); }
-                30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
-                40%, 60% { transform: translate3d(4px, 0, 0); }
-            }
+        // Handle login form submission
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
             
-            @keyframes spin {
-                0% { transform: rotate(0deg); }
-                100% { transform: rotate(360deg); }
+            try {
+                await signInUser(email, password);
+                window.location.href = '/dashboard/';
+            } catch (error) {
+                console.error('Login error:', error);
+                // Show error to user
+                alert(error.message);
             }
-        `;
-        document.head.appendChild(style);
+        });
     </script>
+
+    <style>
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+            40%, 60% { transform: translate3d(4px, 0, 0); }
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
 </body>
 </html>
