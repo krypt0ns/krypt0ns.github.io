@@ -99,9 +99,9 @@
     </script>
 
     <script type="module">
-        // Import Firebase functions
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { validateDomain, checkIPBan } from '../auth.js';
 
         // Firebase configuration
         const firebaseConfig = {
@@ -114,88 +114,80 @@
             measurementId: "G-WP6QR49WZ3"
         };
 
-        // Initialize Firebase
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-
-        // Enhanced form handling with Firebase authentication
-        document.getElementById('loginForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            const username = document.getElementById('username').value;
-            const password = document.getElementById('password').value;
-            const button = this.querySelector('.login-button');
-            const originalText = button.textContent;
+        document.addEventListener('DOMContentLoaded', async () => {
+            if (!validateDomain()) return;
+            await checkIPBan();
             
-            try {
-                // Start loading animation
-                button.style.transform = 'scale(0.95)';
-                button.innerHTML = `
-                    <span style="display: inline-block; animation: spin 1s linear infinite;">⚡</span>
-                    Logging in...
-                `;
-                document.querySelector('.login-container').style.opacity = '0.8';
-                
-                // Check user credentials in Firestore
-                const userRef = doc(db, "users", username);
-                const userDoc = await getDoc(userRef);
+            const app = initializeApp(firebaseConfig);
+            const db = getFirestore(app);
+            db.settings({
+                experimentalForceLongPolling: true,
+                host: 'firestore.googleapis.com',
+                ssl: true,
+                headers: {
+                    'Referer': 'https://www.krypt0n.net'
+                }
+            });
 
-                if (userDoc.exists()) {
-                    const userData = userDoc.data();
+            // Move the form event listener here to have access to db
+            document.getElementById('loginForm').addEventListener('submit', async function(e) {
+                e.preventDefault();
+                const username = document.getElementById('username').value;
+                const password = document.getElementById('password').value;
+                const button = this.querySelector('.login-button');
+                const originalText = button.textContent;
+                
+                try {
+                    button.style.transform = 'scale(0.95)';
+                    button.innerHTML = `
+                        <span style="display: inline-block; animation: spin 1s linear infinite;">⚡</span>
+                        Logging in...
+                    `;
+                    document.querySelector('.login-container').style.opacity = '0.8';
                     
-                    // Check if account is banned
-                    if (userData.status === 'Banned') {
-                        throw new Error(`Account banned. ${userData.banReason ? `Reason: ${userData.banReason}` : ''}`);
-                    }
-                    
-                    if (userData.password === password) {
-                        // Successful login
-                        localStorage.setItem('currentUser', username);
-                        localStorage.setItem('userPassword', password);
+                    // Check user credentials in Firestore
+                    const userRef = doc(db, "users", username);
+                    const userDoc = await getDoc(userRef);
+
+                    if (userDoc.exists()) {
+                        const userData = userDoc.data();
                         
-                        // Redirect to dashboard or home page
-                        window.location.href = '/dashboard/';
+                        if (userData.status === 'Banned') {
+                            throw new Error(`Account banned. ${userData.banReason ? `Reason: ${userData.banReason}` : ''}`);
+                        }
+                        
+                        if (userData.password === password) {
+                            localStorage.setItem('currentUser', username);
+                            localStorage.setItem('userPassword', password);
+                            window.location.href = '/dashboard/';
+                        } else {
+                            throw new Error('Invalid password');
+                        }
                     } else {
-                        throw new Error('Invalid password');
+                        throw new Error('User not found');
                     }
-                } else {
-                    throw new Error('User not found');
-                }
-                
-            } catch (error) {
-                console.error('Login error:', error);
-                
-                // Show error message
-                const errorMessage = document.createElement('div');
-                errorMessage.style.color = '#ff4d4d';
-                errorMessage.style.textAlign = 'center';
-                errorMessage.style.marginTop = '1rem';
-                errorMessage.textContent = error.message;
-                
-                const existingError = button.parentElement.querySelector('.error-message');
-                if (existingError) {
-                    existingError.remove();
-                }
-                
-                button.parentElement.appendChild(errorMessage);
-                
-                // Reset button state
-                button.style.transform = 'scale(1)';
-                button.textContent = originalText;
-                document.querySelector('.login-container').style.opacity = '1';
-                
-                // Animate error message
-                errorMessage.style.animation = 'shake 0.5s cubic-bezier(.36,.07,.19,.97) both';
-                
-            } finally {
-                // Reset loading state after 1.5 seconds if not redirected
-                setTimeout(() => {
-                    if (document.body.contains(button)) {
-                        button.style.transform = 'scale(1)';
-                        button.textContent = originalText;
-                        document.querySelector('.login-container').style.opacity = '1';
+                    
+                } catch (error) {
+                    console.error('Login error:', error);
+                    
+                    const errorMessage = document.createElement('div');
+                    errorMessage.style.color = '#ff4d4d';
+                    errorMessage.style.textAlign = 'center';
+                    errorMessage.style.marginTop = '1rem';
+                    errorMessage.textContent = error.message;
+                    
+                    const existingError = button.parentElement.querySelector('.error-message');
+                    if (existingError) {
+                        existingError.remove();
                     }
-                }, 1500);
-            }
+                    
+                    button.parentElement.appendChild(errorMessage);
+                    button.style.transform = 'scale(1)';
+                    button.textContent = originalText;
+                    document.querySelector('.login-container').style.opacity = '1';
+                    errorMessage.style.animation = 'shake 0.5s cubic-bezier(.36,.07,.19,.97) both';
+                }
+            });
         });
 
         // Add shake animation keyframes to existing styles

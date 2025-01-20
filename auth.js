@@ -236,5 +236,6 @@ export {
     isAdmin,
     getCurrentUser,
     setupAuthListeners,
-    checkIPBan
+    checkIPBan,
+    validateDomain
 };
