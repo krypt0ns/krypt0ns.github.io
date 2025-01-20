@@ -2,8 +2,7 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
 import { getAuth, signInWithEmailAndPassword } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
 import { getFirestore, doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
-// Import App Check only if needed, otherwise omit
-// import { getAppCheck } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app-check.js';
+import { initializeAppCheck, ReCaptchaV3Provider } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app-check.js';
 
 // Firebase config
 const firebaseConfig = {
@@ -21,7 +20,13 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth();
 
-// Example function to check current user
+// Initialize App Check with reCAPTCHA
+const appCheck = initializeAppCheck(app, {
+    provider: new ReCaptchaV3Provider('6Lfd2b0qAAAAAC1BlqG1RMQ_Y8iPJt79qanPkIgT'), // reCAPTCHA v3 site key
+    isTokenAutoRefreshEnabled: true
+});
+
+// Function to check the current user
 function checkCurrentUser() {
     const user = auth.currentUser;  // Get current user
     if (user) {
@@ -31,7 +36,7 @@ function checkCurrentUser() {
     }
 }
 
-// Example function to sign-in with email and password
+// Function to sign in with email and password
 async function signInUser(email, password) {
     try {
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
@@ -42,19 +47,17 @@ async function signInUser(email, password) {
     }
 }
 
-// Example: Check App Check Token (optional)
+// Function to get App Check token
 async function getAppCheckToken() {
-    // If you decide to use App Check, uncomment the import above
-    // const appCheck = getAppCheck();
-    // try {
-    //     const token = await appCheck.getToken(true);
-    //     console.log('App Check Token:', token);
-    // } catch (error) {
-    //     console.error('Error getting App Check token:', error);
-    // }
+    try {
+        const token = await appCheck.getToken(true); // Get token with force refresh
+        console.log('App Check Token:', token);
+    } catch (error) {
+        console.error('Error getting App Check token:', error);
+    }
 }
 
-// Function to validate stored credentials from localStorage
+// Example function to validate credentials against Firestore
 async function validateStoredCredentials() {
     const username = localStorage.getItem('currentUser');
     const password = localStorage.getItem('userPassword');
@@ -82,22 +85,27 @@ async function validateStoredCredentials() {
     }
 }
 
-// Function to redirect user to login
+// Function to redirect to login page
 function redirectToLogin() {
+    // Clear credentials
     localStorage.removeItem('currentUser');
     localStorage.removeItem('userPassword');
+    
+    // Save current URL for post-login redirect
     localStorage.setItem('redirectAfterLogin', window.location.pathname);
+    
+    // Redirect to login page
     window.location.href = '/login/';
 }
 
-// Function to log out user
+// Function to log out the user
 function logout() {
     localStorage.removeItem('currentUser');
     localStorage.removeItem('userPassword');
     redirectToLogin();
 }
 
-// Function to check if the user is an admin
+// Function to check if user is an admin
 async function isAdmin() {
     const username = localStorage.getItem('currentUser');
     if (!username) return false;
@@ -126,7 +134,7 @@ async function getCurrentUser() {
     }
 }
 
-// Function to check if the user's IP is banned
+// Function to check IP bans (if you want to add IP ban functionality)
 async function checkIPBan() {
     try {
         console.log('Checking IP ban...');
@@ -154,8 +162,9 @@ async function checkIPBan() {
     }
 }
 
-// Setup authentication listeners
+// Set up authentication listeners to check for session changes
 function setupAuthListeners() {
+    // Listen for storage changes (logout from other tabs)
     window.addEventListener('storage', async (e) => {
         if (e.key === 'currentUser' || e.key === 'userPassword') {
             const isValid = await validateStoredCredentials();
@@ -174,15 +183,16 @@ function setupAuthListeners() {
     }, 5 * 60 * 1000);
 }
 
-// Export functions for external use
+// Export functions
 export {
-    signInUser,
-    checkCurrentUser,
     validateStoredCredentials,
     redirectToLogin,
     logout,
     isAdmin,
     getCurrentUser,
+    setupAuthListeners,
     checkIPBan,
-    setupAuthListeners
+    signInUser,
+    checkCurrentUser,
+    getAppCheckToken
 };
