@@ -141,7 +141,7 @@ async function checkIPBan() {
         console.log('Current IP:', currentIP);
 
         const banDoc = await db.collection('ipbans').doc(currentIP).get();
-        if (banDoc.exists()) {
+        if (banDoc.exists) {
             const banData = banDoc.data();
             console.log('IP is banned:', banData);
             localStorage.removeItem('currentUser');

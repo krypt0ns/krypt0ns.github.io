@@ -6,11 +6,21 @@ service cloud.firestore {
       allow read: if true;
     }
     
+    // Allow reading user data for login purposes
+    match /users/{userId} {
+      // Allow reading user data for login checks
+      allow read: if true;
+      // Allow writes only from authenticated users on the correct domain
+      allow write: if request.auth != null &&
+                  request.origin.matches('https://(www\\.)?krypt0n\\.net.*');
+    }
+    
     // For all other collections, require authentication and correct domain
     match /{collection}/{document=**} {
       allow read, write: if request.auth != null &&
                         request.origin.matches('https://(www\\.)?krypt0n\\.net.*') &&
-                        collection != "ipbans";
+                        collection != "ipbans" &&
+                        collection != "users";
     }
   }
 } 

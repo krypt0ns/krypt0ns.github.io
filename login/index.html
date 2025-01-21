@@ -139,7 +139,7 @@
                 const userRef = db.collection("users").doc(username);
                 const userDoc = await userRef.get();
 
-                if (userDoc.exists()) {
+                if (userDoc.exists) {
                     const userData = userDoc.data();
                     
                     // Check if account is banned
