@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="register.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script type="module">
-        import { checkIPBan } from '../auth.js';
+        import { checkIPBan } from '/auth.js';
         
         document.addEventListener('DOMContentLoaded', async () => {
             try {
@@ -60,7 +60,7 @@
 
     <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
     <script type="module">
-        import { supabase } from '../config/supabase.js';
+        import { supabase } from '/config/supabase.js';
 
         // Add showError function
         function showError(message) {

@@ -124,7 +124,7 @@ function setupAuthListeners() {
 }
 
 // Add this function to check IP bans
-export async function checkIPBan() {
+async function checkIPBan() {
     try {
         // Get current IP
         const response = await fetch('https://api.ipify.org?format=json');
@@ -152,12 +152,13 @@ export async function checkIPBan() {
     }
 }
 
-// Export functions
+// Export all functions in one place
 export {
     validateStoredCredentials,
     redirectToLogin,
     logout,
     isAdmin,
     getCurrentUser,
-    setupAuthListeners
+    setupAuthListeners,
+    checkIPBan
 };
