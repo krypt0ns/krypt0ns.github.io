@@ -1,8 +1,16 @@
 const express = require('express');
+const cors = require('cors');
+const fetch = require('node-fetch');  // Add this if using Node.js < 18
 const app = express();
 
-// Serve static files from the current directory
-app.use(express.static('.'));
+// Enable CORS
+app.use(cors({
+    origin: 'https://www.krypt0n.net',
+    methods: ['POST'],
+    credentials: true
+}));
+
+// Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -14,7 +22,7 @@ app.post('/discord/token', async (req, res) => {
         client_secret: 'CnsILKBdkD12PUbU2HnoKCEE_dc6mfgZ',
         grant_type: 'authorization_code',
         code: code,
-        redirect_uri: 'https://www.krypt0n.net/discord/callback'  // Updated to match the client redirect URI
+        redirect_uri: 'https://www.krypt0n.net/discord/callback'
     };
 
     try {
@@ -26,17 +34,26 @@ app.post('/discord/token', async (req, res) => {
             }
         });
 
+        const responseData = await response.text();
+        
         if (!response.ok) {
-            const errorText = await response.text();
-            console.error('Discord API Error:', errorText);
+            console.error('Discord API Error:', responseData);
             return res.status(response.status).json({ 
                 error: 'Failed to exchange code for token',
-                details: errorText
+                details: responseData
             });
         }
 
-        const tokenData = await response.json();
-        res.json(tokenData);
+        try {
+            const tokenData = JSON.parse(responseData);
+            res.json(tokenData);
+        } catch (e) {
+            console.error('Error parsing token data:', e);
+            res.status(500).json({
+                error: 'Invalid token response',
+                details: responseData
+            });
+        }
     } catch (error) {
         console.error('Error:', error);
         res.status(500).json({ 
@@ -46,7 +63,8 @@ app.post('/discord/token', async (req, res) => {
     }
 });
 
-const PORT = 8080;
+// Start server
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-    console.log(`Server running on http://127.0.0.1:${PORT}`);
+    console.log(`Server running on port ${PORT}`);
 });

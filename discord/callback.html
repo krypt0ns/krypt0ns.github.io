@@ -12,8 +12,8 @@
 
         async function getDiscordUser(code) {
             try {
-                // Exchange code for access token through our server endpoint
-                const tokenResponse = await fetch('/discord/token', {
+                // Update this URL to point to your API server
+                const tokenResponse = await fetch('https://api.krypt0n.net/discord/token', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -21,13 +21,14 @@
                     body: JSON.stringify({ code })
                 });
 
-                const tokenData = await tokenResponse.json();
-                if (tokenData.error) {
-                    throw new Error(tokenData.error);
+                if (!tokenResponse.ok) {
+                    const errorData = await tokenResponse.json();
+                    throw new Error(errorData.error || 'Failed to get access token');
                 }
 
+                const tokenData = await tokenResponse.json();
                 if (!tokenData.access_token) {
-                    throw new Error('Failed to get access token');
+                    throw new Error('Invalid token response');
                 }
 
                 // Get user info using the access token
@@ -37,11 +38,11 @@
                     }
                 });
 
-                const userData = await userResponse.json();
-                if (userData.error) {
-                    throw new Error(userData.error);
+                if (!userResponse.ok) {
+                    throw new Error('Failed to get user data');
                 }
 
+                const userData = await userResponse.json();
                 return userData;
             } catch (error) {
                 console.error('Error getting Discord user:', error);
