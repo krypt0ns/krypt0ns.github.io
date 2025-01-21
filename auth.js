@@ -131,22 +131,24 @@ async function checkIPBan() {
         const data = await response.json();
         const currentIP = data.ip;
 
-        // Check if IP is banned - simplified query
+        // Check if IP is banned
         const { data: banData, error } = await supabase
             .from('ipbans')
-            .select()
+            .select('*')
             .eq('ip', currentIP)
             .single();
 
         if (error && error.code !== 'PGRST116') {
-            console.error('Supabase error:', error);
+            // PGRST116 means no record found, which is fine
+            console.error('Error checking IP ban:', error);
             return false;
         }
 
         if (banData) {
+            // IP is banned - clear credentials and redirect
             localStorage.removeItem('currentUser');
             localStorage.removeItem('userPassword');
-            window.location.href = '/banned.html';
+            window.location.href = '/banned/?reason=banned';
             return true;
         }
 
