@@ -61,36 +61,25 @@
 
     <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-app.js";
-        import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore.js";
-
-        const firebaseConfig = {
-            apiKey: "AIzaSyDvG4059xSr2jToP9xDz-8dlxbumuRzdUE",
-            authDomain: "sdfkj238j98sdlkmzlknslaksdjfkl.firebaseapp.com",
-            projectId: "sdfkj238j98sdlkmzlknslaksdjfkl",
-            storageBucket: "sdfkj238j98sdlkmzlknslaksdjfkl.firebasestorage.app",
-            messagingSenderId: "778178162130",
-            appId: "1:778178162130:web:a9513f09e404813aa2ec0b",
-            measurementId: "G-WP6QR49WZ3"
-        };
-
-        // Initialize Firebase
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
+        import { supabase } from '../config/supabase';
 
         // Handle form submission
         const form = document.getElementById('registerForm');
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
-            console.log("Form submitted");
-
+            
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
 
             try {
-                // Check if username already exists
-                const userDoc = await getDoc(doc(db, 'users', username));
-                if (userDoc.exists()) {
+                // Check if username exists
+                const { data: existingUser } = await supabase
+                    .from('users')
+                    .select('username')
+                    .eq('username', username)
+                    .single();
+
+                if (existingUser) {
                     throw new Error('Username already taken');
                 }
 
@@ -99,7 +88,7 @@
                 const ipData = await ipResponse.json();
                 const userIP = ipData.ip;
 
-                // Store registration data with IP
+                // Store registration data
                 sessionStorage.setItem('pendingRegistration', JSON.stringify({
                     username: username,
                     password: password,
@@ -117,20 +106,8 @@
 
                 window.location.href = `https://discord.com/oauth2/authorize?${params.toString()}`;
             } catch (error) {
-                // Show error message to user
-                const errorDiv = document.createElement('div');
-                errorDiv.style.color = '#ff4d4d';
-                errorDiv.style.textAlign = 'center';
-                errorDiv.style.marginTop = '1rem';
-                errorDiv.textContent = error.message;
-                
-                const existingError = form.querySelector('.error-message');
-                if (existingError) {
-                    existingError.remove();
-                }
-                
-                errorDiv.className = 'error-message';
-                form.appendChild(errorDiv);
+                // Show error message
+                showError(error.message);
             }
         });
 

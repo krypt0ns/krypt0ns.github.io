@@ -1,27 +1,10 @@
-// Firebase imports (if using modules)
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
-import { getFirestore, doc, getDoc, collection } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
-
-// Firebase config (replace with your config)
-const firebaseConfig = {
-    apiKey: "AIzaSyDvG4059xSr2jToP9xDz-8dlxbumuRzdUE",
-    authDomain: "sdfkj238j98sdlkmzlknslaksdjfkl.firebaseapp.com",
-    projectId: "sdfkj238j98sdlkmzlknslaksdjfkl",
-    storageBucket: "sdfkj238j98sdlkmzlknslaksdjfkl.applestorage.com",
-    messagingSenderId: "778178162130",
-    appId: "1:778178162130:web:a9513f09e404813aa2ec0b",
-    measurementId: "G-WP6QR49WZ3"
-};
-
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+import { supabase } from './config/supabase';
 
 /**
- * Validates stored credentials against Firestore
+ * Validates stored credentials against Supabase
  * @returns {Promise<boolean>} True if credentials are valid
  */
-async function validateStoredCredentials() {
+export async function validateStoredCredentials() {
     const username = localStorage.getItem('currentUser');
     const password = localStorage.getItem('userPassword');
 
@@ -31,10 +14,13 @@ async function validateStoredCredentials() {
     }
 
     try {
-        const userDoc = await getDoc(doc(db, 'users', username));
-        const userData = userDoc.data();
+        const { data: user, error } = await supabase
+            .from('users')
+            .select('*')
+            .eq('username', username)
+            .single();
 
-        if (!userDoc.exists() || !userData || userData.password !== password) {
+        if (error || !user || user.password !== password) {
             console.error('Invalid credentials');
             redirectToLogin();
             return false;
@@ -81,9 +67,12 @@ async function isAdmin() {
     if (!username) return false;
 
     try {
-        const userDoc = await getDoc(doc(db, 'users', username));
-        const userData = userDoc.data();
-        return userData?.isAdmin === true;
+        const { data: user, error } = await supabase
+            .from('users')
+            .select('*')
+            .eq('username', username)
+            .single();
+        return user?.isAdmin === true;
     } catch (error) {
         console.error('Admin check error:', error);
         return false;
@@ -99,8 +88,12 @@ async function getCurrentUser() {
     if (!username) return null;
 
     try {
-        const userDoc = await getDoc(doc(db, 'users', username));
-        return userDoc.exists() ? userDoc.data() : null;
+        const { data: user, error } = await supabase
+            .from('users')
+            .select('*')
+            .eq('username', username)
+            .single();
+        return user ? user : null;
     } catch (error) {
         console.error('Error getting user data:', error);
         return null;
@@ -131,27 +124,28 @@ function setupAuthListeners() {
 }
 
 // Add this function to check IP bans
-async function checkIPBan() {
+export async function checkIPBan() {
     try {
-        console.log('Checking IP ban...');
+        // Get current IP
         const response = await fetch('https://api.ipify.org?format=json');
         const data = await response.json();
         const currentIP = data.ip;
-        console.log('Current IP:', currentIP);
 
-        const banDoc = await getDoc(doc(db, 'ipbans', currentIP));
-        if (banDoc.exists()) {
-            const banData = banDoc.data();
-            console.log('IP is banned:', banData);
+        // Check if IP is banned
+        const { data: banData, error } = await supabase
+            .from('ipbans')
+            .select('*')
+            .eq('ip', currentIP)
+            .single();
+
+        if (banData) {
             localStorage.removeItem('currentUser');
             localStorage.removeItem('userPassword');
-            
-            // Redirect to banned page with reason
-            window.location.href = '/banned/?reason=banned';
-            return true; // IP is banned
+            window.location.href = '/banned.html';
+            return true;
         }
-        console.log('IP is not banned');
-        return false; // IP is not banned
+
+        return false;
     } catch (error) {
         console.error('Error checking IP ban:', error);
         return false;

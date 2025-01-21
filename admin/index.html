@@ -1876,49 +1876,30 @@
         // Update the approveOrder function to handle balance deduction
         async function approveOrder(orderId) {
             try {
-                const orderRef = db.collection('orders').doc(orderId);
-                const orderDoc = await orderRef.get();
-                const orderData = orderDoc.data();
+                const { data: order } = await supabase
+                    .from('orders')
+                    .select('*')
+                    .eq('id', orderId)
+                    .single();
 
-                // Get listing data
-                const listingDoc = await db.collection('listings').doc(orderData.listingId).get();
-                const listingData = listingDoc.data();
+                const { data: listing } = await supabase
+                    .from('listings')
+                    .select('*')
+                    .eq('id', order.listing_id)
+                    .single();
 
-                if (!orderDoc.exists || !listingDoc.exists) {
-                    showAlert('Order or listing not found', 'error');
-                    return;
-                }
-
-                const batch = db.batch();
-
-                // If payment method is balance, deduct the balance now
-                if (orderData.paymentMethod === 'balance') {
-                    const userRef = db.collection('users').doc(orderData.userId);
-                    const userDoc = await userRef.get();
-                    const userData = userDoc.data();
-
-                    // Check if user has sufficient balance
-                    if (!userData || userData.balance < orderData.price) {
-                        showAlert('User has insufficient balance', 'error');
-                        return;
-                    }
-
-                    // Deduct balance
-                    batch.update(userRef, {
-                        balance: firebase.firestore.FieldValue.increment(-orderData.price)
-                    });
-                }
-
-                // Update order status and include account details
-                batch.update(orderRef, {
-                    status: 'Completed',
-                    completedAt: firebase.firestore.FieldValue.serverTimestamp(),
-                    accountDetails: listingData.accountDetails || null
+                // Start a Supabase transaction
+                const { data, error } = await supabase.rpc('approve_order', {
+                    p_order_id: orderId,
+                    p_user_id: order.user_id,
+                    p_price: order.price,
+                    p_payment_method: order.payment_method,
+                    p_listing_id: order.listing_id,
+                    p_account_details: listing.account_details
                 });
 
-                await batch.commit();
+                if (error) throw error;
                 showAlert('Order approved successfully', 'success');
-                
             } catch (error) {
                 console.error('Error approving order:', error);
                 showAlert('Error approving order: ' + error.message, 'error');
