@@ -17,10 +17,6 @@
     </script>
 </head>
 <body>
-    <script>
-        // Add IP ban check
-        checkIPBan();
-    </script>
     <div id="particles-js"></div>
     
     <div class="background-shapes">
@@ -102,10 +98,6 @@
     </script>
 
     <script type="module">
-        // Import Firebase functions
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-app.js";
-        import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore.js";
-
         // Firebase configuration
         const firebaseConfig = {
             apiKey: "AIzaSyDvG4059xSr2jToP9xDz-8dlxbumuRzdUE",
@@ -117,12 +109,12 @@
             measurementId: "G-WP6QR49WZ3"
         };
 
-        // Initialize Firebase
+        // Initialize Firebase using compat version
         let app;
         if (!firebase.apps.length) {
             app = firebase.initializeApp(firebaseConfig);
         } else {
-            app = firebase.app(); // if already initialized, use that one
+            app = firebase.app();
         }
         const db = firebase.firestore();
 
@@ -144,8 +136,8 @@
                 document.querySelector('.login-container').style.opacity = '0.8';
                 
                 // Check user credentials in Firestore
-                const userRef = doc(db, "users", username);
-                const userDoc = await getDoc(userRef);
+                const userRef = db.collection("users").doc(username);
+                const userDoc = await userRef.get();
 
                 if (userDoc.exists()) {
                     const userData = userDoc.data();
