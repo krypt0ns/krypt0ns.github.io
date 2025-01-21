@@ -14,7 +14,7 @@ app.post('/discord/token', async (req, res) => {
         client_secret: 'CnsILKBdkD12PUbU2HnoKCEE_dc6mfgZ',
         grant_type: 'authorization_code',
         code: code,
-        redirect_uri: 'http://127.0.0.1:8080/discord/callback.html'  // Make sure this matches exactly with your Discord OAuth settings
+        redirect_uri: 'https://www.krypt0n.net/discord/callback'  // Updated to match the client redirect URI
     };
 
     try {

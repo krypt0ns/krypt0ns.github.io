@@ -12,22 +12,20 @@
 
         async function getDiscordUser(code) {
             try {
-                // Exchange code for access token directly
-                const tokenResponse = await fetch('https://discord.com/api/oauth2/token', {
+                // Exchange code for access token through our server endpoint
+                const tokenResponse = await fetch('/discord/token', {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded'
+                        'Content-Type': 'application/json'
                     },
-                    body: new URLSearchParams({
-                        client_id: '1325220923162230805',
-                        client_secret: 'YOUR_CLIENT_SECRET', // Replace with your Discord client secret
-                        grant_type: 'authorization_code',
-                        code: code,
-                        redirect_uri: 'https://www.krypt0n.net/discord/callback'
-                    })
+                    body: JSON.stringify({ code })
                 });
 
                 const tokenData = await tokenResponse.json();
+                if (tokenData.error) {
+                    throw new Error(tokenData.error);
+                }
+
                 if (!tokenData.access_token) {
                     throw new Error('Failed to get access token');
                 }
