@@ -9,29 +9,31 @@
 <body>
     <script type="module">
         import { supabase } from '/config/supabase.js';
+        import { validateStoredCredentials } from '/auth.js';
 
         async function getDiscordUser(code) {
             try {
-                // Update this URL to point to your API server
                 const tokenResponse = await fetch('https://api.krypt0n.net/discord/token', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({ code })
+                    body: JSON.stringify({ code }),
+                    credentials: 'include'
                 });
 
                 if (!tokenResponse.ok) {
                     const errorData = await tokenResponse.json();
+                    console.error('Token response error:', errorData);
                     throw new Error(errorData.error || 'Failed to get access token');
                 }
 
                 const tokenData = await tokenResponse.json();
                 if (!tokenData.access_token) {
+                    console.error('Invalid token data:', tokenData);
                     throw new Error('Invalid token response');
                 }
 
-                // Get user info using the access token
                 const userResponse = await fetch('https://discord.com/api/users/@me', {
                     headers: {
                         Authorization: `Bearer ${tokenData.access_token}`
@@ -39,13 +41,17 @@
                 });
 
                 if (!userResponse.ok) {
+                    const userData = await userResponse.json();
+                    console.error('User response error:', userData);
                     throw new Error('Failed to get user data');
                 }
 
-                const userData = await userResponse.json();
-                return userData;
+                return await userResponse.json();
             } catch (error) {
-                console.error('Error getting Discord user:', error);
+                console.error('Discord authentication error:', error);
+                if (error.message.includes('Failed to fetch')) {
+                    throw new Error('Unable to connect to Discord servers. Please try again later.');
+                }
                 throw new Error('Failed to authenticate with Discord. Please try again.');
             }
         }
@@ -61,24 +67,24 @@
 
                 const pendingData = JSON.parse(sessionStorage.getItem('pendingRegistration'));
                 if (!pendingData || !pendingData.username || !pendingData.password || !pendingData.ip) {
-                    throw new Error('Registration data not found');
+                    throw new Error('Registration data not found. Please start over.');
                 }
 
                 if (Date.now() - pendingData.timestamp > 5 * 60 * 1000) {
-                    throw new Error('Registration session expired');
+                    sessionStorage.removeItem('pendingRegistration');
+                    throw new Error('Registration session expired. Please try again.');
                 }
 
-                // Get Discord user info
                 const discordUser = await getDiscordUser(code);
 
-                // Check if Discord ID already exists
                 const { data: existingUser, error: searchError } = await supabase
                     .from('users')
                     .select('username')
                     .eq('discord_id', discordUser.id)
                     .single();
 
-                if (searchError && searchError.code !== 'PGRST116') { // PGRST116 means no rows returned
+                if (searchError && searchError.code !== 'PGRST116') {
+                    console.error('Supabase search error:', searchError);
                     throw new Error('Error checking existing Discord account');
                 }
                 
@@ -86,12 +92,10 @@
                     throw new Error('A user with this Discord account already exists');
                 }
 
-                // Get Discord avatar URL
                 const avatarURL = discordUser.avatar 
                     ? `https://cdn.discordapp.com/avatars/${discordUser.id}/${discordUser.avatar}.png`
                     : 'https://discord.com/assets/default-avatar.png';
 
-                // Store user data in Supabase
                 const { error: insertError } = await supabase
                     .from('users')
                     .insert([{
@@ -108,20 +112,18 @@
                     }]);
 
                 if (insertError) {
-                    throw new Error('Error creating user account: ' + insertError.message);
+                    console.error('Supabase insert error:', insertError);
+                    throw new Error('Error creating user account');
                 }
 
-                // Clear registration data
                 sessionStorage.removeItem('pendingRegistration');
-
-                // Store credentials
                 localStorage.setItem('currentUser', pendingData.username);
                 localStorage.setItem('userPassword', pendingData.password);
 
-                // Redirect to dashboard
+                await validateStoredCredentials();
                 window.location.replace('/dashboard/');
             } catch (error) {
-                console.error('Error during registration:', error);
+                console.error('Registration error:', error);
                 document.body.innerHTML = `
                     <div style="
                         position: fixed;
@@ -161,7 +163,6 @@
             }
         }
 
-        // Execute when the page loads
         handleCallback();
     </script>
 </body>
