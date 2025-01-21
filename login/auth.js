@@ -1,24 +1,7 @@
-// Firebase imports (if using modules)
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
-import { getFirestore, doc, getDoc, collection } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
-
-// Firebase config (replace with your config)
-const firebaseConfig = {
-    apiKey: "AIzaSyDvG4059xSr2jToP9xDz-8dlxbumuRzdUE",
-    authDomain: "sdfkj238j98sdlkmzlknslaksdjfkl.firebaseapp.com",
-    projectId: "sdfkj238j98sdlkmzlknslaksdjfkl",
-    storageBucket: "sdfkj238j98sdlkmzlknslaksdjfkl.applestorage.com",
-    messagingSenderId: "778178162130",
-    appId: "1:778178162130:web:a9513f09e404813aa2ec0b",
-    measurementId: "G-WP6QR49WZ3"
-};
-
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+import { supabase } from '../config/supabase.js';
 
 /**
- * Validates stored credentials against Firestore
+ * Validates stored credentials against Supabase
  * @returns {Promise<boolean>} True if credentials are valid
  */
 async function validateStoredCredentials() {
@@ -31,10 +14,13 @@ async function validateStoredCredentials() {
     }
 
     try {
-        const userDoc = await getDoc(doc(db, 'users', username));
-        const userData = userDoc.data();
+        const { data: user, error } = await supabase
+            .from('users')
+            .select('*')
+            .eq('username', username)
+            .single();
 
-        if (!userDoc.exists() || !userData || userData.password !== password) {
+        if (error || !user || user.password !== password) {
             console.error('Invalid credentials');
             redirectToLogin();
             return false;
@@ -52,14 +38,9 @@ async function validateStoredCredentials() {
  * Redirects to login page and handles cleanup
  */
 function redirectToLogin() {
-    // Clear credentials
     localStorage.removeItem('currentUser');
     localStorage.removeItem('userPassword');
-    
-    // Save current URL for post-login redirect
     localStorage.setItem('redirectAfterLogin', window.location.pathname);
-    
-    // Redirect to login page
     window.location.href = '/login/';
 }
 
@@ -81,9 +62,13 @@ async function isAdmin() {
     if (!username) return false;
 
     try {
-        const userDoc = await getDoc(doc(db, 'users', username));
-        const userData = userDoc.data();
-        return userData?.isAdmin === true;
+        const { data: user, error } = await supabase
+            .from('users')
+            .select('isAdmin')
+            .eq('username', username)
+            .single();
+
+        return user?.isAdmin === true;
     } catch (error) {
         console.error('Admin check error:', error);
         return false;
@@ -99,8 +84,13 @@ async function getCurrentUser() {
     if (!username) return null;
 
     try {
-        const userDoc = await getDoc(doc(db, 'users', username));
-        return userDoc.exists() ? userDoc.data() : null;
+        const { data: user, error } = await supabase
+            .from('users')
+            .select('*')
+            .eq('username', username)
+            .single();
+
+        return user || null;
     } catch (error) {
         console.error('Error getting user data:', error);
         return null;
@@ -111,7 +101,6 @@ async function getCurrentUser() {
  * Sets up authentication listeners
  */
 function setupAuthListeners() {
-    // Listen for storage changes (logout from other tabs)
     window.addEventListener('storage', async (e) => {
         if (e.key === 'currentUser' || e.key === 'userPassword') {
             const isValid = await validateStoredCredentials();
@@ -121,7 +110,6 @@ function setupAuthListeners() {
         }
     });
 
-    // Periodic validation (optional, every 5 minutes)
     setInterval(async () => {
         const isValid = await validateStoredCredentials();
         if (!isValid) {
@@ -130,35 +118,36 @@ function setupAuthListeners() {
     }, 5 * 60 * 1000);
 }
 
-// Add this function to check IP bans
+/**
+ * Checks if the current IP is banned
+ * @returns {Promise<boolean>} True if IP is banned
+ */
 async function checkIPBan() {
     try {
-        console.log('Checking IP ban...');
         const response = await fetch('https://api.ipify.org?format=json');
         const data = await response.json();
         const currentIP = data.ip;
-        console.log('Current IP:', currentIP);
 
-        const banDoc = await getDoc(doc(db, 'ipbans', currentIP));
-        if (banDoc.exists()) {
-            const banData = banDoc.data();
-            console.log('IP is banned:', banData);
+        const { data: banData, error } = await supabase
+            .from('ipbans')
+            .select('*')
+            .eq('ip', currentIP)
+            .single();
+
+        if (banData) {
             localStorage.removeItem('currentUser');
             localStorage.removeItem('userPassword');
-            
-            // Redirect to banned page with reason
             window.location.href = '/banned/?reason=banned';
-            return true; // IP is banned
+            return true;
         }
-        console.log('IP is not banned');
-        return false; // IP is not banned
+
+        return false;
     } catch (error) {
         console.error('Error checking IP ban:', error);
         return false;
     }
 }
 
-// Export functions
 export {
     validateStoredCredentials,
     redirectToLogin,

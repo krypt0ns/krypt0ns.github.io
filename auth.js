@@ -123,10 +123,7 @@ function setupAuthListeners() {
     }, 5 * 60 * 1000);
 }
 
-/**
- * Checks if IP is banned
- * @returns {Promise<boolean>} True if IP is banned
- */
+// Add this function to check IP bans
 export async function checkIPBan() {
     try {
         // Get current IP
@@ -134,7 +131,7 @@ export async function checkIPBan() {
         const data = await response.json();
         const currentIP = data.ip;
 
-        // Check if IP is banned in Supabase
+        // Check if IP is banned
         const { data: banData, error } = await supabase
             .from('ipbans')
             .select('*')
@@ -142,12 +139,9 @@ export async function checkIPBan() {
             .single();
 
         if (banData) {
-            // Clear any stored credentials
             localStorage.removeItem('currentUser');
             localStorage.removeItem('userPassword');
-            
-            // Redirect to banned page
-            window.location.href = '/banned/?reason=banned';
+            window.location.href = '/banned.html';
             return true;
         }
 
