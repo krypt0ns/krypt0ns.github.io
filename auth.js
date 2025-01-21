@@ -131,12 +131,22 @@ async function checkIPBan() {
         const data = await response.json();
         const currentIP = data.ip;
 
-        // Check if IP is banned
+        // Check if IP is banned - add proper headers
         const { data: banData, error } = await supabase
             .from('ipbans')
             .select('*')
             .eq('ip', currentIP)
-            .single();
+            .single()
+            .headers({
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+                'apikey': supabase.supabaseKey // Add the API key in headers
+            });
+
+        if (error && error.code !== 'PGRST116') { // PGRST116 means no data found
+            console.error('Supabase error:', error);
+            return false;
+        }
 
         if (banData) {
             localStorage.removeItem('currentUser');
