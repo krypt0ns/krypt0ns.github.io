@@ -19,18 +19,20 @@
             
             try {
                 // Check if user exists and password matches
-                const { data: user, error } = await supabase
+                const { data, error } = await supabase
                     .from('users')
                     .select('*')
                     .eq('username', username)
-                    .single();
+                    .limit(1);
 
                 if (error) throw error;
 
-                if (!user) {
+                if (!data || data.length === 0) {
                     showAlert('User not found', 'error');
                     return;
                 }
+
+                const user = data[0];
 
                 // Verify password (you should use proper password hashing in production)
                 if (user.password !== password) {
