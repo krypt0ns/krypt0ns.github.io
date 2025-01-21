@@ -1,6 +1,7 @@
 // Firebase imports (if using modules)
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
 import { getFirestore, doc, getDoc, collection } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+import { getAuth, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
 
 // Firebase config (replace with your config)
 const firebaseConfig = {
@@ -16,6 +17,18 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+const auth = getAuth(app);
+
+// Check domain restrictions
+onAuthStateChanged(auth, (user) => {
+    if (user) {
+        const domain = window.location.hostname;
+        if (domain !== 'krypt0n.net' && domain !== 'www.krypt0n.net') {
+            signOut(auth);
+            window.location.href = '/banned.html';
+        }
+    }
+});
 
 /**
  * Validates stored credentials against Firestore
