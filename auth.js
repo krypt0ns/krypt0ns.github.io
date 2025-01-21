@@ -4,7 +4,7 @@ import { supabase } from '/config/supabase.js';
  * Validates stored credentials against Supabase
  * @returns {Promise<boolean>} True if credentials are valid
  */
-export async function validateStoredCredentials() {
+async function validateStoredCredentials() {
     const username = localStorage.getItem('currentUser');
     const password = localStorage.getItem('userPassword');
 
