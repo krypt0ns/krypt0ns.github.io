@@ -63,23 +63,29 @@
                     return;
                 }
 
-                // Create new user
-                const { error } = await supabase
+                // Get current IP for tracking
+                const ipResponse = await fetch('https://api.ipify.org?format=json');
+                const { ip } = await ipResponse.json();
+
+                // Create new user with IP address
+                const { error: insertError } = await supabase
                     .from('users')
                     .insert([{
                         username: username,
                         password: password, // In production, use proper password hashing
                         is_admin: false,
-                        balance: 0
+                        balance: 0,
+                        ip_address: ip,
+                        last_login: new Date().toISOString()
                     }]);
 
-                if (error) throw error;
+                if (insertError) throw insertError;
 
                 showAlert('Registration successful! Redirecting to login...', 'success');
                 setTimeout(() => window.location.href = '/login/', 2000);
             } catch (error) {
                 console.error('Registration error:', error);
-                showAlert('Registration failed: ' + error.message, 'error');
+                showAlert('Registration failed: ' + (error.message || 'Unknown error'), 'error');
             }
         };
 
