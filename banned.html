@@ -6,35 +6,31 @@
     <title>Access Denied</title>
     <style>
         body {
+            background: #111;
+            color: #fff;
+            font-family: Arial, sans-serif;
             display: flex;
-            align-items: center;
             justify-content: center;
+            align-items: center;
             height: 100vh;
             margin: 0;
-            background-color: #0f0f0f;
-            color: white;
-            font-family: Arial, sans-serif;
         }
-        .container {
+        .banned-container {
+            text-align: center;
+            padding: 2rem;
             background: rgba(255, 0, 0, 0.1);
             border: 1px solid rgba(255, 0, 0, 0.2);
-            padding: 2rem;
-            border-radius: 12px;
-            text-align: center;
-            max-width: 80%;
+            border-radius: 8px;
         }
-        .icon {
-            font-size: 3rem;
-            color: #ff0000;
-            margin-bottom: 1rem;
-        }
+        h1 { color: #ff4444; }
+        p { color: #ccc; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <i class="fas fa-exclamation-triangle icon"></i>
-        <h2>Access Denied</h2>
-        <p>You have been banned.</p>
+    <div class="banned-container">
+        <h1>Access Denied</h1>
+        <p>Your IP address has been banned from accessing this service.</p>
+        <p>If you believe this is a mistake, please contact support.</p>
     </div>
 </body>
 </html> 

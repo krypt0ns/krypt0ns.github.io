@@ -5,8 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Krypton | Balance</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
     <link rel="stylesheet" href="balance.css">
     <style>
@@ -33,7 +32,7 @@
         }
     </style>
     <script type="module">
-        import { checkIPBan } from '../auth.js';
+        import { supabase } from '../config/supabase.js';
         
         document.addEventListener('DOMContentLoaded', async () => {
             await checkIPBan();
@@ -196,19 +195,9 @@
     </div>
 
     <script>
-        // Initialize Firebase
-        const firebaseConfig = {
-            apiKey: "AIzaSyDvG4059xSr2jToP9xDz-8dlxbumuRzdUE",
-            authDomain: "sdfkj238j98sdlkmzlknslaksdjfkl.firebaseapp.com",
-            projectId: "sdfkj238j98sdlkmzlknslaksdjfkl",
-            storageBucket: "sdfkj238j98sdlkmzlknslaksdjfkl.firebasestorage.app",
-            messagingSenderId: "778178162130",
-            appId: "1:778178162130:web:a9513f09e404813aa2ec0b",
-            measurementId: "G-WP6QR49WZ3"
-        };
-
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
+        const supabaseUrl = 'YOUR_SUPABASE_URL'
+        const supabaseKey = 'YOUR_SUPABASE_ANON_KEY'
+        const supabase = supabase.createClient(supabaseUrl, supabaseKey)
 
         // Payment method addresses
         const paymentAddresses = {
@@ -239,7 +228,7 @@
             e.preventDefault();
             
             if (processingPayment) {
-                showAlert('Please wait for your current payment to be processed before submitting another.', 'error');
+                showAlert('Please wait for your current payment to be processed.', 'error');
                 return;
             }
             
@@ -247,42 +236,44 @@
             const proofFile = document.getElementById('proof').files[0];
             
             try {
-                // Get current user data
                 const username = localStorage.getItem('currentUser');
-                if (!username) {
-                    throw new Error('Not logged in');
-                }
+                if (!username) throw new Error('Not logged in');
 
-                // Check if user has any pending payments
-                const pendingPayments = await db.collection('payments')
-                    .where('userId', '==', username)
-                    .where('status', '==', 'Pending')
-                    .get();
+                // Check pending payments
+                const { data: pendingPayments, error: pendingError } = await supabase
+                    .from('payments')
+                    .select('*')
+                    .eq('user_id', username)
+                    .eq('status', 'Pending');
 
-                if (!pendingPayments.empty) {
-                    showAlert('You already have a pending payment. Please wait for it to be processed.', 'error');
+                if (pendingError) throw pendingError;
+                
+                if (pendingPayments.length > 0) {
+                    showAlert('You already have a pending payment.', 'error');
                     return;
                 }
 
                 processingPayment = true;
 
-                // Upload proof image to litterbox
+                // Upload proof image
                 const proofUrl = await uploadToLitterbox(proofFile);
                 
-                // Create payment record in Firebase
-                await db.collection('payments').add({
-                    userId: username,
-                    amount: parseFloat(amount),
-                    paymentMethod: selectedMethod,
-                    proofUrl: proofUrl,
-                    status: 'Pending',
-                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
-                });
+                // Create payment record
+                const { error } = await supabase
+                    .from('payments')
+                    .insert([{
+                        user_id: username,
+                        amount: parseFloat(amount),
+                        payment_method: selectedMethod,
+                        proof_url: proofUrl,
+                        status: 'Pending',
+                        created_at: new Date().toISOString()
+                    }]);
 
-                showAlert('Payment submitted successfully! Please wait for admin approval.', 'success');
-                setTimeout(() => {
-                    window.location.href = '/dashboard/';
-                }, 2000);
+                if (error) throw error;
+
+                showAlert('Payment submitted successfully!', 'success');
+                setTimeout(() => window.location.href = '/dashboard/', 2000);
             } catch (error) {
                 console.error('Error:', error);
                 showAlert('Error submitting payment: ' + error.message, 'error');
@@ -474,13 +465,18 @@
             if (!username) return;
 
             try {
-                const userDoc = await db.collection('users').doc(username).get();
-                if (userDoc.exists) {
-                    const userData = userDoc.data();
-                    if (userData.discordAvatarURL) {
-                        document.querySelector('.discord-pfp img').src = userData.discordAvatarURL;
+                const { data: userData, error } = await supabase
+                    .from('users')
+                    .select('*')
+                    .eq('username', username)
+                    .single();
+
+                if (error) throw error;
+
+                if (userData) {
+                    if (userData.discord_avatar_url) {
+                        document.querySelector('.discord-pfp img').src = userData.discord_avatar_url;
                     }
-                    // Update balance display
                     document.querySelector('.balance-amount').textContent = 
                         `$${userData.balance ? userData.balance.toFixed(2) : '0.00'}`;
                 }
@@ -500,8 +496,11 @@
 
             try {
                 // Verify user exists in database
-                const userDoc = await db.collection('users').doc(username).get();
-                if (!userDoc.exists) {
+                const userDoc = await supabase
+                    .from('users')
+                    .select('*')
+                    .eq('userId', username);
+                if (userDoc.length === 0) {
                     localStorage.removeItem('currentUser');
                     localStorage.removeItem('userPassword');
                     window.location.replace('/login/');

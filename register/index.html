@@ -4,189 +4,89 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Krypton | Register</title>
-    <link rel="stylesheet" href="register.css">
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-    <script type="module">
-        import { checkIPBan } from '/auth.js';
-        
-        document.addEventListener('DOMContentLoaded', async () => {
-            try {
-                await checkIPBan();
-            } catch (error) {
-                console.error('Error checking IP ban:', error);
-            }
-        });
-    </script>
-</head>
-<body>
-    <div id="particles-js"></div>
-    
-    <div class="background-shapes">
-        <div class="shape shape-1"></div>
-        <div class="shape shape-2"></div>
-        <div class="shape shape-3"></div>
-    </div>
-
-    <div class="register-container">
-        <div class="register-header">
-            <h1>Create Account</h1>
-            <p>Please fill in your information to register</p>
-        </div>
-        <form id="registerForm" class="register-form">
-            <div class="form-group">
-                <input 
-                    type="text" 
-                    id="username" 
-                    placeholder="Username" 
-                    autocomplete="username"
-                    required
-                >
-            </div>
-            <div class="form-group">
-                <input 
-                    type="password" 
-                    id="password" 
-                    placeholder="Password" 
-                    autocomplete="new-password"
-                    required
-                >
-            </div>
-            <button type="submit" class="register-button">Create Account</button>
-            <div class="login-link">
-                <a href="/login/">Already have an account? Login</a>
-            </div>
-        </form>
-    </div>
-
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
+    <link rel="stylesheet" href="register.css">
     <script type="module">
-        import { supabase } from '/config/supabase.js';
-
-        // Add showError function
-        function showError(message) {
-            const errorDiv = document.createElement('div');
-            errorDiv.className = 'error-message';
-            errorDiv.textContent = message;
-            errorDiv.style.color = '#ff4d4d';
-            errorDiv.style.marginTop = '10px';
-            errorDiv.style.textAlign = 'center';
-            
-            // Remove any existing error messages
-            const existingError = document.querySelector('.error-message');
-            if (existingError) {
-                existingError.remove();
-            }
-            
-            // Add the new error message
-            const form = document.getElementById('registerForm');
-            form.appendChild(errorDiv);
-        }
-
-        // Handle form submission
-        const form = document.getElementById('registerForm');
-        form.addEventListener('submit', async (e) => {
+        import { supabase } from '../config/supabase.js';
+        
+        window.handleRegister = async function(e) {
             e.preventDefault();
             
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
-
+            const confirmPassword = document.getElementById('confirm-password').value;
+            
             try {
-                // Check if username exists
-                const { data: existingUser } = await supabase
+                if (password !== confirmPassword) {
+                    showAlert('Passwords do not match', 'error');
+                    return;
+                }
+
+                // Check if username already exists
+                const { data: existingUser, error: checkError } = await supabase
                     .from('users')
                     .select('username')
                     .eq('username', username)
                     .single();
 
                 if (existingUser) {
-                    throw new Error('Username already taken');
+                    showAlert('Username already taken', 'error');
+                    return;
                 }
 
-                // Get IP address
-                const ipResponse = await fetch('https://api.ipify.org?format=json');
-                const ipData = await ipResponse.json();
-                const userIP = ipData.ip;
+                // Create new user
+                const { data: newUser, error } = await supabase
+                    .from('users')
+                    .insert([{
+                        username: username,
+                        password: password, // In production, use proper password hashing
+                        balance: 0,
+                        created_at: new Date().toISOString(),
+                        is_admin: false
+                    }]);
 
-                // Store registration data
-                sessionStorage.setItem('pendingRegistration', JSON.stringify({
-                    username: username,
-                    password: password,
-                    ip: userIP,
-                    timestamp: Date.now()
-                }));
+                if (error) throw error;
 
-                // Redirect to Discord OAuth
-                const params = new URLSearchParams({
-                    client_id: '1325220923162230805',
-                    redirect_uri: 'https://www.krypt0n.net/discord/callback',
-                    response_type: 'code',
-                    scope: 'identify'
-                });
-
-                window.location.href = `https://discord.com/oauth2/authorize?${params.toString()}`;
+                showAlert('Registration successful! Redirecting to login...', 'success');
+                setTimeout(() => window.location.href = '/login/', 2000);
             } catch (error) {
-                // Show error message
-                showError(error.message);
+                console.error('Registration error:', error);
+                showAlert('Registration failed: ' + error.message, 'error');
             }
-        });
+        };
 
-        // Initialize particles.js
-        particlesJS('particles-js', {
-            particles: {
-                number: {
-                    value: 80,
-                    density: {
-                        enable: true,
-                        value_area: 800
-                    }
-                },
-                color: {
-                    value: '#ffffff'
-                },
-                shape: {
-                    type: 'circle'
-                },
-                opacity: {
-                    value: 0.5,
-                    random: false
-                },
-                size: {
-                    value: 3,
-                    random: true
-                },
-                line_linked: {
-                    enable: true,
-                    distance: 150,
-                    color: '#ffffff',
-                    opacity: 0.4,
-                    width: 1
-                },
-                move: {
-                    enable: true,
-                    speed: 2,
-                    direction: 'none',
-                    random: false,
-                    straight: false,
-                    out_mode: 'out',
-                    bounce: false
-                }
-            },
-            interactivity: {
-                detect_on: 'canvas',
-                events: {
-                    onhover: {
-                        enable: true,
-                        mode: 'repulse'
-                    },
-                    onclick: {
-                        enable: true,
-                        mode: 'push'
-                    },
-                    resize: true
-                }
-            },
-            retina_detect: true
-        });
+        window.showAlert = function(message, type = 'info') {
+            const alert = document.createElement('div');
+            alert.className = `alert ${type}`;
+            alert.textContent = message;
+            document.body.appendChild(alert);
+            setTimeout(() => alert.remove(), 3000);
+        };
     </script>
+</head>
+<body>
+    <div id="particles-js"></div>
+    <div class="register-container">
+        <form onsubmit="handleRegister(event)" class="register-form">
+            <h2>Register</h2>
+            <div class="form-group">
+                <input type="text" id="username" required>
+                <label for="username">Username</label>
+            </div>
+            <div class="form-group">
+                <input type="password" id="password" required>
+                <label for="password">Password</label>
+            </div>
+            <div class="form-group">
+                <input type="password" id="confirm-password" required>
+                <label for="confirm-password">Confirm Password</label>
+            </div>
+            <button type="submit">Register</button>
+            <p class="login-link">
+                Already have an account? <a href="/login/">Login</a>
+            </p>
+        </form>
+    </div>
 </body>
 </html>

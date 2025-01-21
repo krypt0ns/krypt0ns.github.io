@@ -1,16 +1,8 @@
 const express = require('express');
-const cors = require('cors');
-const fetch = require('node-fetch');  // Add this if using Node.js < 18
 const app = express();
 
-// Enable CORS
-app.use(cors({
-    origin: ['https://www.krypt0n.net', 'http://localhost:3000'],
-    methods: ['POST'],
-    credentials: true
-}));
-
-// Middleware
+// Serve static files from the current directory
+app.use(express.static('.'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -22,7 +14,7 @@ app.post('/discord/token', async (req, res) => {
         client_secret: 'CnsILKBdkD12PUbU2HnoKCEE_dc6mfgZ',
         grant_type: 'authorization_code',
         code: code,
-        redirect_uri: 'https://www.krypt0n.net/discord/callback'
+        redirect_uri: 'http://127.0.0.1:8080/discord/callback.html'  // Make sure this matches exactly with your Discord OAuth settings
     };
 
     try {
@@ -34,26 +26,17 @@ app.post('/discord/token', async (req, res) => {
             }
         });
 
-        const responseData = await response.text();
-        
         if (!response.ok) {
-            console.error('Discord API Error:', responseData);
+            const errorText = await response.text();
+            console.error('Discord API Error:', errorText);
             return res.status(response.status).json({ 
                 error: 'Failed to exchange code for token',
-                details: responseData
+                details: errorText
             });
         }
 
-        try {
-            const tokenData = JSON.parse(responseData);
-            res.json(tokenData);
-        } catch (e) {
-            console.error('Error parsing token data:', e);
-            res.status(500).json({
-                error: 'Invalid token response',
-                details: responseData
-            });
-        }
+        const tokenData = await response.json();
+        res.json(tokenData);
     } catch (error) {
         console.error('Error:', error);
         res.status(500).json({ 
@@ -63,17 +46,7 @@ app.post('/discord/token', async (req, res) => {
     }
 });
 
-// Start server
-const PORT = process.env.PORT || 3000;
+const PORT = 8080;
 app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-});
-
-// Add error handling
-app.use((err, req, res, next) => {
-    console.error('Server error:', err);
-    res.status(500).json({
-        error: 'Internal server error',
-        details: err.message
-    });
+    console.log(`Server running on http://127.0.0.1:${PORT}`);
 });

@@ -4,199 +4,83 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Krypton | Login</title>
-    <link rel="stylesheet" href="login.css">
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-    <script type="module">
-        import { checkIPBan } from '../auth.js';
-        
-        document.addEventListener('DOMContentLoaded', async () => {
-            await checkIPBan();
-        });
-    </script>
-</head>
-<body>
-    <div id="particles-js"></div>
-    
-    <div class="background-shapes">
-        <div class="shape shape-1"></div>
-        <div class="shape shape-2"></div>
-        <div class="shape shape-3"></div>
-    </div>
-
-    <div class="login-container">
-        <div class="login-header">
-            <h1>Welcome Back</h1>
-            <p>Please enter your credentials to login</p>
-        </div>
-        <form id="loginForm">
-            <div class="form-group">
-                <input type="username" id="username" placeholder=" " required>
-                <label for="username">Username</label>
-            </div>
-            <div class="form-group">
-                <input type="password" id="password" placeholder=" " required>
-                <label for="password">Password</label>
-            </div>
-            <button type="submit" class="login-button">Login</button>
-            <div class="register-link">
-                <a href="/register/">Don't have an account? Register</a>
-            </div>
-        </form>
-    </div>
-
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
-    <script>
-        // Initialize particles
-        particlesJS('particles-js', {
-            particles: {
-                number: { value: 80, density: { enable: true, value_area: 800 } },
-                color: { value: '#ffffff' },
-                shape: { type: 'circle' },
-                opacity: {
-                    value: 0.2,
-                    random: true,
-                    animation: { enable: true, speed: 1, minimumValue: 0.1, sync: false }
-                },
-                size: {
-                    value: 3,
-                    random: true,
-                    animation: { enable: true, speed: 2, minimumValue: 0.1, sync: false }
-                },
-                line_linked: {
-                    enable: true,
-                    distance: 150,
-                    color: '#ffffff',
-                    opacity: 0.1,
-                    width: 1
-                },
-                move: {
-                    enable: true,
-                    speed: 1,
-                    direction: 'none',
-                    random: true,
-                    straight: false,
-                    outModes: { default: 'bounce' },
-                    attract: { enable: false, rotateX: 600, rotateY: 1200 }
-                }
-            },
-            interactivity: {
-                detectsOn: 'canvas',
-                events: {
-                    onHover: { enable: true, mode: 'repulse' },
-                    onClick: { enable: true, mode: 'push' },
-                    resize: true
-                },
-                modes: {
-                    repulse: { distance: 100, duration: 0.4 },
-                    push: { particles_nb: 4 }
-                }
-            },
-            retina_detect: true
-        });
-    </script>
-
+    <link rel="stylesheet" href="login.css">
     <script type="module">
         import { supabase } from '../config/supabase.js';
-
-        // Enhanced form handling with Supabase authentication
-        document.getElementById('loginForm').addEventListener('submit', async function(e) {
+        
+        window.handleLogin = async function(e) {
             e.preventDefault();
+            
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
-            const button = this.querySelector('.login-button');
-            const originalText = button.textContent;
             
             try {
-                // Start loading animation
-                button.style.transform = 'scale(0.95)';
-                button.innerHTML = `
-                    <span style="display: inline-block; animation: spin 1s linear infinite;">⚡</span>
-                    Logging in...
-                `;
-                document.querySelector('.login-container').style.opacity = '0.8';
-                
-                // Check user credentials in Supabase
+                // Check if user exists and password matches
                 const { data: user, error } = await supabase
                     .from('users')
                     .select('*')
                     .eq('username', username)
                     .single();
 
-                if (error) throw new Error('User not found');
+                if (error) throw error;
 
-                if (user) {
-                    // Check if account is banned
-                    if (user.status === 'Banned') {
-                        throw new Error(`Account banned. ${user.banReason ? `Reason: ${user.banReason}` : ''}`);
-                    }
-                    
-                    if (user.password === password) {
-                        // Successful login
-                        localStorage.setItem('currentUser', username);
-                        localStorage.setItem('userPassword', password);
-                        
-                        // Redirect to dashboard or home page
-                        window.location.href = '/dashboard/';
-                    } else {
-                        throw new Error('Invalid password');
-                    }
-                } else {
-                    throw new Error('User not found');
+                if (!user) {
+                    showAlert('User not found', 'error');
+                    return;
                 }
-                
+
+                // Verify password (you should use proper password hashing in production)
+                if (user.password !== password) {
+                    showAlert('Invalid password', 'error');
+                    return;
+                }
+
+                // Store user info in localStorage
+                localStorage.setItem('currentUser', username);
+                localStorage.setItem('userPassword', password);
+
+                // Redirect based on role
+                if (user.is_admin) {
+                    window.location.href = '/admin/';
+                } else {
+                    window.location.href = '/dashboard/';
+                }
             } catch (error) {
                 console.error('Login error:', error);
-                
-                // Show error message
-                const errorMessage = document.createElement('div');
-                errorMessage.style.color = '#ff4d4d';
-                errorMessage.style.textAlign = 'center';
-                errorMessage.style.marginTop = '1rem';
-                errorMessage.textContent = error.message;
-                
-                const existingError = button.parentElement.querySelector('.error-message');
-                if (existingError) {
-                    existingError.remove();
-                }
-                
-                button.parentElement.appendChild(errorMessage);
-                
-                // Reset button state
-                button.style.transform = 'scale(1)';
-                button.textContent = originalText;
-                document.querySelector('.login-container').style.opacity = '1';
-                
-                // Animate error message
-                errorMessage.style.animation = 'shake 0.5s cubic-bezier(.36,.07,.19,.97) both';
-                
-            } finally {
-                // Reset loading state after 1.5 seconds if not redirected
-                setTimeout(() => {
-                    if (document.body.contains(button)) {
-                        button.style.transform = 'scale(1)';
-                        button.textContent = originalText;
-                        document.querySelector('.login-container').style.opacity = '1';
-                    }
-                }, 1500);
+                showAlert('Login failed: ' + error.message, 'error');
             }
-        });
+        };
 
-        // Add shake animation keyframes to existing styles
-        const style = document.createElement('style');
-        style.textContent = `
-            @keyframes shake {
-                10%, 90% { transform: translate3d(-1px, 0, 0); }
-                20%, 80% { transform: translate3d(2px, 0, 0); }
-                30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
-                40%, 60% { transform: translate3d(4px, 0, 0); }
-            }
-            
-            @keyframes spin {
-                0% { transform: rotate(0deg); }
-                100% { transform: rotate(360deg); }
-            }
-        `;
-        document.head.appendChild(style);
+        // Add alert function
+        window.showAlert = function(message, type = 'info') {
+            const alert = document.createElement('div');
+            alert.className = `alert ${type}`;
+            alert.textContent = message;
+            document.body.appendChild(alert);
+            setTimeout(() => alert.remove(), 3000);
+        };
     </script>
+</head>
+<body>
+    <div id="particles-js"></div>
+    <div class="login-container">
+        <form onsubmit="handleLogin(event)" class="login-form">
+            <h2>Login</h2>
+            <div class="form-group">
+                <input type="text" id="username" required>
+                <label for="username">Username</label>
+            </div>
+            <div class="form-group">
+                <input type="password" id="password" required>
+                <label for="password">Password</label>
+            </div>
+            <button type="submit">Login</button>
+            <p class="register-link">
+                Don't have an account? <a href="/register/">Register</a>
+            </p>
+        </form>
+    </div>
 </body>
 </html>
