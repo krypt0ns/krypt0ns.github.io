@@ -17,6 +17,10 @@
     </script>
 </head>
 <body>
+    <script>
+        // Add IP ban check
+        checkIPBan();
+    </script>
     <div id="particles-js"></div>
     
     <div class="background-shapes">
@@ -98,6 +102,10 @@
     </script>
 
     <script type="module">
+        // Import Firebase functions
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-app.js";
+        import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore.js";
+
         // Firebase configuration
         const firebaseConfig = {
             apiKey: "AIzaSyDvG4059xSr2jToP9xDz-8dlxbumuRzdUE",
@@ -109,14 +117,9 @@
             measurementId: "G-WP6QR49WZ3"
         };
 
-        // Initialize Firebase using compat version
-        let app;
-        if (!firebase.apps.length) {
-            app = firebase.initializeApp(firebaseConfig);
-        } else {
-            app = firebase.app();
-        }
-        const db = firebase.firestore();
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
 
         // Enhanced form handling with Firebase authentication
         document.getElementById('loginForm').addEventListener('submit', async function(e) {
@@ -136,10 +139,10 @@
                 document.querySelector('.login-container').style.opacity = '0.8';
                 
                 // Check user credentials in Firestore
-                const userRef = db.collection("users").doc(username);
-                const userDoc = await userRef.get();
+                const userRef = doc(db, "users", username);
+                const userDoc = await getDoc(userRef);
 
-                if (userDoc.exists) {
+                if (userDoc.exists()) {
                     const userData = userDoc.data();
                     
                     // Check if account is banned

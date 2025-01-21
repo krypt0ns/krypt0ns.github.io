@@ -1,3 +1,7 @@
+// Firebase imports (if using modules)
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
+import { getFirestore, doc, getDoc, collection } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+
 // Firebase config (replace with your config)
 const firebaseConfig = {
     apiKey: "AIzaSyDvG4059xSr2jToP9xDz-8dlxbumuRzdUE",
@@ -9,14 +13,9 @@ const firebaseConfig = {
     measurementId: "G-WP6QR49WZ3"
 };
 
-// Update Firebase initialization
-let app;
-if (!firebase.apps.length) {
-    app = firebase.initializeApp(firebaseConfig);
-} else {
-    app = firebase.app();
-}
-const db = firebase.firestore();
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
 
 /**
  * Validates stored credentials against Firestore
@@ -32,10 +31,10 @@ async function validateStoredCredentials() {
     }
 
     try {
-        const userDoc = await db.collection('users').doc(username).get();
+        const userDoc = await getDoc(doc(db, 'users', username));
         const userData = userDoc.data();
 
-        if (!userDoc.exists || !userData || userData.password !== password) {
+        if (!userDoc.exists() || !userData || userData.password !== password) {
             console.error('Invalid credentials');
             redirectToLogin();
             return false;
@@ -82,7 +81,7 @@ async function isAdmin() {
     if (!username) return false;
 
     try {
-        const userDoc = await db.collection('users').doc(username).get();
+        const userDoc = await getDoc(doc(db, 'users', username));
         const userData = userDoc.data();
         return userData?.isAdmin === true;
     } catch (error) {
@@ -100,8 +99,8 @@ async function getCurrentUser() {
     if (!username) return null;
 
     try {
-        const userDoc = await db.collection('users').doc(username).get();
-        return userDoc.exists ? userDoc.data() : null;
+        const userDoc = await getDoc(doc(db, 'users', username));
+        return userDoc.exists() ? userDoc.data() : null;
     } catch (error) {
         console.error('Error getting user data:', error);
         return null;
@@ -131,7 +130,7 @@ function setupAuthListeners() {
     }, 5 * 60 * 1000);
 }
 
-// Update document references to use compat version
+// Add this function to check IP bans
 async function checkIPBan() {
     try {
         console.log('Checking IP ban...');
@@ -140,8 +139,8 @@ async function checkIPBan() {
         const currentIP = data.ip;
         console.log('Current IP:', currentIP);
 
-        const banDoc = await db.collection('ipbans').doc(currentIP).get();
-        if (banDoc.exists) {
+        const banDoc = await getDoc(doc(db, 'ipbans', currentIP));
+        if (banDoc.exists()) {
             const banData = banDoc.data();
             console.log('IP is banned:', banData);
             localStorage.removeItem('currentUser');

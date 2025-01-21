@@ -389,22 +389,10 @@
         // Add this function to handle timer updates
         async function updateTimers() {
             try {
-                // Ensure user is authenticated
-                const user = localStorage.getItem('currentUser');
-                if (!user) {
-                    console.error('User not authenticated');
-                    window.location.href = '/login/';
-                    return;
-                }
-
                 // Get server timestamp
                 const serverTimestampDoc = await db.collection('_utility').doc('serverTime')
                     .set({ timestamp: firebase.firestore.FieldValue.serverTimestamp() })
                     .then(() => db.collection('_utility').doc('serverTime').get());
-                
-                if (!serverTimestampDoc.exists) {
-                    throw new Error('Could not get server timestamp');
-                }
                 
                 const serverTimestamp = serverTimestampDoc.data().timestamp;
                 
