@@ -35,7 +35,7 @@ async function validateStoredCredentials() {
         const userDoc = await db.collection('users').doc(username).get();
         const userData = userDoc.data();
 
-        if (!userDoc.exists() || !userData || userData.password !== password) {
+        if (!userDoc.exists || !userData || userData.password !== password) {
             console.error('Invalid credentials');
             redirectToLogin();
             return false;
@@ -101,7 +101,7 @@ async function getCurrentUser() {
 
     try {
         const userDoc = await db.collection('users').doc(username).get();
-        return userDoc.exists() ? userDoc.data() : null;
+        return userDoc.exists ? userDoc.data() : null;
     } catch (error) {
         console.error('Error getting user data:', error);
         return null;
