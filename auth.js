@@ -159,6 +159,5 @@ export {
     logout,
     isAdmin,
     getCurrentUser,
-    setupAuthListeners,
-    checkIPBan
+    setupAuthListeners
 };

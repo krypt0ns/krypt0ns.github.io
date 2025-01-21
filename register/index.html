@@ -10,7 +10,11 @@
         import { checkIPBan } from '../auth.js';
         
         document.addEventListener('DOMContentLoaded', async () => {
-            await checkIPBan();
+            try {
+                await checkIPBan();
+            } catch (error) {
+                console.error('Error checking IP ban:', error);
+            }
         });
     </script>
 </head>
@@ -56,7 +60,27 @@
 
     <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
     <script type="module">
-        import { supabase } from '/config/supabase.js';
+        import { supabase } from '../config/supabase.js';
+
+        // Add showError function
+        function showError(message) {
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error-message';
+            errorDiv.textContent = message;
+            errorDiv.style.color = '#ff4d4d';
+            errorDiv.style.marginTop = '10px';
+            errorDiv.style.textAlign = 'center';
+            
+            // Remove any existing error messages
+            const existingError = document.querySelector('.error-message');
+            if (existingError) {
+                existingError.remove();
+            }
+            
+            // Add the new error message
+            const form = document.getElementById('registerForm');
+            form.appendChild(errorDiv);
+        }
 
         // Handle form submission
         const form = document.getElementById('registerForm');
