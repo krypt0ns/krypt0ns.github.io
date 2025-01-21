@@ -13,46 +13,36 @@
 
         async function getDiscordUser(code) {
             try {
-                const tokenResponse = await fetch('https://api.krypt0n.net/discord/token', {
+                // First exchange the code for a token
+                const tokenResponse = await fetch('https://www.krypt0n.net/discord/token', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({ code }),
-                    credentials: 'include'
+                    body: JSON.stringify({ code })
                 });
 
                 if (!tokenResponse.ok) {
-                    const errorData = await tokenResponse.json();
-                    console.error('Token response error:', errorData);
-                    throw new Error(errorData.error || 'Failed to get access token');
+                    throw new Error('Failed to exchange code for token');
                 }
 
                 const tokenData = await tokenResponse.json();
-                if (!tokenData.access_token) {
-                    console.error('Invalid token data:', tokenData);
-                    throw new Error('Invalid token response');
-                }
 
+                // Then get the user info using the access token
                 const userResponse = await fetch('https://discord.com/api/users/@me', {
                     headers: {
-                        Authorization: `Bearer ${tokenData.access_token}`
+                        'Authorization': `Bearer ${tokenData.access_token}`
                     }
                 });
 
                 if (!userResponse.ok) {
-                    const userData = await userResponse.json();
-                    console.error('User response error:', userData);
-                    throw new Error('Failed to get user data');
+                    throw new Error('Failed to get Discord user info');
                 }
 
-                return await userResponse.json();
+                return userResponse.json();
             } catch (error) {
                 console.error('Discord authentication error:', error);
-                if (error.message.includes('Failed to fetch')) {
-                    throw new Error('Unable to connect to Discord servers. Please try again later.');
-                }
-                throw new Error('Failed to authenticate with Discord. Please try again.');
+                throw new Error('Unable to connect to Discord servers. Please try again later.');
             }
         }
 

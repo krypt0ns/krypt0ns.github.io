@@ -5,7 +5,7 @@ const app = express();
 
 // Enable CORS
 app.use(cors({
-    origin: 'https://www.krypt0n.net',
+    origin: ['https://www.krypt0n.net', 'http://localhost:3000'],
     methods: ['POST'],
     credentials: true
 }));
@@ -67,4 +67,13 @@ app.post('/discord/token', async (req, res) => {
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
+});
+
+// Add error handling
+app.use((err, req, res, next) => {
+    console.error('Server error:', err);
+    res.status(500).json({
+        error: 'Internal server error',
+        details: err.message
+    });
 });
