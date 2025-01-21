@@ -160,4 +160,5 @@ export {
     isAdmin,
     getCurrentUser,
     setupAuthListeners,
+    checkIPBan
 };
