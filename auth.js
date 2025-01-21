@@ -13,33 +13,17 @@ const firebaseConfig = {
     measurementId: "G-WP6QR49WZ3"
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-
-// Initialize Firestore
-const db = getFirestore(app);
-
-/**
- * Enhanced error handling for Firestore operations
- * @param {Error} error - The error object
- * @returns {string} User-friendly error message
- */
-function handleFirestoreError(error) {
-    console.error('Firestore error:', error);
-    
-    if (error.code === 'permission-denied') {
-        if (window.location.hostname !== 'www.krypt0n.net' && 
-            window.location.hostname !== 'krypt0n.net') {
-            return 'Access denied: Invalid domain';
-        }
-        return 'Access denied: Please check your permissions';
-    }
-    
-    return error.message;
+// Replace the Firebase initialization code
+let app;
+if (!firebase.apps.length) {
+    app = firebase.initializeApp(firebaseConfig);
+} else {
+    app = firebase.app();
 }
+const db = firebase.firestore();
 
 /**
- * Validates stored credentials against Firestore with enhanced error handling
+ * Validates stored credentials against Firestore
  * @returns {Promise<boolean>} True if credentials are valid
  */
 async function validateStoredCredentials() {
@@ -63,14 +47,7 @@ async function validateStoredCredentials() {
 
         return true;
     } catch (error) {
-        const errorMessage = handleFirestoreError(error);
-        console.error('Auth error:', errorMessage);
-        
-        if (errorMessage.includes('Invalid domain')) {
-            window.location.href = 'https://www.krypt0n.net/login/';
-            return false;
-        }
-        
+        console.error('Auth error:', error);
         redirectToLogin();
         return false;
     }
@@ -136,26 +113,9 @@ async function getCurrentUser() {
 }
 
 /**
- * Validates that the current domain is correct
- * @returns {boolean} True if domain is valid
- */
-function validateDomain() {
-    const validDomains = ['www.krypt0n.net', 'krypt0n.net'];
-    const currentDomain = window.location.hostname;
-    
-    if (!validDomains.includes(currentDomain)) {
-        window.location.href = 'https://www.krypt0n.net';
-        return false;
-    }
-    return true;
-}
-
-/**
  * Sets up authentication listeners
  */
 function setupAuthListeners() {
-    if (!validateDomain()) return;
-
     // Listen for storage changes (logout from other tabs)
     window.addEventListener('storage', async (e) => {
         if (e.key === 'currentUser' || e.key === 'userPassword') {
@@ -177,13 +137,6 @@ function setupAuthListeners() {
 
 // Add this function to check IP bans
 async function checkIPBan() {
-    // Validate domain first
-    if (window.location.hostname !== 'www.krypt0n.net' && 
-        window.location.hostname !== 'krypt0n.net') {
-        window.location.href = 'https://www.krypt0n.net';
-        return true;
-    }
-
     try {
         console.log('Checking IP ban...');
         const response = await fetch('https://api.ipify.org?format=json');
@@ -191,35 +144,26 @@ async function checkIPBan() {
         const currentIP = data.ip;
         console.log('Current IP:', currentIP);
 
-        try {
-            const banDoc = await getDoc(doc(db, 'ipbans', currentIP));
-            if (banDoc.exists()) {
-                const banData = banDoc.data();
-                console.log('IP is banned:', banData);
-                localStorage.removeItem('currentUser');
-                localStorage.removeItem('userPassword');
-                
-                // Redirect to banned page with reason
-                window.location.href = 'https://www.krypt0n.net/banned/?reason=banned';
-                return true;
-            }
-            console.log('IP is not banned');
-            return false;
-        } catch (error) {
-            const errorMessage = handleFirestoreError(error);
-            if (errorMessage.includes('Invalid domain')) {
-                window.location.href = 'https://www.krypt0n.net';
-                return true;
-            }
-            throw error;
+        const banDoc = await getDoc(doc(db, 'ipbans', currentIP));
+        if (banDoc.exists()) {
+            const banData = banDoc.data();
+            console.log('IP is banned:', banData);
+            localStorage.removeItem('currentUser');
+            localStorage.removeItem('userPassword');
+            
+            // Redirect to banned page with reason
+            window.location.href = '/banned/?reason=banned';
+            return true; // IP is banned
         }
+        console.log('IP is not banned');
+        return false; // IP is not banned
     } catch (error) {
         console.error('Error checking IP ban:', error);
         return false;
     }
 }
 
-// Export all the functions that are used across files
+// Export functions
 export {
     validateStoredCredentials,
     redirectToLogin,
@@ -227,7 +171,5 @@ export {
     isAdmin,
     getCurrentUser,
     setupAuthListeners,
-    checkIPBan,
-    validateDomain,
-    handleFirestoreError
+    checkIPBan
 };

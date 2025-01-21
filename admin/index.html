@@ -11,30 +11,10 @@
     <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
     <link rel="stylesheet" href="admin.css">
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-        import { validateDomain, checkIPBan, isAdmin } from '../auth.js';
-
+        import { checkIPBan } from '../auth.js';
+        
         document.addEventListener('DOMContentLoaded', async () => {
-            if (!validateDomain()) return;
             await checkIPBan();
-            
-            const app = initializeApp(firebaseConfig);
-            const db = getFirestore(app);
-            db.settings({
-                experimentalForceLongPolling: true,
-                host: 'firestore.googleapis.com',
-                ssl: true,
-                headers: {
-                    'Referer': 'https://www.krypt0n.net'
-                }
-            });
-
-            // Check admin status
-            const adminStatus = await isAdmin();
-            if (!adminStatus) {
-                window.location.href = '/dashboard/';
-            }
         });
     </script>
 </head>

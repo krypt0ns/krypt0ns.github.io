@@ -7,9 +7,8 @@
 </head>
 <body>
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, doc, setDoc, query, collection, where, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-        import { validateDomain } from '../auth.js';
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-app.js";
+        import { getFirestore, doc, setDoc, query, collection, where, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore.js";
 
         // Your Firebase configuration
         const firebaseConfig = {
@@ -22,19 +21,9 @@
             measurementId: "G-WP6QR49WZ3"
         };
 
-        // Initialize Firebase only if domain is valid
-        if (validateDomain()) {
-            const app = initializeApp(firebaseConfig);
-            const db = getFirestore(app);
-            db.settings({
-                experimentalForceLongPolling: true,
-                host: 'firestore.googleapis.com',
-                ssl: true,
-                headers: {
-                    'Referer': 'https://www.krypt0n.net'
-                }
-            });
-        }
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
 
         // Add this function for IP ban checking
         async function checkIPBan() {

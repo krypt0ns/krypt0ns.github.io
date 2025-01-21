@@ -34,11 +34,7 @@
             pointer-events: all;
         }
     </style>
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-        import { validateDomain, checkIPBan } from '../auth.js';
-
+    <script>
         const firebaseConfig = {
             apiKey: "AIzaSyDvG4059xSr2jToP9xDz-8dlxbumuRzdUE",
             authDomain: "sdfkj238j98sdlkmzlknslaksdjfkl.firebaseapp.com", 
@@ -49,23 +45,24 @@
             measurementId: "G-WP6QR49WZ3"
         };
 
+        // Initialize Firebase only if it hasn't been initialized yet
+        let app;
+        if (!firebase.apps.length) {
+            app = firebase.initializeApp(firebaseConfig);
+        } else {
+            app = firebase.app(); // Use the already initialized app
+        }
+        const db = firebase.firestore();
+    </script>
+    <script type="module">
+        import { checkIPBan } from './auth.js'; // Removed checkIPMatch import if not needed
+        
+        // Initialize Firebase first (you already have this)
+        // Then check for IP ban
         document.addEventListener('DOMContentLoaded', async () => {
-            if (!validateDomain()) return;
-            
-            const app = initializeApp(firebaseConfig);
-            const db = getFirestore(app);
-            db.settings({
-                experimentalForceLongPolling: true,
-                host: 'firestore.googleapis.com',
-                ssl: true,
-                headers: {
-                    'Referer': 'https://www.krypt0n.net'
-                }
-            });
-
             const isBanned = await checkIPBan();
             if (!isBanned) {
-                // Your existing initialization code
+                // Removed checkIPMatch call if not needed
             }
         });
     </script>

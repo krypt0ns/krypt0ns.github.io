@@ -1,0 +1,16 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Allow reading IP bans without authentication
+    match /ipbans/{ip} {
+      allow read: if true;
+    }
+    
+    // For all other collections, require authentication and correct domain
+    match /{collection}/{document=**} {
+      allow read, write: if request.auth != null &&
+                        request.origin.matches('https://(www\\.)?krypt0n\\.net.*') &&
+                        collection != "ipbans";
+    }
+  }
+} 
