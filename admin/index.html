@@ -5,13 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Krypton | Admin</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <!-- Replace Firebase with Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
     <link rel="stylesheet" href="admin.css">
     <script type="module">
         import { checkIPBan } from '../auth.js';
+        import { supabase } from '../config/supabase.js';
         
         document.addEventListener('DOMContentLoaded', async () => {
             await checkIPBan();
@@ -19,6 +19,44 @@
     </script>
 </head>
 <body>
+    <!-- Update the banIP function to use Supabase -->
+    <script type="module">
+        async function banIP(ip, reason) {
+            try {
+                const { data, error } = await supabase
+                    .from('ipbans')
+                    .insert([{
+                        ip: ip,
+                        reason: reason,
+                        bannedAt: new Date().toISOString(),
+                        bannedBy: localStorage.getItem('currentUser')
+                    }]);
+                    
+                if (error) throw error;
+                showAlert('IP banned successfully', 'success');
+            } catch (error) {
+                console.error('Error banning IP:', error);
+                showAlert('Error banning IP: ' + error.message, 'error');
+            }
+        }
+
+        // Update getUserIP function to use Supabase
+        async function getUserIP(userId) {
+            try {
+                const { data: user, error } = await supabase
+                    .from('users')
+                    .select('ip')
+                    .eq('username', userId)
+                    .single();
+                    
+                if (error) throw error;
+                return user?.ip || null;
+            } catch (error) {
+                console.error('Error getting user IP:', error);
+                return null;
+            }
+        }
+    </script>
     <div id="particles-js"></div>
     <div class="background-shapes">
         <div class="shape shape-1"></div>

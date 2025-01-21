@@ -5,9 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Krypton | Login</title>
     <link rel="stylesheet" href="login.css">
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <!-- Replace Firebase with Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script type="module">
         import { checkIPBan } from '../auth.js';
         
@@ -17,10 +16,6 @@
     </script>
 </head>
 <body>
-    <script>
-        // Add IP ban check
-        checkIPBan();
-    </script>
     <div id="particles-js"></div>
     
     <div class="background-shapes">

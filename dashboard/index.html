@@ -6,8 +6,7 @@
     <title>Krypton | Dashboards</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="dashboard.css">   
     <style>
         .menu-dropdown {
@@ -34,37 +33,62 @@
             pointer-events: all;
         }
     </style>
-    <script>
-        const firebaseConfig = {
-            apiKey: "AIzaSyDvG4059xSr2jToP9xDz-8dlxbumuRzdUE",
-            authDomain: "sdfkj238j98sdlkmzlknslaksdjfkl.firebaseapp.com", 
-            projectId: "sdfkj238j98sdlkmzlknslaksdjfkl",
-            storageBucket: "sdfkj238j98sdlkmzlknslaksdjfkl.firebasestorage.app",
-            messagingSenderId: "778178162130",
-            appId: "1:778178162130:web:a9513f09e404813aa2ec0b",
-            measurementId: "G-WP6QR49WZ3"
-        };
-
-        // Initialize Firebase only if it hasn't been initialized yet
-        let app;
-        if (!firebase.apps.length) {
-            app = firebase.initializeApp(firebaseConfig);
-        } else {
-            app = firebase.app(); // Use the already initialized app
-        }
-        const db = firebase.firestore();
-    </script>
     <script type="module">
-        import { checkIPBan } from './auth.js'; // Removed checkIPMatch import if not needed
+        import { supabase } from '../config/supabase.js';
+        import { checkIPBan } from '../auth.js';
         
-        // Initialize Firebase first (you already have this)
-        // Then check for IP ban
         document.addEventListener('DOMContentLoaded', async () => {
             const isBanned = await checkIPBan();
             if (!isBanned) {
-                // Removed checkIPMatch call if not needed
+                // Initialize your dashboard
+                initializeListingListeners();
             }
         });
+
+        // Update the listings listener to use Supabase
+        const initializeListingListeners = () => {
+            const listingsGrid = document.getElementById('listings-grid');
+            
+            // Subscribe to listing changes using Supabase realtime
+            const listingsSubscription = supabase
+                .channel('public:listings')
+                .on('postgres_changes', 
+                    { event: '*', schema: 'public', table: 'listings' },
+                    (payload) => {
+                        const listing = payload.new;
+                        const listingCard = document.querySelector(`[onclick*="${listing.id}"]`)?.closest('.listing-card');
+                        
+                        if (listingCard) {
+                            updateListingCard(listingCard, listing);
+                        } else {
+                            addListingToGrid(listing);
+                        }
+                    }
+                )
+                .subscribe();
+        };
+
+        // Update loadUserProfile to use Supabase
+        async function loadUserProfile() {
+            const username = localStorage.getItem('currentUser');
+            if (!username) return;
+
+            try {
+                const { data: user, error } = await supabase
+                    .from('users')
+                    .select('*')
+                    .eq('username', username)
+                    .single();
+                    
+                if (error) throw error;
+                if (user?.discordAvatarURL) {
+                    document.querySelector('.discord-pfp img').src = user.discordAvatarURL;
+                }
+                // Update other profile elements as needed
+            } catch (error) {
+                console.error('Error loading profile:', error);
+            }
+        }
     </script>
     <script>
         // Update the toggleMenu function
@@ -1398,51 +1422,6 @@
         }
         // Add IP ban check
         checkIPBan();
-
-        // Replace Firebase listeners with Supabase subscriptions
-        const initializeListingListeners = () => {
-            const listingsGrid = document.getElementById('listings-grid');
-            
-            // Subscribe to listing changes
-            const listingsSubscription = supabase
-                .from('listings')
-                .on('*', (payload) => {
-                    const listing = payload.new;
-                    const listingCard = document.querySelector(`[onclick*="${listing.id}"]`)?.closest('.listing-card');
-                    
-                    if (listingCard) {
-                        updateListingCard(listingCard, listing);
-                    } else {
-                        // New listing - add to grid
-                        addListingToGrid(listing);
-                    }
-                })
-                .subscribe();
-        };
-
-        // Update user profile loading
-        async function loadUserProfile() {
-            const username = localStorage.getItem('currentUser');
-            if (!username) return;
-
-            try {
-                const { data: userData, error } = await supabase
-                    .from('users')
-                    .select('*')
-                    .eq('username', username)
-                    .single();
-
-                if (error) throw error;
-
-                if (userData.discord_avatar_url) {
-                    document.querySelector('.discord-pfp img').src = userData.discord_avatar_url;
-                }
-                document.querySelector('.balance-amount').textContent = 
-                    `$${userData.balance?.toFixed(2) || '0.00'}`;
-            } catch (error) {
-                console.error('Error loading user profile:', error);
-            }
-        }
     </script>
     <div id="purchase-modal" class="modal">
         <div class="modal-content">
