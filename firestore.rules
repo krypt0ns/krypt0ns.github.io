@@ -1,26 +1,43 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isValidDomain() {
+      return request.origin.matches('https://(www\\.)?krypt0n\\.net.*');
+    }
+
     // Allow reading IP bans without authentication
     match /ipbans/{ip} {
       allow read: if true;
     }
     
+    // Allow reading and writing to _utility collection for server time
+    match /_utility/{document} {
+      allow read, write: if isAuthenticated() && isValidDomain();
+    }
+    
     // Allow reading user data for login purposes
     match /users/{userId} {
-      // Allow reading user data for login checks
       allow read: if true;
-      // Allow writes only from authenticated users on the correct domain
-      allow write: if request.auth != null &&
-                  request.origin.matches('https://(www\\.)?krypt0n\\.net.*');
+      allow write: if isAuthenticated() && isValidDomain();
+    }
+    
+    // Allow access to listings collection
+    match /listings/{document} {
+      allow read: if isAuthenticated() && isValidDomain();
+      allow write: if isAuthenticated() && isValidDomain();
     }
     
     // For all other collections, require authentication and correct domain
     match /{collection}/{document=**} {
-      allow read, write: if request.auth != null &&
-                        request.origin.matches('https://(www\\.)?krypt0n\\.net.*') &&
-                        collection != "ipbans" &&
-                        collection != "users";
+      allow read, write: if isAuthenticated() && 
+                           isValidDomain() &&
+                           collection != "ipbans" &&
+                           collection != "users";
     }
   }
 } 
