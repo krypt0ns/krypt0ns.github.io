@@ -12,7 +12,7 @@ export async function checkAuth() {
             .from('users')
             .select('*')
             .eq('username', username)
-            .single();
+            .maybeSingle();
 
         if (error || !user) {
             localStorage.removeItem('currentUser');

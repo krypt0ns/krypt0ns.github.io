@@ -33,9 +33,29 @@
     </style>
     <script type="module">
         import { supabase } from '../config/supabase.js';
-        
+        import { checkAuth } from '../auth/auth.js';
+
+        async function loadUserProfile() {
+            try {
+                const user = await checkAuth();
+                if (!user) return;
+
+                // Update balance display
+                document.querySelector('.balance-amount').textContent = 
+                    `$${user.balance ? user.balance.toFixed(2) : '0.00'}`;
+
+            } catch (error) {
+                console.error('Error loading user profile:', error);
+                window.location.replace('/login/');
+            }
+        }
+
+        // Initialize everything when the page loads
         document.addEventListener('DOMContentLoaded', async () => {
-            await checkIPBan();
+            const user = await checkAuth();
+            if (!user) return;
+            
+            loadUserProfile();
         });
     </script>
 </head>
@@ -459,63 +479,6 @@
             },
             retina_detect: true
         });
-
-        async function loadUserProfile() {
-            const username = localStorage.getItem('currentUser');
-            if (!username) return;
-
-            try {
-                const { data: userData, error } = await supabase
-                    .from('users')
-                    .select('*')
-                    .eq('username', username)
-                    .single();
-
-                if (error) throw error;
-
-                if (userData) {
-                    if (userData.discord_avatar_url) {
-                        document.querySelector('.discord-pfp img').src = userData.discord_avatar_url;
-                    }
-                    document.querySelector('.balance-amount').textContent = 
-                        `$${userData.balance ? userData.balance.toFixed(2) : '0.00'}`;
-                }
-            } catch (error) {
-                console.error('Error loading user profile:', error);
-            }
-        }
-
-        // Add this to initialize everything when the page loads
-        document.addEventListener('DOMContentLoaded', async () => {
-            // Check authentication first
-            const username = localStorage.getItem('currentUser');
-            if (!username) {
-                window.location.replace('/login/');
-                return;
-            }
-
-            try {
-                // Verify user exists in database
-                const userDoc = await supabase
-                    .from('users')
-                    .select('*')
-                    .eq('userId', username);
-                if (userDoc.length === 0) {
-                    localStorage.removeItem('currentUser');
-                    localStorage.removeItem('userPassword');
-                    window.location.replace('/login/');
-                    return;
-                }
-
-                // Load user profile if authentication passed
-                loadUserProfile();
-            } catch (error) {
-                console.error('Authentication error:', error);
-                window.location.replace('/login/');
-            }
-        });
-
-        document.getElementById('amount').addEventListener('input', updateFeeAndTotal);
 
         // Add the showAlert function from admin.html
         function showAlert(message, type = 'info') {

@@ -3,12 +3,68 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Krypton | Dashboards</title>
+    <title>Krypton | Dashboard</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-    <link rel="stylesheet" href="dashboard.css">   
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="dashboard.css">
+    <script type="module">
+        import { supabase } from '../config/supabase.js';
+        import { checkAuth } from '../auth/auth.js';
+
+        async function loadUserProfile() {
+            try {
+                const user = await checkAuth();
+                if (!user) return;
+
+                if (user.discord_avatar_url) {
+                    document.querySelector('.discord-pfp img').src = user.discord_avatar_url;
+                }
+                
+                // Update balance display
+                document.querySelector('.balance-amount').textContent = 
+                    `$${user.balance ? user.balance.toFixed(2) : '0.00'}`;
+                
+            } catch (error) {
+                console.error('Error loading user profile:', error);
+                window.location.replace('/login/');
+            }
+        }
+
+        async function loadListings() {
+            try {
+                const { data: listings, error } = await supabase
+                    .from('listings')
+                    .select('*')
+                    .order('created_at', { ascending: false });
+
+                if (error) throw error;
+
+                // Update your listings display code here
+                // ...
+            } catch (error) {
+                console.error('Error loading listings:', error);
+                showAlert('Error loading listings', 'error');
+            }
+        }
+
+        // Initialize everything when the page loads
+        document.addEventListener('DOMContentLoaded', async () => {
+            const user = await checkAuth();
+            if (!user) return;
+            
+            loadUserProfile();
+            loadListings();
+            // Any other initialization code...
+        });
+
+        // Add storage event listener to handle logout in other tabs
+        window.addEventListener('storage', (e) => {
+            if (e.key === 'currentUser' && !e.newValue) {
+                window.location.replace('/login/');
+            }
+        });
+    </script>
     <style>
         .menu-dropdown {
             position: fixed;
@@ -35,8 +91,6 @@
         }
     </style>
     <script type="module">
-        import { supabase } from '../config/supabase.js';
-        
         // Update loadListings function
         async function loadListings() {
             try {
