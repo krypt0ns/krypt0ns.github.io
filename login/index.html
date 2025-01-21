@@ -23,40 +23,52 @@
                     .from('users')
                     .select('*')
                     .eq('username', username)
-                    .limit(1);
+                    .maybeSingle();
 
-                if (error) throw error;
+                if (error && error.code !== 'PGRST116') throw error;
 
-                if (!data || data.length === 0) {
+                if (!data) {
                     showAlert('User not found', 'error');
                     return;
                 }
 
-                const user = data[0];
-
-                // Verify password (you should use proper password hashing in production)
-                if (user.password !== password) {
+                // Verify password
+                if (data.password !== password) {
                     showAlert('Invalid password', 'error');
                     return;
                 }
 
-                // Store user info in localStorage
+                // Get IP for tracking
+                const ipResponse = await fetch('https://api.ipify.org?format=json');
+                const { ip } = await ipResponse.json();
+
+                // Update last login and IP
+                const { error: updateError } = await supabase
+                    .from('users')
+                    .update({ 
+                        last_login: new Date().toISOString(),
+                        ip_address: ip 
+                    })
+                    .eq('username', username);
+
+                if (updateError) console.error('Error updating login info:', updateError);
+
+                // Store user info
                 localStorage.setItem('currentUser', username);
                 localStorage.setItem('userPassword', password);
 
                 // Redirect based on role
-                if (user.is_admin) {
+                if (data.is_admin) {
                     window.location.href = '/admin/';
                 } else {
                     window.location.href = '/dashboard/';
                 }
             } catch (error) {
                 console.error('Login error:', error);
-                showAlert('Login failed: ' + error.message, 'error');
+                showAlert('Login failed: ' + (error.message || 'Unknown error'), 'error');
             }
         };
 
-        // Add alert function
         window.showAlert = function(message, type = 'info') {
             const alert = document.createElement('div');
             alert.className = `alert ${type}`;

@@ -56,28 +56,30 @@
                     .from('users')
                     .select('username')
                     .eq('username', username)
-                    .limit(1);
+                    .maybeSingle();
 
-                if (existingUser && existingUser.length > 0) {
+                if (checkError && checkError.code !== 'PGRST116') throw checkError;
+
+                if (existingUser) {
                     showAlert('Username already taken', 'error');
                     return;
                 }
 
-                // Get current IP for tracking
+                // Get IP for tracking
                 const ipResponse = await fetch('https://api.ipify.org?format=json');
                 const { ip } = await ipResponse.json();
 
-                // Create new user with IP address
+                // Create new user
                 const { error: insertError } = await supabase
                     .from('users')
-                    .insert([{
+                    .insert({
                         username: username,
-                        password: password, // In production, use proper password hashing
+                        password: password,
                         is_admin: false,
                         balance: 0,
                         ip_address: ip,
                         last_login: new Date().toISOString()
-                    }]);
+                    });
 
                 if (insertError) throw insertError;
 
