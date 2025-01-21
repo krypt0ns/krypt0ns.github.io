@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Krypton | Login</title>
     <link rel="stylesheet" href="login.css">
-    <!-- Replace Firebase with Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script type="module">
         import { checkIPBan } from '../auth.js';
@@ -97,26 +96,9 @@
     </script>
 
     <script type="module">
-        // Import Firebase functions
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-app.js";
-        import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore.js";
+        import { supabase } from '../config/supabase.js';
 
-        // Firebase configuration
-        const firebaseConfig = {
-            apiKey: "AIzaSyDvG4059xSr2jToP9xDz-8dlxbumuRzdUE",
-            authDomain: "sdfkj238j98sdlkmzlknslaksdjfkl.firebaseapp.com",
-            projectId: "sdfkj238j98sdlkmzlknslaksdjfkl",
-            storageBucket: "sdfkj238j98sdlkmzlknslaksdjfkl.firebasestorage.app",
-            messagingSenderId: "778178162130",
-            appId: "1:778178162130:web:a9513f09e404813aa2ec0b",
-            measurementId: "G-WP6QR49WZ3"
-        };
-
-        // Initialize Firebase
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-
-        // Enhanced form handling with Firebase authentication
+        // Enhanced form handling with Supabase authentication
         document.getElementById('loginForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             const username = document.getElementById('username').value;
@@ -133,19 +115,22 @@
                 `;
                 document.querySelector('.login-container').style.opacity = '0.8';
                 
-                // Check user credentials in Firestore
-                const userRef = doc(db, "users", username);
-                const userDoc = await getDoc(userRef);
+                // Check user credentials in Supabase
+                const { data: user, error } = await supabase
+                    .from('users')
+                    .select('*')
+                    .eq('username', username)
+                    .single();
 
-                if (userDoc.exists()) {
-                    const userData = userDoc.data();
-                    
+                if (error) throw new Error('User not found');
+
+                if (user) {
                     // Check if account is banned
-                    if (userData.status === 'Banned') {
-                        throw new Error(`Account banned. ${userData.banReason ? `Reason: ${userData.banReason}` : ''}`);
+                    if (user.status === 'Banned') {
+                        throw new Error(`Account banned. ${user.banReason ? `Reason: ${user.banReason}` : ''}`);
                     }
                     
-                    if (userData.password === password) {
+                    if (user.password === password) {
                         // Successful login
                         localStorage.setItem('currentUser', username);
                         localStorage.setItem('userPassword', password);
