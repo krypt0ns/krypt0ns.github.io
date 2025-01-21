@@ -2,7 +2,9 @@ import { supabase } from '../config/supabase.js';
 
 export async function checkAuth() {
     const username = localStorage.getItem('currentUser');
-    if (!username) {
+    const password = localStorage.getItem('userPassword');
+    
+    if (!username || !password) {
         window.location.replace('/login/');
         return false;
     }
@@ -14,7 +16,7 @@ export async function checkAuth() {
             .eq('username', username)
             .maybeSingle();
 
-        if (error || !user) {
+        if (error || !user || user.password !== password) {
             localStorage.removeItem('currentUser');
             localStorage.removeItem('userPassword');
             window.location.replace('/login/');

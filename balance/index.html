@@ -37,12 +37,37 @@
 
         async function loadUserProfile() {
             try {
-                const user = await checkAuth();
-                if (!user) return;
+                // Get stored credentials
+                const username = localStorage.getItem('currentUser');
+                const password = localStorage.getItem('userPassword');
+                
+                if (!username || !password) {
+                    window.location.replace('/login/');
+                    return;
+                }
+
+                // Verify credentials
+                const { data: user, error } = await supabase
+                    .from('users')
+                    .select('*')
+                    .eq('username', username)
+                    .maybeSingle();
+
+                if (error || !user || user.password !== password) {
+                    localStorage.removeItem('currentUser');
+                    localStorage.removeItem('userPassword');
+                    window.location.replace('/login/');
+                    return;
+                }
 
                 // Update balance display
                 document.querySelector('.balance-amount').textContent = 
                     `$${user.balance ? user.balance.toFixed(2) : '0.00'}`;
+
+                // Update profile picture if available
+                if (user.discord_avatar_url) {
+                    document.querySelector('.discord-pfp img').src = user.discord_avatar_url;
+                }
 
             } catch (error) {
                 console.error('Error loading user profile:', error);
@@ -52,10 +77,14 @@
 
         // Initialize everything when the page loads
         document.addEventListener('DOMContentLoaded', async () => {
-            const user = await checkAuth();
-            if (!user) return;
-            
             loadUserProfile();
+        });
+
+        // Add storage event listener to handle logout in other tabs
+        window.addEventListener('storage', (e) => {
+            if ((e.key === 'currentUser' || e.key === 'userPassword') && !e.newValue) {
+                window.location.replace('/login/');
+            }
         });
     </script>
 </head>
@@ -525,13 +554,6 @@
                 }
             }, 5000);
         }
-
-        // Add storage event listener to handle logout in other tabs
-        window.addEventListener('storage', (e) => {
-            if (e.key === 'currentUser' && !e.newValue) {
-                window.location.replace('/login/');
-            }
-        });
     </script>
 </body>
 </html>

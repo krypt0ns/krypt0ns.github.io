@@ -14,8 +14,26 @@
 
         async function loadUserProfile() {
             try {
-                const user = await checkAuth();
-                if (!user) return;
+                const username = localStorage.getItem('currentUser');
+                const password = localStorage.getItem('userPassword');
+                
+                if (!username || !password) {
+                    window.location.replace('/login/');
+                    return;
+                }
+
+                const { data: user, error } = await supabase
+                    .from('users')
+                    .select('*')
+                    .eq('username', username)
+                    .maybeSingle();
+
+                if (error || !user || user.password !== password) {
+                    localStorage.removeItem('currentUser');
+                    localStorage.removeItem('userPassword');
+                    window.location.replace('/login/');
+                    return;
+                }
 
                 if (user.discord_avatar_url) {
                     document.querySelector('.discord-pfp img').src = user.discord_avatar_url;
