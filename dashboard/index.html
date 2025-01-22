@@ -10,7 +10,14 @@
     <link rel="stylesheet" href="dashboard.css">
     <script type="module">
         import { supabase } from '../config/supabase.js';
-        import { checkAuth } from '../auth/auth.js';
+        
+        // Check credentials before anything else
+        const username = localStorage.getItem('currentUser');
+        const password = localStorage.getItem('userPassword');
+        
+        if (!username || !password) {
+            window.location.replace('/login/');
+        }
 
         async function loadUserProfile() {
             try {
@@ -48,12 +55,16 @@
                 document.querySelector('.balance-amount').textContent = 
                     `$${user.balance ? user.balance.toFixed(2) : '0.00'}`;
 
-                // Update username display
-                document.querySelector('.username').textContent = user.username;
+                // Update username display if element exists
+                const usernameElement = document.querySelector('.username');
+                if (usernameElement) {
+                    usernameElement.textContent = user.username;
+                }
 
-                // Update any other user-specific elements
-                if (user.discord_username) {
-                    document.querySelector('.discord-username').textContent = user.discord_username;
+                // Update discord username if element exists
+                const discordElement = document.querySelector('.discord-username');
+                if (discordElement && user.discord_username) {
+                    discordElement.textContent = user.discord_username;
                 }
 
                 // Load listings if they exist
@@ -72,6 +83,15 @@
 
         // Initialize everything when the page loads
         document.addEventListener('DOMContentLoaded', () => {
+            // Check credentials again when DOM loads
+            const username = localStorage.getItem('currentUser');
+            const password = localStorage.getItem('userPassword');
+            
+            if (!username || !password) {
+                window.location.replace('/login/');
+                return;
+            }
+
             loadUserProfile();
             initializeDropScheduler();
         });
@@ -82,6 +102,13 @@
                 window.location.replace('/login/');
             }
         });
+
+        // Add logout function
+        window.logout = function() {
+            localStorage.removeItem('currentUser');
+            localStorage.removeItem('userPassword');
+            window.location.replace('/login/');
+        };
     </script>
     <style>
         .menu-dropdown {
