@@ -38,11 +38,14 @@
                     return;
                 }
 
-                // Store user info in localStorage
+                // Store credentials BEFORE redirect
                 localStorage.setItem('currentUser', username);
                 localStorage.setItem('userPassword', password);
 
-                // Redirect based on role
+                // Wait a moment to ensure storage is complete
+                await new Promise(resolve => setTimeout(resolve, 100));
+
+                // Then redirect
                 if (data.is_admin) {
                     window.location.href = '/admin/';
                 } else {

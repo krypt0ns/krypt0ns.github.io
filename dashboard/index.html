@@ -4,21 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Krypton | Dashboard</title>
+    <script src="/auth/global-auth.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="dashboard.css">
     <script type="module">
-        import { supabase } from '../config/supabase.js';
-        
-        // Check credentials before anything else
-        const username = localStorage.getItem('currentUser');
-        const password = localStorage.getItem('userPassword');
-        
-        if (!username || !password) {
+        // Check credentials immediately, before any modules load
+        if (!localStorage.getItem('currentUser') || !localStorage.getItem('userPassword')) {
             window.location.replace('/login/');
         }
-
+    </script>
+    <script type="module">
+        import { supabase } from '../config/supabase.js';
+        
         async function loadUserProfile() {
             try {
                 const username = localStorage.getItem('currentUser');
@@ -77,6 +76,15 @@
                 window.location.replace('/login/');
             }
         }
+
+        // Initialize immediately
+        loadUserProfile();
+
+        // Also initialize when DOM is ready
+        document.addEventListener('DOMContentLoaded', loadUserProfile);
+
+        // Refresh every 30 seconds
+        setInterval(loadUserProfile, 30000);
 
         // Add auto-refresh of user data
         setInterval(loadUserProfile, 30000); // Refresh every 30 seconds
