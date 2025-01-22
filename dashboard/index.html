@@ -17,7 +17,11 @@
     </script>
     <script type="module">
         import { supabase } from '../config/supabase.js';
-        
+        import { checkAuth, checkIPBan } from '../auth/auth.js';
+
+        // First check for IP ban
+        await checkIPBan();
+
         async function loadUserProfile() {
             try {
                 const username = localStorage.getItem('currentUser');
@@ -67,8 +71,8 @@
                 }
 
                 // Load listings if they exist
-                if (user.listings) {
-                    loadListings(user.listings);
+                if (user.listings && user.listings.length > 0) {
+                    await loadListings(user.listings);
                 }
                 
             } catch (error) {
@@ -77,32 +81,58 @@
             }
         }
 
-        // Initialize immediately
-        loadUserProfile();
+        // Update loadListings function
+        async function loadListings() {
+            try {
+                const { data: listings, error } = await supabase
+                    .from('listings')
+                    .select('*')
+                    .order('created_at', { ascending: false });
 
-        // Also initialize when DOM is ready
-        document.addEventListener('DOMContentLoaded', loadUserProfile);
+                if (error) throw error;
 
-        // Refresh every 30 seconds
-        setInterval(loadUserProfile, 30000);
+                const listingsGrid = document.getElementById('listings-grid');
+                if (!listingsGrid) return;
+
+                listingsGrid.innerHTML = listings.map(listing => `
+                    <div class="listing-card" data-id="${listing.id}">
+                        <div class="listing-header">
+                            <h3>${listing.title}</h3>
+                            <span class="price">$${listing.price.toFixed(2)}</span>
+                        </div>
+                        <div class="listing-body">
+                            <p>${listing.description}</p>
+                            <div class="listing-meta">
+                                <span class="date">Posted: ${new Date(listing.created_at).toLocaleDateString()}</span>
+                                <span class="status ${listing.status.toLowerCase()}">${listing.status}</span>
+                            </div>
+                        </div>
+                        <div class="listing-footer">
+                            <button onclick="handlePurchase('${listing.id}')" class="purchase-btn">
+                                Purchase
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+
+            } catch (error) {
+                console.error('Error loading listings:', error);
+                showAlert('Error loading listings', 'error');
+            }
+        }
+
+        // Initialize everything when the page loads
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                await loadUserProfile();
+                await loadListings();
+            } catch (error) {
+                console.error('Initialization error:', error);
+            }
+        });
 
         // Add auto-refresh of user data
         setInterval(loadUserProfile, 30000); // Refresh every 30 seconds
-
-        // Initialize everything when the page loads
-        document.addEventListener('DOMContentLoaded', () => {
-            // Check credentials again when DOM loads
-            const username = localStorage.getItem('currentUser');
-            const password = localStorage.getItem('userPassword');
-            
-            if (!username || !password) {
-                window.location.replace('/login/');
-                return;
-            }
-
-            loadUserProfile();
-            initializeDropScheduler();
-        });
 
         // Add storage event listener to handle logout in other tabs
         window.addEventListener('storage', (e) => {
@@ -111,11 +141,43 @@
             }
         });
 
-        // Add logout function
-        window.logout = function() {
-            localStorage.removeItem('currentUser');
-            localStorage.removeItem('userPassword');
-            window.location.replace('/login/');
+        // Add global purchase handler
+        window.handlePurchase = async function(listingId) {
+            try {
+                const { data: listing, error } = await supabase
+                    .from('listings')
+                    .select('*')
+                    .eq('id', listingId)
+                    .single();
+
+                if (error) throw error;
+
+                // Show purchase modal
+                const modal = document.getElementById('purchase-modal');
+                const details = document.getElementById('purchase-details');
+                
+                details.innerHTML = `
+                    <h3>${listing.title}</h3>
+                    <p>Price: $${listing.price.toFixed(2)}</p>
+                    <button onclick="confirmPurchase('${listingId}')" class="confirm-btn">
+                        Confirm Purchase
+                    </button>
+                `;
+
+                modal.style.display = 'block';
+            } catch (error) {
+                console.error('Error handling purchase:', error);
+                showAlert('Error processing purchase', 'error');
+            }
+        };
+
+        // Add global alert function
+        window.showAlert = function(message, type = 'info') {
+            const alert = document.createElement('div');
+            alert.className = `alert ${type}`;
+            alert.textContent = message;
+            document.body.appendChild(alert);
+            setTimeout(() => alert.remove(), 3000);
         };
     </script>
     <style>
