@@ -10,12 +10,6 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="dashboard.css">
     <script type="module">
-        // Check credentials immediately, before any modules load
-        if (!localStorage.getItem('currentUser') || !localStorage.getItem('userPassword')) {
-            window.location.replace('/login/');
-        }
-    </script>
-    <script type="module">
         import { supabase } from '../config/supabase.js';
         import { checkAuth, checkIPBan } from '../auth/auth.js';
 
