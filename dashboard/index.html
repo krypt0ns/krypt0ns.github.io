@@ -22,9 +22,13 @@
                     return;
                 }
 
+                // Get fresh user data from API
                 const { data: user, error } = await supabase
                     .from('users')
-                    .select('*')
+                    .select(`
+                        *,
+                        listings(*)
+                    `)
                     .eq('username', username)
                     .maybeSingle();
 
@@ -35,6 +39,7 @@
                     return;
                 }
 
+                // Update UI with user data
                 if (user.discord_avatar_url) {
                     document.querySelector('.discord-pfp img').src = user.discord_avatar_url;
                 }
@@ -42,6 +47,19 @@
                 // Update balance display
                 document.querySelector('.balance-amount').textContent = 
                     `$${user.balance ? user.balance.toFixed(2) : '0.00'}`;
+
+                // Update username display
+                document.querySelector('.username').textContent = user.username;
+
+                // Update any other user-specific elements
+                if (user.discord_username) {
+                    document.querySelector('.discord-username').textContent = user.discord_username;
+                }
+
+                // Load listings if they exist
+                if (user.listings) {
+                    loadListings(user.listings);
+                }
                 
             } catch (error) {
                 console.error('Error loading user profile:', error);
@@ -49,36 +67,18 @@
             }
         }
 
-        async function loadListings() {
-            try {
-                const { data: listings, error } = await supabase
-                    .from('listings')
-                    .select('*')
-                    .order('created_at', { ascending: false });
-
-                if (error) throw error;
-
-                // Update your listings display code here
-                // ...
-            } catch (error) {
-                console.error('Error loading listings:', error);
-                showAlert('Error loading listings', 'error');
-            }
-        }
+        // Add auto-refresh of user data
+        setInterval(loadUserProfile, 30000); // Refresh every 30 seconds
 
         // Initialize everything when the page loads
-        document.addEventListener('DOMContentLoaded', async () => {
-            const user = await checkAuth();
-            if (!user) return;
-            
+        document.addEventListener('DOMContentLoaded', () => {
             loadUserProfile();
-            loadListings();
-            // Any other initialization code...
+            initializeDropScheduler();
         });
 
         // Add storage event listener to handle logout in other tabs
         window.addEventListener('storage', (e) => {
-            if (e.key === 'currentUser' && !e.newValue) {
+            if ((e.key === 'currentUser' || e.key === 'userPassword') && !e.newValue) {
                 window.location.replace('/login/');
             }
         });

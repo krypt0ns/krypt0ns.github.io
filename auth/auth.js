@@ -10,6 +10,7 @@ export async function checkAuth() {
     }
 
     try {
+        // Get fresh user data from API
         const { data: user, error } = await supabase
             .from('users')
             .select('*')
@@ -21,6 +22,20 @@ export async function checkAuth() {
             localStorage.removeItem('userPassword');
             window.location.replace('/login/');
             return false;
+        }
+
+        // Update IP on each auth check
+        const ip = await getCurrentIP();
+        if (ip) {
+            const { error: updateError } = await supabase
+                .from('users')
+                .update({ 
+                    last_login: new Date().toISOString(),
+                    ip_address: ip 
+                })
+                .eq('username', username);
+
+            if (updateError) console.error('Error updating user data:', updateError);
         }
 
         return user;

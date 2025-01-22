@@ -37,7 +37,6 @@
 
         async function loadUserProfile() {
             try {
-                // Get stored credentials
                 const username = localStorage.getItem('currentUser');
                 const password = localStorage.getItem('userPassword');
                 
@@ -46,7 +45,7 @@
                     return;
                 }
 
-                // Verify credentials
+                // Get fresh user data from API
                 const { data: user, error } = await supabase
                     .from('users')
                     .select('*')
@@ -64,23 +63,26 @@
                 document.querySelector('.balance-amount').textContent = 
                     `$${user.balance ? user.balance.toFixed(2) : '0.00'}`;
 
-                // Update profile picture if available
+                // Update other UI elements
                 if (user.discord_avatar_url) {
                     document.querySelector('.discord-pfp img').src = user.discord_avatar_url;
                 }
 
+                document.querySelector('.username').textContent = user.username;
+                
             } catch (error) {
                 console.error('Error loading user profile:', error);
                 window.location.replace('/login/');
             }
         }
 
-        // Initialize everything when the page loads
-        document.addEventListener('DOMContentLoaded', async () => {
-            loadUserProfile();
-        });
+        // Add auto-refresh of user data
+        setInterval(loadUserProfile, 30000); // Refresh every 30 seconds
 
-        // Add storage event listener to handle logout in other tabs
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', loadUserProfile);
+
+        // Handle logout in other tabs
         window.addEventListener('storage', (e) => {
             if ((e.key === 'currentUser' || e.key === 'userPassword') && !e.newValue) {
                 window.location.replace('/login/');
