@@ -242,3 +242,33 @@
             50% { transform: translate(-5%, 15%) rotate(-5deg); }
             75% { transform: translate(-10%, -5%) rotate(2deg); }
         }
+
+        .alert {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            border-radius: 4px;
+            color: white;
+            opacity: 0;
+            transform: translateY(-20px);
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+        
+        .alert.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        .alert.success {
+            background-color: #4CAF50;
+        }
+        
+        .alert.error {
+            background-color: #f44336;
+        }
+        
+        .alert.info {
+            background-color: #2196F3;
+        }

@@ -9,7 +9,11 @@
     <link rel="stylesheet" href="login.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script type="module">
-        import { supabase } from '../config/supabase.js';
+        const { createClient } = supabase;
+        const supabaseClient = createClient(
+            'https://jgdkrezxgwhcaognnjlq.supabase.co',
+            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpnZGtyZXp4Z3doY2FvZ25uamxxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzc0OTAyMjgsImV4cCI6MjA1MzA2NjIyOH0.kNkduc3dqYZJUWD5_5F3UcoQ-aP1jr9jrrADyJ45CGc'
+        );
         
         window.handleLogin = async function(e) {
             e.preventDefault();
@@ -19,13 +23,20 @@
             
             try {
                 // Check if user exists and password matches
-                const { data, error } = await supabase
+                const { data, error } = await supabaseClient
                     .from('users')
                     .select('*')
                     .eq('username', username)
-                    .maybeSingle();
+                    .single();
 
-                if (error && error.code !== 'PGRST116') throw error;
+                if (error) {
+                    if (error.code === 'PGRST116') {
+                        showAlert('User not found', 'error');
+                    } else {
+                        throw error;
+                    }
+                    return;
+                }
 
                 if (!data) {
                     showAlert('User not found', 'error');
@@ -38,14 +49,14 @@
                     return;
                 }
 
-                // Store credentials BEFORE redirect
+                // Store credentials
                 localStorage.setItem('currentUser', username);
                 localStorage.setItem('userPassword', password);
 
                 // Wait a moment to ensure storage is complete
                 await new Promise(resolve => setTimeout(resolve, 100));
 
-                // Then redirect
+                // Redirect based on user type
                 if (data.is_admin) {
                     window.location.href = '/admin/';
                 } else {
@@ -53,7 +64,7 @@
                 }
             } catch (error) {
                 console.error('Login error:', error);
-                showAlert('Login failed: ' + (error.message || 'Unknown error'), 'error');
+                showAlert('Login error: ' + error.message, 'error');
             }
         };
 

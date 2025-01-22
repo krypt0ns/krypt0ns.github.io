@@ -1,77 +1,79 @@
 import { supabase } from '../config/supabase.js';
 
-export async function checkAuth() {
+export async function validateStoredCredentials() {
     const username = localStorage.getItem('currentUser');
     const password = localStorage.getItem('userPassword');
-    
+
     if (!username || !password) {
-        window.location.replace('/login/');
         return false;
     }
 
     try {
-        // Get fresh user data from API
+        // Check if user exists and password matches
         const { data: user, error } = await supabase
             .from('users')
             .select('*')
             .eq('username', username)
             .maybeSingle();
 
-        if (error || !user || user.password !== password) {
-            localStorage.removeItem('currentUser');
-            localStorage.removeItem('userPassword');
-            window.location.replace('/login/');
+        if (error) throw error;
+        
+        if (!user || user.password !== password) {
             return false;
         }
 
-        // Update IP on each auth check
-        const ip = await getCurrentIP();
-        if (ip) {
-            const { error: updateError } = await supabase
-                .from('users')
-                .update({ 
-                    last_login: new Date().toISOString(),
-                    ip_address: ip 
-                })
-                .eq('username', username);
+        return true;
+    } catch (error) {
+        console.error('Auth error:', error);
+        return false;
+    }
+}
 
-            if (updateError) console.error('Error updating user data:', updateError);
-        }
+export async function getCurrentUser() {
+    const username = localStorage.getItem('currentUser');
+    if (!username) return null;
 
+    try {
+        const { data: user, error } = await supabase
+            .from('users')
+            .select('*')
+            .eq('username', username)
+            .maybeSingle();
+
+        if (error) throw error;
         return user;
     } catch (error) {
-        console.error('Auth check error:', error);
-        window.location.replace('/login/');
-        return false;
+        console.error('Error getting user:', error);
+        return null;
     }
 }
 
-export async function checkAdminAuth() {
-    const user = await checkAuth();
-    if (!user || !user.is_admin) {
-        window.location.replace('/dashboard/');
-        return false;
-    }
-    return user;
+export function redirectToLogin() {
+    localStorage.removeItem('currentUser');
+    localStorage.removeItem('userPassword');
+    window.location.replace('/login/');
 }
 
-export async function checkIPBan() {
-    try {
-        const { data: ipBan, error } = await supabase
-            .from('ip_bans')
-            .select('*')
-            .eq('ip', await getCurrentIP())
-            .single();
+export async function logout() {
+    localStorage.removeItem('currentUser');
+    localStorage.removeItem('userPassword');
+    window.location.replace('/login/');
+}
 
-        if (ipBan) {
-            window.location.replace('/banned.html');
-            return true;
+export async function isAdmin() {
+    const user = await getCurrentUser();
+    return user?.is_admin || false;
+}
+
+export async function setupAuthListeners() {
+    window.addEventListener('storage', async (e) => {
+        if (e.key === 'currentUser' || e.key === 'userPassword') {
+            const isValid = await validateStoredCredentials();
+            if (!isValid) {
+                redirectToLogin();
+            }
         }
-        return false;
-    } catch (error) {
-        console.error('IP ban check error:', error);
-        return false;
-    }
+    });
 }
 
 async function getCurrentIP() {
@@ -83,4 +85,40 @@ async function getCurrentIP() {
         console.error('Error getting IP:', error);
         return null;
     }
-} 
+}
+
+export async function checkIPBan() {
+    try {
+        console.log('Checking IP ban...');
+        const currentIP = await getCurrentIP();
+        if (!currentIP) {
+            console.error('Could not get IP address');
+            return false;
+        }
+        console.log('Current IP:', currentIP);
+
+        const { data: banData, error } = await supabase
+            .from('ipbans')
+            .select('*')
+            .eq('ip', currentIP)
+            .single();
+
+        if (error && error.code !== 'PGRST116') {
+            throw error;
+        }
+
+        if (banData) {
+            console.log('IP is banned:', banData);
+            localStorage.removeItem('currentUser');
+            localStorage.removeItem('userPassword');
+            window.location.href = '/banned/?reason=banned';
+            return true;
+        }
+
+        console.log('IP is not banned');
+        return false;
+    } catch (error) {
+        console.error('IP ban check error:', error);
+        return false;
+    }
+}

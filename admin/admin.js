@@ -1,3 +1,25 @@
+// Add these imports at the top of admin.js
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
+import { getFirestore } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+
+// Firebase configuration
+const firebaseConfig = {
+    apiKey: "AIzaSyDvG4059xSr2jToP9xDz-8dlxbumuRzdUE",
+    authDomain: "sdfkj238j98sdlkmzlknslaksdjfkl.firebaseapp.com",
+    projectId: "sdfkj238j98sdlkmzlknslaksdjfkl",
+    storageBucket: "sdfkj238j98sdlkmzlknslaksdjfkl.applestorage.com",
+    messagingSenderId: "778178162130",
+    appId: "1:778178162130:web:a9513f09e404813aa2ec0b",
+    measurementId: "G-WP6QR49WZ3"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+// Make db available globally
+window.db = db;
+
 // Add these functions to your admin.js file
 
 // Function to load discount codes
@@ -297,4 +319,152 @@ function createOrderCard(order) {
             </div>
         </div>
     `;
+}
+
+// Add this function to update the listings table
+function updateListingsTable(listings) {
+    const tableBody = document.querySelector('#listings-section table tbody');
+    if (!tableBody) return;
+
+    tableBody.innerHTML = '';
+    
+    listings.forEach(listing => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>
+                <div class="listing-info">
+                    <img src="${listing.image_url}" alt="${listing.title}" class="listing-thumbnail">
+                    <span>${listing.title}</span>
+                </div>
+            </td>
+            <td>$${listing.price.toFixed(2)}</td>
+            <td>
+                <span class="status-badge ${listing.status.toLowerCase()}">
+                    ${listing.status}
+                </span>
+            </td>
+            <td>
+                <button class="action-btn edit-btn" onclick="editListing('${listing.id}')">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="action-btn delete-btn" onclick="deleteListing('${listing.id}')">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </td>
+            <td>
+                <button class="action-btn info-btn" onclick="viewListingDetails('${listing.id}')">
+                    <i class="fas fa-info-circle"></i>
+                </button>
+            </td>
+        `;
+        tableBody.appendChild(row);
+    });
+}
+
+// Add these helper functions for listing management
+async function editListing(listingId) {
+    // Implementation for editing a listing
+    showAlert('Edit functionality coming soon', 'info');
+}
+
+async function deleteListing(listingId) {
+    if (!confirm('Are you sure you want to delete this listing?')) return;
+
+    try {
+        const { error } = await supabase
+            .from('listings')
+            .delete()
+            .eq('id', listingId);
+
+        if (error) throw error;
+        showAlert('Listing deleted successfully', 'success');
+        initializeListingsListener();
+    } catch (error) {
+        console.error('Error deleting listing:', error);
+        showAlert('Error deleting listing: ' + error.message, 'error');
+    }
+}
+
+async function viewListingDetails(listingId) {
+    try {
+        const { data: listing, error } = await supabase
+            .from('listings')
+            .select('*')
+            .eq('id', listingId)
+            .single();
+
+        if (error) throw error;
+        
+        // Create and show the listing details modal
+        // Implementation depends on your UI requirements
+        showAlert('View details functionality coming soon', 'info');
+    } catch (error) {
+        console.error('Error viewing listing details:', error);
+        showAlert('Error loading listing details', 'error');
+    }
+}
+
+// Add function to update users table
+function updateUsersTable(users) {
+    const tableBody = document.querySelector('#users-section table tbody');
+    if (!tableBody) return;
+
+    tableBody.innerHTML = '';
+    
+    users.forEach(user => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${user.username}</td>
+            <td>$${user.balance?.toFixed(2) || '0.00'}</td>
+            <td>
+                <span class="status-badge ${user.status?.toLowerCase() || 'active'}">
+                    ${user.status || 'Active'}
+                </span>
+            </td>
+            <td>
+                <button class="action-btn edit-btn" onclick="editUser('${user.id}')">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="action-btn ban-btn" onclick="banUser('${user.id}')">
+                    <i class="fas fa-ban"></i>
+                </button>
+            </td>
+            <td>
+                <button class="action-btn info-btn" onclick="viewUserDetails('${user.id}')">
+                    <i class="fas fa-info-circle"></i>
+                </button>
+            </td>
+        `;
+        tableBody.appendChild(row);
+    });
+}
+
+// Add function to update payments table
+function updatePaymentsTable(payments) {
+    const tableBody = document.querySelector('#payments-section table tbody');
+    if (!tableBody) return;
+
+    tableBody.innerHTML = '';
+    
+    payments.forEach(payment => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>#${payment.id.slice(-6).toUpperCase()}</td>
+            <td>${payment.username}</td>
+            <td>$${payment.amount.toFixed(2)}</td>
+            <td>${payment.payment_method}</td>
+            <td>
+                <span class="status-badge ${payment.status.toLowerCase()}">
+                    ${payment.status}
+                </span>
+            </td>
+            <td>${new Date(payment.created_at).toLocaleString()}</td>
+            <td>
+                <button class="action-btn info-btn" onclick="viewPaymentDetails('${payment.id}')">
+                    <i class="fas fa-info-circle"></i>
+                </button>
+            </td>
+        `;
+        tableBody.appendChild(row);
+    });
 }

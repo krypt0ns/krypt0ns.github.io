@@ -5,18 +5,25 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Krypton | Admin</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
     <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
     <link rel="stylesheet" href="admin.css">
+    <!-- Add Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script type="module">
-        import { checkIPBan } from '../auth.js';
+        import { supabase } from '../config/supabase.js';
+        import { checkIPBan } from '../auth/auth.js';
+        import { handleListingChange, handleUserChange, handlePaymentChange } from './realtime.js';
+        
+        window.supabase = supabase; // Make supabase available globally
         
         document.addEventListener('DOMContentLoaded', async () => {
             await checkIPBan();
         });
     </script>
+    <!-- Add these script tags in the head section -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
 </head>
 <body>
     <div id="particles-js"></div>
@@ -495,16 +502,7 @@
                 formData.imageUrl = imageUrl;
                 delete formData.image;
                 
-                await db.collection('listings').add({
-                    ...formData,
-                    status: 'Active',
-                    isLocked: true,
-                    dropScheduled: true,
-                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                });
-
-                showAlert('Listing created successfully! It will automatically drop at the scheduled time.', 'success');
-                showListingsTable();
+                await createListing(formData);
             } catch (error) {
                 console.error('Error:', error);
                 showAlert(`Error: ${error.message}`, 'error');
@@ -530,42 +528,28 @@
             return imageUrl.trim();
         }
 
-        // Initialize Firebase
-        const firebaseConfig = {
-            apiKey: "AIzaSyDvG4059xSr2jToP9xDz-8dlxbumuRzdUE",
-            authDomain: "sdfkj238j98sdlkmzlknslaksdjfkl.firebaseapp.com", 
-            projectId: "sdfkj238j98sdlkmzlknslaksdjfkl",
-            storageBucket: "sdfkj238j98sdlkmzlknslaksdjfkl.firebasestorage.app",
-            messagingSenderId: "778178162130",
-            appId: "1:778178162130:web:a9513f09e404813aa2ec0b",
-            measurementId: "G-WP6QR49WZ3"
-        };
-
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
-        const serverTimestamp = firebase.firestore.FieldValue.serverTimestamp;
-        const auth = firebase.auth(); // Add this line
-
-        // Create the listing in Firebase
         async function createListing(formData) {
             try {
-                await db.collection('listings').add({
-                    title: formData.title,
-                    price: parseFloat(formData.price),
-                    description: formData.description,
-                    imageUrl: formData.imageUrl,
-                    status: 'Active',
-                    releaseTime: formData.releaseTime,
-                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                    accountDetails: formData.accountDetails,
-                    countdown: {
-                        active: false,
-                        endTime: null,
-                        startTime: null,
-                        duration: null
-                    }
-                });
+                const { data, error } = await supabase
+                    .from('listings')
+                    .insert([{
+                        title: formData.title,
+                        price: parseFloat(formData.price),
+                        description: formData.description,
+                        image_url: formData.imageUrl,
+                        status: 'Active',
+                        release_time: formData.dropTime,
+                        created_at: new Date().toISOString(),
+                        account_details: formData.accountDetails,
+                        countdown: {
+                            active: false,
+                            end_time: null,
+                            start_time: null,
+                            duration: null
+                        }
+                    }]);
 
+                if (error) throw error;
                 showAlert('Listing created successfully!', 'success');
                 showListingsTable();
             } catch (error) {
@@ -579,871 +563,137 @@
         let listingSearchTerm = '';
         let listingStatusFilter = 'all';
 
-        // Update the initializeListingsListener function
-        function initializeListingsListener() {
-            const searchInput = document.getElementById('listing-search');
-            const statusSelect = document.getElementById('listing-status-filter');
-            
-            if (!searchInput || !statusSelect) return;
-
-            // Add event listeners for search and filter
-            searchInput.addEventListener('input', (e) => {
-                listingSearchTerm = e.target.value.toLowerCase();
-                renderListings();
-            });
-
-            statusSelect.addEventListener('change', (e) => {
-                listingStatusFilter = e.target.value;
-                renderListings();
-            });
-
-            // Listen for listings changes
-            db.collection('listings')
-                .orderBy('createdAt', 'desc')
-                .onSnapshot((snapshot) => {
-                    allListings = [];
-                    snapshot.forEach((doc) => {
-                        allListings.push({
-                            id: doc.id,
-                            ...doc.data()
-                        });
-                    });
-                    renderListings();
-                });
-        }
-
-        // Update the renderListings function
-        function renderListings() {
-            const tableBody = document.getElementById('listings-table-body');
-            if (!tableBody) return;
-            
-            tableBody.innerHTML = '';
-            
-            const filteredListings = allListings.filter(listing => {
-                const matchesSearch = (listing.title || '').toLowerCase().includes(listingSearchTerm || '');
-                const matchesStatus = listingStatusFilter === 'all' || listing.status === listingStatusFilter;
-                return matchesSearch && matchesStatus;
-            });
-
-            filteredListings.forEach(listing => {
-                const row = `
-                    <tr>
-                        <td>
-                            <div style="display: flex; align-items: center; gap: 0.5rem;">
-                                <img src="${listing.imageUrl}" alt="${listing.title}"
-                                     style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px;">
-                                <span style="color: white;">${listing.title}</span>
-                            </div>
-                        </td>
-                        <td style="color: #6b46c1;">$${listing.price}</td>
-                        <td>
-                            <span class="status-badge ${listing.status.toLowerCase()}">${listing.status}</span>
-                        </td>
-                        <td>
-                            ${listing.status === 'Active' ? `
-                                ${listing.isLocked ? `
-                                    <button class="action-btn drop-btn" onclick="dropListing('${listing.id}')" title="Drop listing now">
-                                        <i class="fas fa-rocket"></i> Drop Now
-                                    </button>
-                                ` : `
-                                    <span class="dropped-badge">
-                                        <i class="fas fa-check"></i> Dropped
-                                    </span>
-                                `}
-                            ` : ''}
-                            <button class="action-btn ${listing.status === 'Disabled' ? 'edit-btn' : 'ban-btn'}" 
-                                    onclick="toggleListingStatus('${listing.id}', '${listing.status}')"
-                                    title="${listing.status === 'Disabled' ? 'Enable' : 'Disable'} listing">
-                                <i class="fas fa-${listing.status === 'Disabled' ? 'check' : 'ban'}"></i>
-                            </button>
-                            <button class="action-btn delete-btn" onclick="deleteListing('${listing.id}')"
-                                    title="Delete listing">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                            <button class="action-btn info-btn" onclick="viewListingDetails('${listing.id}')"
-                                    title="View details">
-                                <i class="fas fa-info-circle"></i>
-                            </button>
-                        </td>
-                    </tr>
-                `;
-                tableBody.innerHTML += row;
-            });
-        }
-
-        // Add the dropListing function if it's not already present
-        async function dropListing(listingId) {
+        // Replace the initializeListingsListener function
+        async function initializeListingsListener() {
             try {
-                const confirmed = await showConfirm(
-                    'Drop Listing',
-                    'Are you sure you want to drop this listing now? This will make it immediately available to all users.'
-                );
-                
-                if (confirmed) {
-                    await db.collection('listings').doc(listingId).update({
-                        isLocked: false,
-                        dropTime: firebase.firestore.FieldValue.serverTimestamp()
-                    });
+                const { data: listings, error } = await supabase
+                    .from('listings')
+                    .select('*')
+                    .order('created_at', { ascending: false });
                     
-                    showAlert('Listing dropped successfully!', 'success');
-                }
-            } catch (error) {
-                console.error('Error dropping listing:', error);
-                showAlert('Error dropping listing: ' + error.message, 'error');
-            }
-        }
-
-        // Simple delete function
-        async function deleteListing(listingId) {
-            const confirmed = await showConfirm(
-                'Delete Listing',
-                'Are you sure you want to delete this listing? This action cannot be undone.'
-            );
-            
-            if (confirmed) {
-                try {
-                    await db.collection('listings').doc(listingId).delete();
-                    showAlert('Listing deleted successfully', 'success');
-                } catch (error) {
-                    console.error('Error deleting listing:', error);
-                    showAlert('Error deleting listing: ' + error.message, 'error');
-                }
-            }
-        }
-
-        // Add these variables at the top with your other global variables
-        let allUsers = [];
-        let userSearchTerm = '';
-
-        // Add these variables at the top with your other global variables
-        let currentPage = 1;
-        const usersPerPage = 10;
-
-        // Update the initializeUsersListener function
-        function initializeUsersListener() {
-            const tableBody = document.querySelector('#users-section .admin-table tbody');
-            const searchInput = document.getElementById('user-search');
-            
-            if (!tableBody || !searchInput) return;
-
-            // Add pagination controls to the users section
-            const paginationContainer = document.createElement('div');
-            paginationContainer.className = 'pagination-controls';
-            paginationContainer.style.cssText = `
-                margin-top: 1rem;
-                display: flex;
-                justify-content: center;
-                gap: 0.5rem;
-                align-items: center;
-            `;
-            document.querySelector('#users-section').appendChild(paginationContainer);
-
-            // Add search event listener
-            searchInput.addEventListener('input', (e) => {
-                userSearchTerm = e.target.value.toLowerCase();
-                currentPage = 1; // Reset to first page on search
-                renderUsers();
-            });
-
-            // Listen for users changes
-            db.collection('users').onSnapshot((snapshot) => {
-                allUsers = [];
-                snapshot.forEach((doc) => {
-                    allUsers.push({
-                        id: doc.id,
-                        ...doc.data()
-                    });
-                });
-                renderUsers();
-            });
-        }
-
-        // Update the renderUsers function
-        function renderUsers() {
-            const tableBody = document.querySelector('#users-section .admin-table tbody');
-            const paginationContainer = document.querySelector('.pagination-controls');
-            if (!tableBody || !paginationContainer) return;
-            
-            // Filter users based on search term
-            const filteredUsers = allUsers.filter(user => {
-                return (user.username || '').toLowerCase().includes(userSearchTerm) ||
-                       (user.discordUsername || '').toLowerCase().includes(userSearchTerm);
-            });
-
-            // Calculate pagination
-            const totalPages = Math.ceil(filteredUsers.length / usersPerPage);
-            const startIndex = (currentPage - 1) * usersPerPage;
-            const endIndex = startIndex + usersPerPage;
-            const usersToShow = filteredUsers.slice(startIndex, endIndex);
-
-            // Clear table
-            tableBody.innerHTML = '';
-
-            // Render users for current page
-            usersToShow.forEach(user => {
-                const row = `
-                    <tr>
-                        <td>
-                            <div style="display: flex; align-items: center; gap: 10px;">
-                                <img src="${user.discordAvatarURL || 'https://cdn.discordapp.com/embed/avatars/0.png'}" 
-                                     alt="${user.username}" 
-                                     style="width: 32px; height: 32px; border-radius: 50%;">
-                                ${user.username}
-                            </div>
-                        </td>
-                        <td>$${user.balance || 0}</td>
-                        <td>${user.status || 'Active'}</td>
-                        <td>
-                            <button class="action-btn edit-btn" onclick="modifyBalance('${user.id}', ${user.balance || 0})">
-                                <i class="fas fa-wallet"></i>
-                            </button>
-                            <button class="action-btn ban-btn" onclick="toggleUserStatus('${user.id}', '${user.status || 'Active'}')">
-                                <i class="fas fa-ban"></i>
-                            </button>
-                        </td>
-                        <td>
-                            <button class="action-btn info-btn" onclick="viewUserDetails('${user.id}')" title="View details">
-                                <i class="fas fa-info-circle"></i>
-                            </button>
-                        </td>
-                    </tr>
-                `;
-                tableBody.innerHTML += row;
-            });
-
-            // Update pagination controls
-            paginationContainer.innerHTML = `
-                <button class="pagination-btn" 
-                        onclick="changePage(1)" 
-                        ${currentPage === 1 ? 'disabled' : ''}
-                        style="opacity: ${currentPage === 1 ? '0.5' : '1'}">
-                    <i class="fas fa-angle-double-left"></i>
-                </button>
-                <button class="pagination-btn" 
-                        onclick="changePage(${currentPage - 1})" 
-                        ${currentPage === 1 ? 'disabled' : ''}
-                        style="opacity: ${currentPage === 1 ? '0.5' : '1'}">
-                    <i class="fas fa-angle-left"></i>
-                </button>
-                <span style="color: white; margin: 0 1rem;">
-                    Page ${currentPage} of ${totalPages}
-                </span>
-                <button class="pagination-btn" 
-                        onclick="changePage(${currentPage + 1})" 
-                        ${currentPage === totalPages ? 'disabled' : ''}
-                        style="opacity: ${currentPage === totalPages ? '0.5' : '1'}">
-                    <i class="fas fa-angle-right"></i>
-                </button>
-                <button class="pagination-btn" 
-                        onclick="changePage(${totalPages})" 
-                        ${currentPage === totalPages ? 'disabled' : ''}
-                        style="opacity: ${currentPage === totalPages ? '0.5' : '1'}">
-                    <i class="fas fa-angle-double-right"></i>
-                </button>
-            `;
-        }
-
-        // Add the changePage function
-        function changePage(newPage) {
-            const totalPages = Math.ceil(allUsers.filter(user => 
-                (user.username || '').toLowerCase().includes(userSearchTerm) ||
-                (user.discordUsername || '').toLowerCase().includes(userSearchTerm)
-            ).length / usersPerPage);
-
-            if (newPage >= 1 && newPage <= totalPages) {
-                currentPage = newPage;
-                renderUsers();
-            }
-        }
-
-        // Add the viewUserDetails function
-        async function viewUserDetails(userId) {
-            try {
-                const userDoc = await db.collection('users').doc(userId).get();
-                const userData = userDoc.data();
+                if (error) throw error;
                 
-                const modal = document.createElement('div');
-                modal.style.cssText = `
-                    position: fixed;
-                    top: 0;
-                    left: 0;
-                    right: 0;
-                    bottom: 0;
-                    background: rgba(0, 0, 0, 0.7);
-                    backdrop-filter: blur(5px);
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    z-index: 1000;
-                    opacity: 0;
-                    transition: opacity 0.3s ease;
-                `;
+                // Update the UI with listings data
+                updateListingsTable(listings);
                 
-                const detailsHTML = `
-                    <div class="payment-details-content">
-                        <div class="details-header">
-                            <h3>User Details</h3>
-                            <div class="alert-close">
-                                <i class="fas fa-times"></i>
-                            </div>
-                        </div>
-                        <div class="details-body">
-                            <div class="detail-row">
-                                <span class="detail-label">Username:</span>
-                                <span class="detail-value">${userData.username}</span>
-                            </div>
-                            <div class="detail-row">
-                                <span class="detail-label">Discord Username:</span>
-                                <span class="detail-value">${userData.discordUsername || 'Not linked'}</span>
-                            </div>
-                            <div class="detail-row">
-                                <span class="detail-label">Discord ID:</span>
-                                <span class="detail-value">${userData.discordId || 'Not linked'}</span>
-                            </div>
-                            <div class="detail-row">
-                                <span class="detail-label">Balance:</span>
-                                <span class="detail-value">$${userData.balance || 0}</span>
-                            </div>
-                            <div class="detail-row">
-                                <span class="detail-label">Status:</span>
-                                <span class="status-badge ${(userData.status || 'Active').toLowerCase()}">${userData.status || 'Active'}</span>
-                            </div>
-                            <div class="detail-row">
-                                <span class="detail-label">IP Address:</span>
-                                <span class="detail-value">${userData.ip || 'Not available'}</span>
-                            </div>
-                            <div class="detail-row">
-                                <span class="detail-label">Created At:</span>
-                                <span class="detail-value">${userData.createdAt ? new Date(userData.createdAt.toDate()).toLocaleString() : 'Not available'}</span>
-                            </div>
-                            <div class="detail-row">
-                                <span class="detail-label">Last Login:</span>
-                                <span class="detail-value">${userData.lastLogin ? new Date(userData.lastLogin.toDate()).toLocaleString() : 'Not available'}</span>
-                            </div>
-                        </div>
-                    </div>
-                `;
-
-                modal.innerHTML = detailsHTML;
-                document.body.appendChild(modal);
-                
-                // Fade in
-                setTimeout(() => modal.style.opacity = '1', 10);
-
-                // Close handlers
-                const closeBtn = modal.querySelector('.alert-close');
-                const closeModal = () => {
-                    modal.style.opacity = '0';
-                    setTimeout(() => modal.remove(), 300);
-                };
-
-                closeBtn.onclick = closeModal;
-                modal.onclick = (e) => {
-                    if (e.target === modal) closeModal();
-                };
-            } catch (error) {
-                console.error('Error getting user details:', error);
-                showAlert('Error getting user details: ' + error.message, 'error');
-            }
-        }
-
-        // Replace the existing modifyBalance function with this one
-        async function modifyBalance(userId, currentBalance) {
-            const amount = await showPrompt(
-                'Set Balance',
-                `Current balance: $${currentBalance}\nEnter new balance amount:`,
-                currentBalance.toString()
-            );
-            
-            if (amount === null) return; // User cancelled
-            
-            const newBalance = parseFloat(amount);
-            if (isNaN(newBalance)) {
-                showAlert('Please enter a valid number', 'error');
-                return;
-            }
-
-            try {
-                await db.collection('users').doc(userId).update({
-                    balance: newBalance // Directly set the new balance
-                });
-                showAlert('Balance updated successfully!', 'success');
-            } catch (error) {
-                console.error('Error updating balance:', error);
-                showAlert('Error updating balance: ' + error.message, 'error');
-            }
-        }
-
-        // Add user status toggle function
-        async function toggleUserStatus(userId, currentStatus) {
-            const newStatus = currentStatus === 'Active' ? 'Banned' : 'Active';
-            
-            if (currentStatus === 'Active') {
-                // Create custom input modal for ban reason
-                const overlay = document.createElement('div');
-                overlay.className = 'confirm-overlay';
-                
-                const dialog = document.createElement('div');
-                dialog.className = 'custom-prompt';
-                
-                dialog.innerHTML = `
-                    <h3 class="prompt-title">Ban User</h3>
-                    <p class="confirm-message">Please enter a reason for the ban:</p>
-                    <textarea 
-                        class="prompt-input" 
-                        style="
-                            width: 100%;
-                            min-height: 100px;
-                            margin: 1rem 0;
-                            padding: 0.75rem;
-                            background: rgba(255, 255, 255, 0.05);
-                            border: 1px solid rgba(255, 255, 255, 0.1);
-                            border-radius: 8px;
-                            color: #fff;
-                            resize: vertical;
-                        "
-                        placeholder="Enter ban reason..."
-                    ></textarea>
-                    <div class="confirm-buttons">
-                        <button class="confirm-button cancel">Cancel</button>
-                        <button class="confirm-button confirm">Ban User</button>
-                    </div>
-                `;
-
-                document.body.appendChild(overlay);
-                document.body.appendChild(dialog);
-
-                const reason = await new Promise((resolve) => {
-                    setTimeout(() => {
-                        overlay.classList.add('show');
-                        dialog.classList.add('show');
-                    }, 10);
-
-                    function closeDialog(confirmed) {
-                        const reasonText = dialog.querySelector('.prompt-input').value;
-                        overlay.classList.remove('show');
-                        dialog.classList.remove('show');
-                        setTimeout(() => {
-                            overlay.remove();
-                            dialog.remove();
-                            resolve(confirmed ? reasonText : null);
-                        }, 300);
-                    }
-
-                    dialog.querySelector('.confirm-button.cancel').onclick = () => closeDialog(false);
-                    dialog.querySelector('.confirm-button.confirm').onclick = () => closeDialog(true);
-                    overlay.onclick = () => closeDialog(false);
-                });
-
-                if (reason === null) return; // User cancelled
-
-                try {
-                    const userIP = await getUserIP(userId);
-                    
-                    // Update user status with reason (default if empty)
-                    await db.collection('users').doc(userId).update({
-                        status: newStatus,
-                        banReason: reason.trim() || "No reason provided",
-                        bannedAt: serverTimestamp()
-                    });
-                    
-                    if (userIP) {
-                        // Ban the IP with reason
-                        await banIP(userIP, reason.trim() || "No reason provided");
-                    }
-                    
-                    showAlert('User banned successfully', 'success');
-                } catch (error) {
-                    console.error('Error banning user:', error);
-                    showAlert('Error banning user: ' + error.message, 'error');
-                }
-            } else {
-                // Handle unban
-                const confirmed = await showConfirm(
-                    'Unban User',
-                    'Are you sure you want to unban this user?'
-                );
-                
-                if (confirmed) {
-                    try {
-                        const userIP = await getUserIP(userId);
-                        
-                        // Update user status
-                        await db.collection('users').doc(userId).update({
-                            status: newStatus,
-                            banReason: null,
-                            bannedAt: null
-                        });
-                        
-                        if (userIP) {
-                            // Remove IP from ipbans collection when unbanning
-                            await db.collection('ipbans').doc(userIP).delete();
+                // Subscribe to realtime changes
+                const listingsSubscription = supabase
+                    .channel('listings_changes')
+                    .on('postgres_changes', 
+                        { event: '*', schema: 'public', table: 'listings' },
+                        payload => {
+                            handleListingChange(payload);
                         }
-                        
-                        showAlert('User unbanned successfully', 'success');
-                    } catch (error) {
-                        console.error('Error unbanning user:', error);
-                        showAlert('Error unbanning user: ' + error.message, 'error');
-                    }
-                }
-            }
-        }
-
-        // Add this function to unban IP
-        async function unbanIP(ip) {
-            try {
-                await db.collection('ipbans').doc(ip).delete();
-                showAlert('IP unbanned successfully', 'success');
-            } catch (error) {
-                console.error('Error unbanning IP:', error);
-                showAlert('Error unbanning IP: ' + error.message, 'error');
-            }
-        }
-
-        // Add these variables at the top of your script, right after Firebase initialization
-        let allPayments = [];
-        let searchTerm = '';
-        let statusFilter = 'all';
-
-        // Update the payments listener to use filtering
-        function initializePaymentsListener() {
-            const tableBody = document.querySelector('#payments-section .admin-table tbody');
-            const searchInput = document.getElementById('payment-search');
-            const statusSelect = document.getElementById('status-filter');
-            
-            if (!tableBody) return;
-
-            // Add event listeners for search and filter
-            searchInput.addEventListener('input', (e) => {
-                searchTerm = e.target.value.toLowerCase();
-                renderPayments();
-            });
-
-            statusSelect.addEventListener('change', (e) => {
-                statusFilter = e.target.value;
-                renderPayments();
-            });
-
-            db.collection('payments').orderBy('timestamp', 'desc').onSnapshot(async (snapshot) => {
-                allPayments = [];
-                
-                // First, gather all payments and user data
-                for (const doc of snapshot.docs) {
-                    const payment = doc.data();
-                    const userDoc = await db.collection('users').doc(payment.userId).get();
-                    const userData = userDoc.data();
+                    )
+                    .subscribe();
                     
-                    allPayments.push({
-                        id: doc.id,
-                        ...payment,
-                        userData
-                    });
-                }
-                
-                renderPayments();
-            });
-        }
-
-        // Add this function to render filtered payments
-        async function renderPayments() {
-            const tableBody = document.querySelector('#payments-section .admin-table tbody');
-            tableBody.innerHTML = '';
-            
-            const filteredPayments = allPayments.filter(payment => {
-                const matchesSearch = payment.userData?.username?.toLowerCase().includes(searchTerm) ||
-                                    payment.id.toLowerCase().includes(searchTerm);
-                const matchesStatus = statusFilter === 'all' || payment.status === statusFilter;
-                
-                return matchesSearch && matchesStatus;
-            });
-
-            filteredPayments.forEach(payment => {
-                const timestamp = payment.timestamp?.toDate() || new Date();
-                const formattedDate = timestamp.toLocaleDateString() + ' ' + timestamp.toLocaleTimeString();
-                
-                const row = `
-                    <tr>
-                        <td>#${payment.id.slice(-6).toUpperCase()}</td>
-                        <td>
-                            <div style="display: flex; align-items: center; gap: 10px;">
-                                <img src="${payment.userData?.discordAvatarURL || 'https://cdn.discordapp.com/embed/avatars/0.png'}" 
-                                     alt="${payment.userData?.username}" 
-                                     style="width: 32px; height: 32px; border-radius: 50%;">
-                                ${payment.userData?.username || 'Unknown User'}
-                            </div>
-                        </td>
-                        <td>$${payment.amount.toFixed(2)}</td>
-                        <td>${payment.paymentMethod}</td>
-                        <td>
-                            <span class="status-badge ${payment.status.toLowerCase()}">
-                                ${payment.status}
-                            </span>
-                        </td>
-                        <td>${formattedDate}</td>
-                        <td>
-                            <button class="action-btn edit-btn" onclick="viewPaymentDetails('${payment.id}')">
-                                <i class="fas fa-eye"></i>
-                            </button>
-                            ${payment.status === 'Pending' ? `
-                                <button class="action-btn edit-btn" onclick="updatePaymentStatus('${payment.id}', 'Completed')">
-                                    <i class="fas fa-check"></i>
-                                </button>
-                                <button class="action-btn delete-btn" onclick="updatePaymentStatus('${payment.id}', 'Rejected')">
-                                    <i class="fas fa-times"></i>
-                                </button>
-                            ` : ''}
-                        </td>
-                    </tr>
-                `;
-                tableBody.innerHTML += row;
-            });
-        }
-
-        // Add payment status update function
-        async function updatePaymentStatus(paymentId, newStatus) {
-            const confirmed = await showConfirm(
-                'Update Payment Status',
-                `Are you sure you want to mark this payment as ${newStatus}?`
-            );
-
-            if (confirmed) {
-                try {
-                    const paymentRef = db.collection('payments').doc(paymentId);
-                    const paymentDoc = await paymentRef.get();
-                    const paymentData = paymentDoc.data();
-
-                    const batch = db.batch();
-                    batch.update(paymentRef, { 
-                        status: newStatus,
-                        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-                    });
-
-                    if (newStatus === 'Completed' && paymentData.status === 'Pending') {
-                        const userRef = db.collection('users').doc(paymentData.userId);
-                        batch.update(userRef, {
-                            balance: firebase.firestore.FieldValue.increment(paymentData.amount)
-                        });
-                    }
-
-                    await batch.commit();
-                    showAlert('Payment status updated successfully!', 'success');
-                } catch (error) {
-                    console.error('Error updating payment status:', error);
-                    showAlert('Error updating payment status: ' + error.message, 'error');
-                }
-            }
-        }
-
-        // Update the payment details view function
-        function viewPaymentDetails(paymentId) {
-            db.collection('payments').doc(paymentId).get().then(async (doc) => {
-                if (doc.exists) {
-                    const payment = doc.data();
-                    const timestamp = payment.timestamp?.toDate() || new Date();
-                    const userDoc = await db.collection('users').doc(payment.userId).get();
-                    const userData = userDoc.data();
-
-                    const detailsHTML = `
-                        <div class="payment-details-content">
-                            <div class="details-header">
-                                <h3>Payment Details</h3>
-                                <div class="alert-close">
-                                    <i class="fas fa-times"></i>
-                                </div>
-                            </div>
-                            <div class="details-body">
-                                <div class="detail-row">
-                                    <span class="detail-label">Transaction ID:</span>
-                                    <span class="detail-value">#${doc.id}</span>
-                                </div>
-                                <div class="detail-row">
-                                    <span class="detail-label">User:</span>
-                                    <span class="detail-value">${userData?.username || 'Unknown User'}</span>
-                                </div>
-                                <div class="detail-row">
-                                    <span class="detail-label">Amount:</span>
-                                    <span class="detail-value">$${payment.amount.toFixed(2)}</span>
-                                </div>
-                                <div class="detail-row">
-                                    <span class="detail-label">Method:</span>
-                                    <span class="detail-value">${payment.paymentMethod}</span>
-                                </div>
-                                <div class="detail-row">
-                                    <span class="detail-label">Status:</span>
-                                    <span class="status-badge ${payment.status.toLowerCase()}">${payment.status}</span>
-                                </div>
-                                <div class="detail-row">
-                                    <span class="detail-label">Date:</span>
-                                    <span class="detail-value">${timestamp.toLocaleString()}</span>
-                                </div>
-                                ${payment.notes ? `
-                                    <div class="detail-row">
-                                        <span class="detail-label">Notes:</span>
-                                        <span class="detail-value">${payment.notes}</span>
-                                    </div>
-                                ` : ''}
-                                <div class="proof-section">
-                                    <span class="detail-label">Payment Proof:</span>
-                                    <img src="${payment.proofUrl}" alt="Payment Proof" class="proof-image">
-                                </div>
-                            </div>
-                        </div>
-                    `;
-
-                    // Add these styles to your CSS section
-                    const styles = `
-                        <style>
-                            .payment-details-content {
-                                background: rgba(20, 20, 20, 0.95);
-                                backdrop-filter: blur(10px);
-                                border-radius: 12px;
-                                border: 1px solid rgba(255, 255, 255, 0.1);
-                                color: white;
-                                width: 90%;
-                                max-width: 500px;
-                                overflow: hidden;
-                            }
-
-                            .details-header {
-                                padding: 1rem 1.5rem;
-                                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-                                display: flex;
-                                justify-content: space-between;
-                                align-items: center;
-                            }
-
-                            .details-header h3 {
-                                font-size: 1.25rem;
-                                margin: 0;
-                            }
-
-                            .details-body {
-                                padding: 1.5rem;
-                            }
-
-                            .detail-row {
-                                display: flex;
-                                justify-content: space-between;
-                                align-items: center;
-                                margin-bottom: 1rem;
-                                padding-bottom: 0.5rem;
-                                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-                            }
-
-                            .detail-label {
-                                color: rgba(255, 255, 255, 0.7);
-                                font-size: 0.9rem;
-                            }
-
-                            .detail-value {
-                                font-weight: 500;
-                            }
-
-                            .proof-section {
-                                margin-top: 1.5rem;
-                            }
-
-                            .proof-image {
-                                width: 100%;
-                                max-height: 300px;
-                                object-fit: contain;
-                                margin-top: 0.5rem;
-                                border-radius: 8px;
-                                background: rgba(0, 0, 0, 0.2);
-                            }
-                        </style>
-                    `;
-
-                    // Create and show modal
-                    const modal = document.createElement('div');
-                    modal.style.cssText = `
-                        position: fixed;
-                        top: 0;
-                        left: 0;
-                        right: 0;
-                        bottom: 0;
-                        background: rgba(0, 0, 0, 0.7);
-                        backdrop-filter: blur(5px);
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        z-index: 2000;
-                        padding: 20px;
-                        opacity: 0;
-                        transition: opacity 0.3s ease;
-                    `;
-                    modal.innerHTML = styles + detailsHTML;
-                    document.body.appendChild(modal);
-
-                    // Show with animation
-                    requestAnimationFrame(() => {
-                        modal.style.opacity = '1';
-                    });
-
-                    // Close handlers
-                    const closeBtn = modal.querySelector('.alert-close');
-                    const closeModal = () => {
-                        modal.style.opacity = '0';
-                        setTimeout(() => modal.remove(), 300);
-                    };
-
-                    closeBtn.onclick = closeModal;
-                    modal.onclick = (e) => {
-                        if (e.target === modal) closeModal();
-                    };
-                }
-            }).catch((error) => {
-                console.error('Error getting payment details:', error);
-                showAlert('Error getting payment details: ' + error.message, 'error');
-            });
-        }
-
-        // Add this function to calculate and update the stats:
-
-        async function updateStats() {
-            try {
-                // Get all listings
-                const listingsSnapshot = await db.collection('listings').get();
-                const activeListings = listingsSnapshot.docs.filter(doc => doc.data().status !== 'Inactive').length;
-
-                // Get total users
-                const usersSnapshot = await db.collection('users').get();
-                const totalUsers = usersSnapshot.size;
-
-                // Get pending orders (payments)
-                const paymentsSnapshot = await db.collection('payments').where('status', '==', 'Pending').get();
-                const pendingOrders = paymentsSnapshot.size;
-
-                // Calculate total revenue (from completed payments)
-                const completedPaymentsSnapshot = await db.collection('payments').where('status', '==', 'Completed').get();
-                const totalRevenue = completedPaymentsSnapshot.docs.reduce((sum, doc) => {
-                    return sum + (doc.data().amount || 0);
-                }, 0);
-
-                // Update the stats in the UI
-                document.querySelector('.stat-card:nth-child(1) h3').textContent = activeListings;
-                document.querySelector('.stat-card:nth-child(2) h3').textContent = totalUsers;
-                document.querySelector('.stat-card:nth-child(3) h3').textContent = pendingOrders;
-                document.querySelector('.stat-card:nth-child(4) h3').textContent = `$${totalRevenue.toLocaleString('en-US', {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2
-                })}`;
-
             } catch (error) {
-                console.error('Error updating stats:', error);
+                console.error('Error initializing listings:', error);
+                showAlert('Error loading listings', 'error');
             }
         }
 
-        // Set up real-time listeners for stats
-        function initializeStatsListeners() {
-            // Listen for changes in listings
-            db.collection('listings').onSnapshot(() => updateStats());
-            
-            // Listen for changes in users
-            db.collection('users').onSnapshot(() => updateStats());
-            
-            // Listen for changes in payments
-            db.collection('payments').onSnapshot(() => updateStats());
+        // Replace the initializeUsersListener function
+        async function initializeUsersListener() {
+            try {
+                const { data: users, error } = await supabase
+                    .from('users')
+                    .select('*')
+                    .order('created_at', { ascending: false });
+                    
+                if (error) throw error;
+                
+                updateUsersTable(users);
+                
+                // Subscribe to realtime changes
+                const usersSubscription = supabase
+                    .channel('users_changes')
+                    .on('postgres_changes',
+                        { event: '*', schema: 'public', table: 'users' },
+                        payload => {
+                            handleUserChange(payload);
+                        }
+                    )
+                    .subscribe();
+                    
+            } catch (error) {
+                console.error('Error initializing users:', error);
+                showAlert('Error loading users', 'error');
+            }
+        }
+
+        // Replace the initializePaymentsListener function
+        async function initializePaymentsListener() {
+            try {
+                const { data: payments, error } = await supabase
+                    .from('payments')
+                    .select('*')
+                    .order('created_at', { ascending: false });
+                    
+                if (error) throw error;
+                
+                updatePaymentsTable(payments);
+                
+                // Subscribe to realtime changes
+                const paymentsSubscription = supabase
+                    .channel('payments_changes')
+                    .on('postgres_changes',
+                        { event: '*', schema: 'public', table: 'payments' },
+                        payload => {
+                            handlePaymentChange(payload);
+                        }
+                    )
+                    .subscribe();
+                    
+                } catch (error) {
+                console.error('Error initializing payments:', error);
+                showAlert('Error loading payments', 'error');
+            }
+        }
+
+        // Replace the initializeStatsListeners function
+        async function initializeStatsListeners() {
+            try {
+                // Get active listings count
+                const { count: activeListings, error: listingsError } = await supabase
+                    .from('listings')
+                    .select('*', { count: 'exact' })
+                    .eq('status', 'Active');
+                    
+                if (listingsError) throw listingsError;
+
+                // Get total users count
+                const { count: totalUsers, error: usersError } = await supabase
+                    .from('users')
+                    .select('*', { count: 'exact' });
+                    
+                if (usersError) throw usersError;
+
+                // Get pending orders count
+                const { count: pendingOrders, error: ordersError } = await supabase
+                    .from('payments')
+                    .select('*', { count: 'exact' })
+                    .eq('status', 'Pending');
+                    
+                if (ordersError) throw ordersError;
+
+                // Calculate total revenue
+                const { data: completedPayments, error: revenueError } = await supabase
+                    .from('payments')
+                    .select('amount')
+                    .eq('status', 'Completed');
+                    
+                if (revenueError) throw revenueError;
+                
+                const totalRevenue = completedPayments.reduce((sum, payment) => sum + (payment.amount || 0), 0);
+
+                // Update stats display
+                updateStatsDisplay(activeListings, totalUsers, pendingOrders, totalRevenue);
+                
+                } catch (error) {
+                console.error('Error initializing stats:', error);
+                showAlert('Error loading statistics', 'error');
+            }
         }
 
         // Update the DOMContentLoaded event listener to include stats initialization
@@ -2298,14 +1548,19 @@
         async function startCountdown(listingId, duration) {
             try {
                 const now = Date.now();
-                await db.collection('listings').doc(listingId).update({
-                    countdown: {
-                        active: true,
-                        startTime: now,
-                        endTime: now + (parseInt(duration) * 60000), // Convert minutes to milliseconds
-                        duration: parseInt(duration)
-                    }
-                });
+                const { error } = await supabase
+                    .from('listings')
+                    .update({
+                        countdown: {
+                            active: true,
+                            start_time: now,
+                            end_time: now + (parseInt(duration) * 60000),
+                            duration: parseInt(duration)
+                        }
+                    })
+                    .eq('id', listingId);
+
+                if (error) throw error;
                 showAlert('Countdown started successfully', 'success');
             } catch (error) {
                 console.error('Error starting countdown:', error);
@@ -2316,14 +1571,19 @@
         // Function to stop countdown for a listing
         async function stopCountdown(listingId) {
             try {
-                await db.collection('listings').doc(listingId).update({
-                    countdown: {
-                        active: false,
-                        endTime: null,
-                        startTime: null,
-                        duration: null
-                    }
-                });
+                const { error } = await supabase
+                    .from('listings')
+                    .update({
+                        countdown: {
+                            active: false,
+                            end_time: null,
+                            start_time: null,
+                            duration: null
+                        }
+                    })
+                    .eq('id', listingId);
+
+                if (error) throw error;
                 showAlert('Countdown stopped successfully', 'success');
             } catch (error) {
                 console.error('Error stopping countdown:', error);
@@ -2374,22 +1634,25 @@
         // Function to update countdown displays in admin panel
         function updateCountdownDisplays() {
             const now = Date.now();
-            document.querySelectorAll('.countdown-status').forEach(status => {
+            document.querySelectorAll('.countdown-status').forEach(async status => {
                 const listingCard = status.closest('.listing-card');
                 const listingId = listingCard.id.replace('listing-', '');
                 
-                db.collection('listings').doc(listingId).get().then(doc => {
-                    const listing = doc.data();
-                    if (listing.countdown?.active) {
-                        const timeLeft = listing.countdown.endTime - now;
-                        if (timeLeft > 0) {
-                            status.textContent = `Countdown active - Time remaining: ${formatTimeRemaining(timeLeft)}`;
-                        } else {
-                            status.textContent = 'Countdown ended';
-                            stopCountdown(listingId);
-                        }
+                const { data: listing, error } = await supabase
+                    .from('listings')
+                    .select('countdown')
+                    .eq('id', listingId)
+                    .single();
+                    
+                if (!error && listing?.countdown?.active) {
+                    const timeLeft = listing.countdown.end_time - now;
+                    if (timeLeft > 0) {
+                        status.textContent = `Countdown active - Time remaining: ${formatTimeRemaining(timeLeft)}`;
+                    } else {
+                        status.textContent = 'Countdown ended';
+                        stopCountdown(listingId);
                     }
-                });
+                }
             });
         }
 
@@ -2399,30 +1662,33 @@
         // Add this right after Firebase initialization and before any other code
         const allowedUsers = ['vdjq', '_cintillic'];
 
-        // Update the checkAdminAuth function
+        // Replace the checkAdminAuth function
         async function checkAdminAuth() {
             const username = localStorage.getItem('currentUser');
             const password = localStorage.getItem('userPassword');
 
             if (!username || !password) {
-                // No credentials - redirect immediately
                 window.location.href = '/dashboard/';
                 return;
             }
 
             try {
-                // Get user doc using username (like other pages do)
-                const userDoc = await db.collection('users').doc(username).get();
-                const userData = userDoc.data();
+                const { data: userData, error } = await supabase
+                    .from('users')
+                    .select('*')
+                    .eq('username', username)
+                    .single();
+                    
+                if (error) throw error;
                 
                 // Add detailed debug logging
                 console.log('Full user data:', userData);
-                console.log('Discord Username:', userData?.discordUsername);
+                console.log('Discord Username:', userData?.discord_username);
                 console.log('Username:', userData?.username);
-                console.log('Discord ID:', userData?.discordId);
+                console.log('Discord ID:', userData?.discord_id);
                 
                 // Verify password matches
-                if (!userDoc.exists || !userData || userData.password !== password) {
+                if (!userData || userData.password !== password) {
                     console.error('Invalid credentials');
                     window.location.href = '/dashboard/';
                     return;
@@ -2430,19 +1696,19 @@
 
                 // Check if user is in allowed users list (case-insensitive)
                 const isAuthorized = allowedUsers.some(allowedUser => 
-                    userData.discordUsername?.toLowerCase() === allowedUser.toLowerCase()
+                    userData.discord_username?.toLowerCase() === allowedUser.toLowerCase()
                 );
                 
                 console.log('Auth check:', {
-                    username: userData.discordUsername,
+                    username: userData.discord_username,
                     isAuthorized: isAuthorized,
-                    lowerCaseUsername: userData.discordUsername?.toLowerCase(),
+                    lowerCaseUsername: userData.discord_username?.toLowerCase(),
                     allowedUsers: allowedUsers
                 });
 
                 if (isAuthorized) {
                     // User is authorized - initialize admin features
-                    console.log('Admin authorized:', userData.discordUsername);
+                    console.log('Admin authorized:', userData.discord_username);
                     document.body.style.display = 'block';
                     initializeListingsListener();
                     initializeUsersListener();
@@ -2450,7 +1716,7 @@
                     initializeStatsListeners();
                 } else {
                     // Not authorized - redirect immediately
-                    console.log('User not authorized:', userData.discordUsername);
+                    console.log('User not authorized:', userData.discord_username);
                     window.location.href = '/dashboard/';
                 }
                 
@@ -2474,13 +1740,17 @@
                 const username = document.getElementById('account-username').value.trim();
                 const password = document.getElementById('account-password').value.trim();
                 
-                await db.collection('listings').doc(listingId).update({
-                    accountDetails: {
-                        username: username,
-                        password: password
-                    }
-                });
-                
+                const { error } = await supabase
+                    .from('listings')
+                    .update({
+                        account_details: {
+                            username: username,
+                            password: password
+                        }
+                    })
+                    .eq('id', listingId);
+                    
+                if (error) throw error;
                 showAlert('Account credentials saved successfully', 'success');
             } catch (error) {
                 console.error('Error saving account details:', error);
@@ -2490,12 +1760,17 @@
 
         async function banIP(ip, reason) {
             try {
-                await db.collection('ipbans').doc(ip).set({
-                    ip: ip,
-                    reason: reason,
-                    bannedAt: firebase.firestore.FieldValue.serverTimestamp(),
-                    bannedBy: localStorage.getItem('currentUser')
-                });
+                const { error } = await supabase
+                    .from('ipbans')
+                    .insert([{
+                        ip: ip,
+                        reason: reason,
+                        banned_at: new Date().toISOString(),
+                        banned_by: localStorage.getItem('currentUser')
+                    }]);
+                    
+                if (error) throw error;
+                
                 showAlert('IP banned successfully', 'success');
             } catch (error) {
                 console.error('Error banning IP:', error);
@@ -2505,12 +1780,20 @@
 
         // Add this to your user management section
         async function getUserIP(userId) {
-            const userDoc = await db.collection('users').doc(userId).get();
-            if (userDoc.exists) {
-                const userData = userDoc.data();
-                return userData.ip;
+            try {
+                const { data: user, error } = await supabase
+                    .from('users')
+                    .select('ip')
+                    .eq('username', userId)
+                    .single();
+                    
+                if (error) throw error;
+                
+                return user?.ip || null;
+            } catch (error) {
+                console.error('Error getting user IP:', error);
+                return null;
             }
-            return null;
         }
 
         // Add function to calculate duration in minutes
@@ -2532,20 +1815,24 @@
         }
 
         // Add this function to show order info
-        function showOrderInfo(orderId) {
+        async function showOrderInfo(orderId) {
             const orderInfoModal = document.getElementById('order-info-modal');
             const orderContent = document.getElementById('order-info-content');
             
-            // Show loading state
             orderContent.innerHTML = '<p class="loading">Loading order details...</p>';
             orderInfoModal.style.display = 'flex';
             
-            // Fetch order details
-            db.collection('orders').doc(orderId).get().then(doc => {
-                if (doc.exists) {
-                    const order = doc.data();
-                    const timestamp = order.createdAt?.toDate() || new Date();
+            try {
+                const { data: order, error } = await supabase
+                    .from('orders')
+                    .select('*')
+                    .eq('id', orderId)
+                    .single();
                     
+                if (error) throw error;
+                
+                if (order) {
+                    const timestamp = new Date(order.created_at);
                     orderContent.innerHTML = `
                         <div class="order-info-grid">
                             <div class="info-group">
@@ -2591,10 +1878,10 @@
                 } else {
                     orderContent.innerHTML = '<p class="error">Order not found</p>';
                 }
-            }).catch(error => {
+            } catch (error) {
                 console.error('Error fetching order:', error);
                 orderContent.innerHTML = '<p class="error">Error loading order details</p>';
-            });
+            }
         }
     </script>
 
@@ -2641,8 +1928,9 @@
             </form>
         </div>
     </div>
-    <script src="admin.js"></script>
+    <script type="module" src="admin.js"></script>
 
     <!-- The closing body and html tags should be after -->
 </body>
 </html>
+

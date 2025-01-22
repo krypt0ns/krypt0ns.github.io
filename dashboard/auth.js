@@ -1,6 +1,6 @@
 // Firebase imports (if using modules)
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
-import { getFirestore, doc, getDoc, collection } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+import { getFirestore } from 'https://www.gstatic.com/firebasejs/10.8.0/firestore.js';
 
 // Firebase config (replace with your config)
 const firebaseConfig = {
@@ -16,6 +16,9 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+
+// Export db for use in other files
+export { db };
 
 /**
  * Validates stored credentials against Firestore
